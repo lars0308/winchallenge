@@ -399,6 +399,8 @@
   @media (max-width:520px){
     .home-header{ padding:44px 12px 6px; } .tile-grid{ padding:20px 10px 60px; } .topbar{ padding:14px 12px; }
     .content{ padding:16px 8px 80px; } .landing-actions, .home-actions{ padding:0 8px; }
+    .admin-block, .panel-block{ padding:16px 12px; }
+    .settings-card{ padding:14px 10px 16px; }
   }
   /* Desktop/PC: die App ist mobil-first gebaut (schmale, zentrierte Karten) — ab hier bekommt
      alles spürbar mehr Breite, damit es auf großen Bildschirmen nicht wie ein schmaler Handy-Streifen
@@ -694,6 +696,7 @@
   <div class="topbar">
     <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
     <div class="page-title"><span class="ico" id="team-page-icon"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 2.5-5.5 6-5.5s6 2.5 6 5.5"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15.7 14.7c2.7.4 4.3 2.4 4.3 5.3"/></svg></span> <span id="team-page-title">Team</span></div>
+    <button class="header-menu-btn" id="team-leave-btn" onclick="leaveTeam()" title="Team verlassen" style="margin-left:auto;display:none;">🚪</button>
   </div>
   <div class="content">
     <div class="section-lead" id="team-section-lead" style="display:none;"><div class="eyebrow" id="team-section-eyebrow"></div><h2 id="team-section-h2"></h2><p id="team-section-p"></p></div>
@@ -2511,14 +2514,17 @@ function renderTeamHeroBlock(){
     const username = member ? member.username : '?';
     const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 16), 16);
     const badgeBit = badgeIconHTML(cosmeticsFor(username).badge);
+    const banner = cosmeticsFor(username).banner;
+    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
+    const bannerClass = banner && banner.animated ? ' stat-card-animated-banner' : '';
     if(revealedSet.has(uid)){
       const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
-      html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
+      html += `<div class="solo-hero-item${bannerClass}" style="opacity:1; transform:none;${bannerStyle}">
         <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
         <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero">${heroName}</div></div>
         <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
     } else {
-      html += `<div class="solo-hero-item" style="opacity:0.55; transform:none;">
+      html += `<div class="solo-hero-item${bannerClass}" style="opacity:0.55; transform:none;${bannerStyle}">
         <div class="solo-avatar" style="background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">🔒</div>
         <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div></div>
       </div>`;
@@ -2672,8 +2678,8 @@ function renderTeamRoundSection(){
       Object.values(byPlayer).forEach(items=>{
         const first = items[0];
         const username = first.profiles ? first.profiles.username : '?';
-        const avatar = renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18);
-        html += `<div class="player-block-label"><span style="color:var(--text)">${avatar} ${username}</span></div>`;
+        const avatar = withHatOverlay(username, renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18), 18);
+        html += `<div class="player-block-label"><span style="color:var(--text)">${avatar} ${badgeIconHTML(cosmeticsFor(username).badge)}${glowNameHTML(username,username)}</span></div>`;
         sortByDifficulty(items).forEach(it=>{
           const votesForItem = roundVotes[it.id] || {};
           const yes = Object.values(votesForItem).filter(v=>v===true).length;
@@ -2973,10 +2979,11 @@ function renderTeamLobbyScreen(isHost, mine){
   if(isHost && mine && !mine.ready){ mine.ready = true; sb.from('team_members').update({ ready: true }).eq('team_id', myTeam.id).eq('user_id', currentUser.id).then(()=>{}); }
   let html = `
     <div class="scoreboard-head">
-      <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">Teilt diesen Code mit Freunden:</div></div>
-      <div class="scoreboard-actions"><button class="sb-btn danger" onclick="leaveTeam()">🚪 Verlassen</button></div>
+      <div class="scoreboard-info">
+        <div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div>
+        <div class="scoreboard-meta" style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:0.14em;color:var(--turquoise-bright);">${myTeam.code}</div>
+      </div>
     </div>
-    <div class="team-code-display">${myTeam.code}</div>
     <p class="setup-info" style="margin-top:0;">Code mit Freunden teilen — alle auf „Bereit" tippen.</p>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div>
@@ -3056,13 +3063,16 @@ function setTeamPageChrome(icon, title, eyebrow, h2, p){
 function renderTeamPage(){
   if(teamRoundRenderLocked) return; // Roulette dreht gerade auf diesem Gerät — Re-Renders durch Polling/Realtime währenddessen unterdrücken
   const el = document.getElementById('team-content');
+  const leaveBtn = document.getElementById('team-leave-btn');
   if(!currentUser){
     setTeamPageChrome('👥','Team','','','');
+    if(leaveBtn) leaveBtn.style.display = 'none';
     el.innerHTML = `<div class="empty-hint">Bitte zuerst einloggen.<button class="empty-hint-link" onclick="showView('auth')">👤 Einloggen</button></div>`;
     return;
   }
   if(!myTeam){
     setTeamPageChrome('👥','Team','Live-Lobby','Freunde einladen','Team erstellen oder per Code beitreten. Der Bereit-Status wird live bei allen synchronisiert.');
+    if(leaveBtn) leaveBtn.style.display = 'none';
     el.innerHTML = renderTeamEntryScreen();
     return;
   }
@@ -3072,6 +3082,7 @@ function renderTeamPage(){
 
   if(teamRoundTransitioning){
     setTeamPageChrome('⏳','Nächste Runde','','','');
+    if(leaveBtn) leaveBtn.style.display = 'none';
     el.innerHTML = `<div class="empty-hint" style="padding:60px 20px;">⏳ Nächste Runde wird vorbereitet…</div>`;
     return;
   }
@@ -3079,12 +3090,14 @@ function renderTeamPage(){
   // Screen-Router: läuft gerade eine Runde? -> Live-Rundenansicht (unabhängig von Settings/Lobby)
   if(currentRound){
     setTeamPageChrome('🎮','Runde läuft','','','');
+    if(leaveBtn) leaveBtn.style.display = 'none';
     el.innerHTML = renderTeamRoundSection();
     return;
   }
+  if(leaveBtn) leaveBtn.style.display = 'flex';
   // Kein aktiver Round: Host konfiguriert gerade? -> eigene Einstellungs-Seite
   if(isHost && teamSettingsOpen){
-    setTeamPageChrome('⚙️','Runde einrichten','Einstellungen','Wie soll gespielt werden?','Spiel, Modus und Länge festlegen — startet für das ganze Team gleichzeitig.');
+    setTeamPageChrome('⚙️','Runde einrichten','','','');
     el.innerHTML = renderTeamSettingsScreen();
     renderTeamRoundPicker();
     return;
@@ -3439,15 +3452,15 @@ function isNoRoundsMode(gameId, gameMode){
   const info = GAME_MODES[gameId] && GAME_MODES[gameId].find(m=>m.key===gameMode);
   return !!(info && info.noRounds);
 }
-function roundOptionsFor(gameId, gameMode){
+function roundOptionsFor(gameId, gameMode, forceMatch){
   const info = GAME_MODES[gameId] && GAME_MODES[gameId].find(m=>m.key===gameMode);
   if(info && info.fixedRounds) return [info.fixedRounds];
   if(info && info.noRounds) return [1];
-  return matchStyleFor(gameId, gameMode)==='match' ? [1,2,3,5] : (GAME_ROUND_PRESETS[gameId] || [1,3,5,7,9,11]);
+  return (forceMatch || matchStyleFor(gameId, gameMode)==='match') ? [1,2,3,5] : (GAME_ROUND_PRESETS[gameId] || [1,3,5,7,9,11]);
 }
 function allowedModesFor(gameId){ return GAME_MODE_RESTRICTIONS[gameId] || ['team','versus']; }
 function allowedModesForSelection(){
-  if(setupState.scope === 'rounds'){
+  if(setupState.scope === 'rounds' || setupState.scope === 'match'){
     return setupState.gameId ? allowedModesFor(setupState.gameId) : ['team','versus'];
   }
   if(!setupState.selectedGames.length) return ['team','versus'];
@@ -4536,26 +4549,26 @@ let stepIndex = 0;
 let continueFromSession = false;
 const ALL_STEPS = ['scope','game','gameMode','gamesMulti','mode','sessionMode','difficulty','heroLock','pointGoal','rounds','count','players','role'];
 function sessionHasHeroGames(){
-  if(setupState.scope === 'rounds') return !!HERO_GAMES[setupState.gameId];
+  if(setupState.scope === 'rounds' || setupState.scope === 'match') return !!HERO_GAMES[setupState.gameId];
   return setupState.selectedGames.some(id=>HERO_GAMES[id]);
 }
 function sessionRoleOptions(){
   // Rollen-Filter nur sinnvoll bei genau einem rollenbasierten Spiel (nicht bei "nach Spielen"
   // mit mehreren unterschiedlichen Titeln gleichzeitig, da die Rollen dort nicht übereinstimmen).
-  if(setupState.scope !== 'rounds') return null;
+  if(setupState.scope !== 'rounds' && setupState.scope !== 'match') return null;
   return rolesForGame(setupState.gameId);
 }
 function visibleSteps(){
-  const noRounds = setupState.scope==='rounds' && isNoRoundsMode(setupState.gameId, setupState.gameMode);
+  const noRounds = (setupState.scope==='rounds' || setupState.scope==='match') && isNoRoundsMode(setupState.gameId, setupState.gameMode);
   return ALL_STEPS.filter(s=>{
-    if(s==='game') return setupState.scope==='rounds';
-    if(s==='gameMode') return setupState.scope==='rounds' && !!GAME_MODES[setupState.gameId];
+    if(s==='game') return setupState.scope==='rounds' || setupState.scope==='match';
+    if(s==='gameMode') return (setupState.scope==='rounds' || setupState.scope==='match') && !!GAME_MODES[setupState.gameId];
     if(s==='gamesMulti') return setupState.scope==='games';
     if(noRounds && ['mode','sessionMode','difficulty','role','heroLock','pointGoal','rounds'].includes(s)) return false;
-    if(s==='rounds') return setupState.scope==='rounds';
+    if(s==='rounds') return setupState.scope==='rounds' || setupState.scope==='match';
     if(s==='difficulty') return setupState.sessionMode==='challenge';
     if(s==='role') return !!sessionRoleOptions();
-    if(s==='heroLock') return sessionHasHeroGames();
+    if(s==='heroLock') return sessionHasHeroGames() && setupState.scope !== 'match';
     return true;
   });
 }
@@ -4625,11 +4638,13 @@ function buildPillRow(containerId, items, currentKey, onPick){
 }
 
 function renderSetupPage(){
-  buildPillRow('setup-scope', [{key:'rounds',label:'🔁 Nach Runden'},{key:'games',label:'🎮 Nach Spielen'}], setupState.scope, k=>{
+  buildPillRow('setup-scope', [{key:'rounds',label:'🔁 Nach Runden'},{key:'match',label:'🏆 Nach Match'},{key:'games',label:'🎮 Nach Spielen'}], setupState.scope, k=>{
     setupState.scope = k;
     if(k==='games' && setupState.selectedGames.length===0) autoFillGames();
   });
-  document.getElementById('setup-scope-desc').textContent = setupState.scope==='games'
+  document.getElementById('setup-scope-desc').textContent = setupState.scope==='match'
+    ? '🏆 MATCH: Der Held bleibt fürs ganze Match gleich, die Challenges sind größer und für das ganze Match gedacht (mehr davon, länger).'
+    : setupState.scope==='games'
     ? 'Ihr wählt mehrere verschiedene Spiele, die nacheinander gespielt werden (je 1 Runde).'
     : 'Ihr spielt ein Spiel über eine feste Rundenanzahl, könnt zwischendurch aber wechseln.';
 
@@ -4724,7 +4739,7 @@ function renderSetupPage(){
   document.getElementById('setup-herolock-desc').textContent = setupState.heroLockMode==='locked'
     ? 'Jeder behält seinen ausgelosten Helden über alle Runden hinweg (bis ihr das Spiel wechselt).'
     : 'Vor jeder neuen Runde wird für alle ein neuer Held ausgelost.';
-  const roundOptions = roundOptionsFor(setupState.gameId, setupState.gameMode);
+  const roundOptions = roundOptionsFor(setupState.gameId, setupState.gameMode, setupState.scope==='match');
   if(!roundOptions.includes(setupState.rounds)) setupState.rounds = roundOptions[Math.floor(roundOptions.length/2)];
   buildPillRow('setup-rounds', roundOptions.map(n=>({key:n,label:String(n)})), setupState.rounds, k=>{ setupState.rounds=k; });
   const isMatchStyle = matchStyleFor(setupState.gameId, setupState.gameMode)==='match';
@@ -4762,6 +4777,7 @@ function renderSetupPage(){
 
   const heroHint = document.getElementById('setup-hero-hint');
   if(setupState.scope === 'games') heroHint.textContent = 'Bei Spielen mit Helden (z. B. Overwatch, Marvel Rivals, FragPunk, Valorant) wird pro Runde automatisch ein Held ausgelost.';
+  if(setupState.scope === 'match') heroHint.textContent = 'Bei Spielen mit Helden bleibt der Held fürs ganze Match gleich.';
   else if(setupState.gameId && !HERO_GAMES[setupState.gameId]) heroHint.textContent = 'Dieses Spiel hat keine Helden — es werden nur Regeln/Challenges verlost.';
   else if(setupState.gameId) heroHint.textContent = 'Zusätzlich wird für jeden Spieler ein Held ausgelost.';
   else heroHint.textContent = '';
@@ -4814,8 +4830,8 @@ function handleStartClick(){
   const initialGameId = setupState.scope==='games' ? gameSequence[0] : setupState.gameId;
   const totalRounds = setupState.scope==='games' ? gameSequence.length : setupState.rounds;
   const pointGoal = resolvePointGoal();
-  const gameMode = setupState.scope==='rounds' ? setupState.gameMode : null;
-  const matchStyle = setupState.scope==='rounds' ? matchStyleFor(initialGameId, gameMode) : null;
+  const gameMode = (setupState.scope==='rounds' || setupState.scope==='match') ? setupState.gameMode : null;
+  const matchStyle = setupState.scope==='match' ? 'match' : (setupState.scope==='rounds' ? matchStyleFor(initialGameId, gameMode) : null);
 
   if(continueFromSession && session){
     session.scope = setupState.scope; session.gameId = initialGameId; session.gameSequence = gameSequence; session.currentGameIndex = 0;
@@ -4830,7 +4846,7 @@ function handleStartClick(){
   } else {
     startSession({
       scope: setupState.scope, gameId: initialGameId, gameSequence,
-      mode: setupState.mode, sessionMode: setupState.sessionMode, heroLockMode: setupState.heroLockMode,
+      mode: setupState.mode, sessionMode: setupState.sessionMode, heroLockMode: setupState.scope==='match' ? 'locked' : setupState.heroLockMode,
       gameMode, matchStyle, roleMap: Object.assign({}, setupState.playerRoles),
       difficultyKey: setupState.difficulty, totalRounds, pointGoal, players: setupState.selectedPlayers.slice(),
     });
@@ -5123,7 +5139,10 @@ function renderHeroRow(entries, avatarResolver){
     const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
     const avatarBit = withHatOverlay(playerName, avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,16), 16);
     const badgeBit = badgeIconHTML(cosmeticsFor(playerName).badge);
-    html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
+    const banner = cosmeticsFor(playerName).banner;
+    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
+    const bannerClass = banner && banner.animated ? ' stat-card-animated-banner' : '';
+    html += `<div class="solo-hero-item${bannerClass}" style="opacity:1; transform:none;${bannerStyle}">
       <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
       <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(playerName,playerName)}</div><div class="solo-hero">${heroName}</div></div>
       <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
@@ -5479,9 +5498,11 @@ function finalizeSoloReel(heroWrap, challWrap, results, challengePool, challenge
   const list = document.createElement('div'); list.className = 'solo-hero-list reel-done-list';
   results.forEach(([playerName, heroEntry], i)=>{
     const [heroName, role] = heroEntry; const meta = ROLE_META[role]; const bg = heroImageCache[heroName] ? '#000' : heroColor(heroName);
-    const item = document.createElement('div'); item.className = 'solo-hero-item'; item.style.animationDelay = (i*0.06)+'s';
+    const banner = cosmeticsFor(playerName).banner;
+    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
+    const item = document.createElement('div'); item.className = 'solo-hero-item'+(banner && banner.animated ? ' stat-card-animated-banner' : ''); item.style.animationDelay = (i*0.06)+'s'; item.style.cssText += bannerStyle;
     item.innerHTML = `<div class="solo-avatar" style="background:${bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-      <div class="solo-info"><div class="solo-player">${avatarHTML(playerName,16)} ${playerName}</div><div class="solo-hero">${heroName}</div></div>
+      <div class="solo-info"><div class="solo-player">${withHatOverlay(playerName, avatarHTML(playerName,16), 16)} ${badgeIconHTML(cosmeticsFor(playerName).badge)}${glowNameHTML(playerName,playerName)}</div><div class="solo-hero">${heroName}</div></div>
       <div class="solo-role" style="background:${meta.color}">${role}</div>`;
     list.appendChild(item);
   });
