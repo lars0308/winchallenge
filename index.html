@@ -339,14 +339,39 @@
   .player-tag{ color:var(--gold); text-transform:uppercase; letter-spacing:0.2em; font-size:0.78rem; font-weight:700; }
   .player-name{ font-size:2rem; font-weight:700; font-family:'Rajdhani',sans-serif; margin-top:8px; }
 
-  .stat-card{ background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; max-width:640px; margin-left:auto; margin-right:auto; }
+  .stat-card{ position:relative; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; max-width:640px; margin-left:auto; margin-right:auto; }
   .stat-card-animated-banner{ animation: shimmer-banner-kf 5.5s ease infinite; }
+  .mystery-banner-fx{ position:relative; overflow:hidden; }
+  .mystery-banner-fx::before{
+    content:''; position:absolute; inset:-20px; pointer-events:none; z-index:1;
+    background-image:
+      radial-gradient(2.4px 2.4px at 18px 24px, #fff, transparent),
+      radial-gradient(1.8px 1.8px at 64px 58px, #fff, transparent),
+      radial-gradient(2px 2px at 104px 16px, #fff, transparent),
+      radial-gradient(1.6px 1.6px at 150px 66px, #fff, transparent),
+      radial-gradient(2.2px 2.2px at 188px 30px, #fff, transparent),
+      radial-gradient(1.8px 1.8px at 230px 74px, #fff, transparent),
+      radial-gradient(1.6px 1.6px at 40px 90px, #fff, transparent),
+      radial-gradient(2px 2px at 170px 96px, #fff, transparent);
+    background-size:260px 120px;
+    animation: mystery-stars-kf 7s linear infinite, mystery-twinkle-kf 1.8s ease-in-out infinite;
+  }
+  .mystery-banner-fx::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+    background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%);
+    background-size:250% 250%;
+    animation: mystery-sweep-kf 3.2s ease-in-out infinite;
+  }
+  @keyframes mystery-stars-kf{ from{ background-position:0 0; } to{ background-position:-260px -30px; } }
+  @keyframes mystery-twinkle-kf{ 0%,100%{ opacity:0.55; } 50%{ opacity:1; } }
+  @keyframes mystery-sweep-kf{ 0%{ background-position:200% 0%; } 100%{ background-position:-50% 0%; } }
+  .banner-badge-stamp{ position:absolute; top:10px; left:10px; z-index:3; background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,0.25); border-radius:999px; padding:4px 10px; font-size:0.7rem; font-weight:800; letter-spacing:0.04em; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.6); white-space:nowrap; }
   @keyframes shimmer-banner-kf{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
-  .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; z-index:2; }
   .stat-avatar{ font-size:1.6rem; }
   .stat-name{ font-weight:700; font-family:'Rajdhani',sans-serif; font-size:1.15rem; flex:1; }
   .stat-points{ color:var(--turquoise-bright); font-weight:700; font-family:'Rajdhani',sans-serif; }
-  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; position:relative; z-index:2; }
   .stat-mini{ background:var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:8px 10px; text-align:center; }
   .stat-mini-val{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.1rem; }
   .stat-mini-label{ color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; }
@@ -510,6 +535,7 @@
       <button onclick="showView('dice')">🎲 Würfel &amp; Münze</button>
       <button onclick="showView('shop')">🛒 Shop</button>
       <button onclick="showStatsPage()">📊 Statistiken</button>
+      <button onclick="showView('achievements')">🏅 Achievements</button>
       <button onclick="showView('custom-challenges')">📝 Eigene Challenges</button>
       <button onclick="showView('friends')">🤝 Freunde</button>
       <button onclick="showView('user-settings')">⚙️ Einstellungen</button>
@@ -532,9 +558,8 @@
       <span class="landing-btn-text"><span class="landing-btn-title">Spiel fortsetzen</span><span class="landing-btn-sub" id="continue-sub">Keine aktive Session</span></span>
     </button>
   </div>
+  <div style="text-align:center;font-size:0.62rem;color:var(--text-faint);margin-top:32px;letter-spacing:0.03em;">Gebaut von Lars Battermann</div>
 </section>
-
-<!-- ===================== START CHOICE ===================== -->
 <section id="view-start-choice" class="view">
   <div class="bg-watermark">🚀</div>
   <div class="topbar">
@@ -765,6 +790,20 @@
   </div>
 </section>
 
+<!-- ===================== ACHIEVEMENTS ===================== -->
+<section id="view-achievements" class="view">
+  <div class="bg-watermark">🏅</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">🏅</span> Achievements</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Meilensteine</div><h2>Achievements</h2><p>Jedes gibt einmalig Bonus-Punkte für den Shop, sobald ihr es erreicht.</p></div>
+    <div class="filter-row" id="achievements-player-picker" style="margin-bottom:8px;"></div>
+    <div id="achievements-content"></div>
+  </div>
+</section>
+
 <!-- ===================== EIGENE CHALLENGES ===================== -->
 <section id="view-custom-challenges" class="view">
   <div class="bg-watermark">📝</div>
@@ -895,6 +934,12 @@
         <input type="number" id="admin-points-amount" placeholder="z. B. 500" value="500">
         <button onclick="adminAddPoints()">➕ Hinzufügen</button>
       </div>
+      <div class="setup-step-head" style="margin-top:24px;"><span class="setup-step-icon">🏅</span><div class="setup-step-title">Achievement-Level (zum Testen)</div></div>
+      <p class="setup-info" style="margin-top:0;" id="admin-achievement-status">0 / 20 freigeschaltet</p>
+      <div class="roll-zone" style="margin-bottom:8px;"><button class="roll-btn" onclick="adminRaiseAchievementLevel()">⬆️ Nächstes Achievement freischalten</button></div>
+      <div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" onclick="adminLowerAchievementLevel()">⬇️ Letztes Achievement zurücknehmen</button></div>
+      <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="adminUnlockAllAchievements()">🏆 Alle freischalten</button></div>
+      <div class="roll-zone" style="margin-top:6px;margin-bottom:0;"><button class="sb-btn danger" onclick="adminResetAchievements()">🔄 Achievements zurücksetzen</button></div>
       <div class="setup-step-head" style="margin-top:24px;"><span class="setup-step-icon">🧨</span><div class="setup-step-title">Lokale Daten zurücksetzen</div></div>
       <p class="setup-info" style="margin-top:0;">Praktisch, bevor ihr die App an Freunde weitergebt. Betrifft nur dieses Gerät, nicht euer Online-Konto.</p>
       <div class="roll-zone" style="margin-bottom:10px;"><button class="sb-btn danger" onclick="resetStatsOnly()">🗑️ Statistiken &amp; Shop zurücksetzen (Punkte, Guthaben, Mützen, Abzeichen, Banner …)</button></div>
@@ -1848,10 +1893,18 @@ function badgeIconHTML(badge){
   if(!badge) return '';
   return badge.animated ? `<span class="badge-lightning-flash">${badge.icon}</span> ` : badge.icon+' ';
 }
+function bannerClassFor(banner){
+  if(!banner || !banner.animated) return '';
+  return ' stat-card-animated-banner' + (banner.mystery ? ' mystery-banner-fx' : '');
+}
+function bannerBadgeStampHTML(banner, badge){
+  if(!banner || !badge) return '';
+  return `<div class="banner-badge-stamp">${badge.icon} ${badge.label}</div>`;
+}
 function playerCosmeticCardHTML(username, avatarBit, suffix){
   const c = cosmeticsFor(username);
   const bannerStyle = c.banner ? `background:${c.banner.grad};${c.banner.animated?'background-size:400% 400%;':''}` : '';
-  const bannerClass = c.banner && c.banner.animated ? ' stat-card-animated-banner' : '';
+  const bannerClass = bannerClassFor(c.banner);
   return `<span class="player-cosmetic-card${bannerClass}" style="${bannerStyle}">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}${suffix||''}</span>`;
 }
 function glowNameHTML(name, displayText){
@@ -2184,10 +2237,12 @@ function showMemberProfile(userId){
     ? facts.map(([label,val])=>`<div class="member-modal-fact"><span><span class="fact-label">${label}</span>${val}</span></div>`).join('')
     : `<div class="empty-hint" style="padding:14px;">${m.username} hat noch keine Angaben in den Benutzer-Einstellungen gemacht.</div>`;
   const memberBanner = cosmeticsFor(m.username).banner;
-  modal.innerHTML = `<div class="member-modal-card${memberBanner && memberBanner.animated ? ' stat-card-animated-banner' : ''}" style="${memberBanner ? `background:${memberBanner.grad};${memberBanner.animated?'background-size:400% 400%;':''}` : ''}" onclick="event.stopPropagation();">
+  const memberBadge = cosmeticsFor(m.username).badge;
+  modal.innerHTML = `<div class="member-modal-card${bannerClassFor(memberBanner)}" style="${memberBanner ? `background:${memberBanner.grad};${memberBanner.animated?'background-size:400% 400%;':''}` : ''}" onclick="event.stopPropagation();">
+    ${bannerBadgeStampHTML(memberBanner, memberBadge)}
     <button class="member-modal-close" onclick="closeMemberProfileModal()" aria-label="Schließen">✕</button>
     <div class="member-modal-avatar">${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,52), 52)}</div>
-    <div class="member-modal-name">${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</div>
+    <div class="member-modal-name">${badgeIconHTML(memberBadge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</div>
     ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
     <div class="member-modal-facts">${factsHTML}</div>
   </div>`;
@@ -2839,6 +2894,7 @@ async function finalizeTeamRound(){
     s.gamesPlayed[currentRound.game_id] = (s.gamesPlayed[currentRound.game_id]||0)+1;
     if(earned > s.bestRoundScore) s.bestRoundScore = earned;
     saveStats();
+    notifyNewAchievements(checkAchievements(currentUser.username));
   }
   renderTeamPage();
 }
@@ -3608,6 +3664,57 @@ function renderAdminPointsTab(){
     btn.addEventListener('click', ()=>{ adminPointsSelectedPlayer = n; renderAdminPointsTab(); });
     row.appendChild(btn);
   });
+  const s = statsStore[adminPointsSelectedPlayer];
+  const claimedCount = s ? (s.achievementsClaimed||[]).length : 0;
+  const statusEl = document.getElementById('admin-achievement-status');
+  if(statusEl) statusEl.textContent = `${claimedCount} / ${ACHIEVEMENTS_DEF.length} freigeschaltet (${adminPointsSelectedPlayer||'—'})`;
+}
+function adminRaiseAchievementLevel(){
+  const name = adminPointsSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const s = statsStore[name];
+  s.achievementsClaimed = s.achievementsClaimed || [];
+  const next = ACHIEVEMENTS_DEF.find(a=>!s.achievementsClaimed.includes(a.id));
+  if(!next){ showAlert('Schon alle Achievements freigeschaltet.', '🏆'); return; }
+  s.achievementsClaimed.push(next.id);
+  s.totalPoints = (s.totalPoints||0) + next.reward;
+  saveStats();
+  renderAdminPointsTab();
+}
+function adminLowerAchievementLevel(){
+  const name = adminPointsSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const s = statsStore[name];
+  s.achievementsClaimed = s.achievementsClaimed || [];
+  const lastId = s.achievementsClaimed.pop();
+  if(!lastId) return;
+  const a = ACHIEVEMENTS_DEF.find(x=>x.id===lastId);
+  if(a) s.totalPoints = Math.max(0, (s.totalPoints||0) - a.reward);
+  saveStats();
+  renderAdminPointsTab();
+}
+function adminUnlockAllAchievements(){
+  const name = adminPointsSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const s = statsStore[name];
+  s.achievementsClaimed = s.achievementsClaimed || [];
+  ACHIEVEMENTS_DEF.forEach(a=>{
+    if(!s.achievementsClaimed.includes(a.id)){ s.achievementsClaimed.push(a.id); s.totalPoints = (s.totalPoints||0) + a.reward; }
+  });
+  saveStats();
+  renderAdminPointsTab();
+}
+async function adminResetAchievements(){
+  const name = adminPointsSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  if(!(await confirmAction('Achievements für '+name+' wirklich zurücksetzen? Die dafür erhaltenen Punkte werden wieder abgezogen.'))) return;
+  const s = statsStore[name];
+  const claimed = s.achievementsClaimed || [];
+  const totalReward = claimed.reduce((sum,id)=>{ const a = ACHIEVEMENTS_DEF.find(x=>x.id===id); return sum + (a?a.reward:0); }, 0);
+  s.totalPoints = Math.max(0, (s.totalPoints||0) - totalReward);
+  s.achievementsClaimed = [];
+  saveStats();
+  renderAdminPointsTab();
 }
 function adminAddPoints(){
   const name = adminPointsSelectedPlayer;
@@ -4501,6 +4608,7 @@ function showView(id, skipHistory){
   if(id==='blitz') renderBlitzPage();
   if(id==='shop') renderShopPage();
   if(id==='local-choice') renderLocalChoicePage();
+  if(id==='achievements') renderAchievementsPage();
   if(id==='custom-challenges') renderCustomChallengesPage();
   if(id==='friends') renderFriendsPage();
   if(id==='user-settings') renderUserSettingsPage();
@@ -4745,12 +4853,76 @@ function getPlayerStats(name){
   return statsStore[name];
 }
 const ACHIEVEMENTS_DEF = [
-  {icon:'🏆', label:'Erste 100 Punkte', test:s=>s.totalPoints>=100},
-  {icon:'🥇', label:'10 Rundensiege', test:s=>s.roundWins>=10},
-  {icon:'🎯', label:'50 Challenges geschafft', test:s=>s.challengesWon>=50},
-  {icon:'👑', label:'100+ Punkte in einer Runde', test:s=>s.bestRoundScore>=100},
-  {icon:'🔥', label:'5 Runden-Siegesserie', test:s=>s.bestRoundStreak>=5},
+  {id:'first_round', icon:'🎮', label:'Erste Runde gespielt', test:s=>s.roundsPlayed>=1, reward:5},
+  {id:'first_loss', icon:'😢', label:'Erste Niederlage', test:s=>(s.roundsPlayed-s.roundWins)>=1, reward:5},
+  {id:'first_challenge', icon:'✅', label:'Erste Challenge geschafft', test:s=>s.challengesWon>=1, reward:5},
+  {id:'first_purchase', icon:'🛒', label:'Erster Einkauf im Shop', test:s=>(s.spent||0)>=1, reward:5},
+  {id:'first_win', icon:'🥇', label:'Erster Rundensieg', test:s=>s.roundWins>=1, reward:8},
+  {id:'5_wins', icon:'🥈', label:'5 Rundensiege', test:s=>s.roundWins>=5, reward:8},
+  {id:'10_challenges', icon:'✅', label:'10 Challenges geschafft', test:s=>s.challengesWon>=10, reward:8},
+  {id:'10_rounds', icon:'🎮', label:'10 Runden gespielt', test:s=>s.roundsPlayed>=10, reward:8},
+  {id:'100_points', icon:'🏆', label:'Erste 100 Punkte', test:s=>s.totalPoints>=100, reward:10},
+  {id:'3_games', icon:'🌍', label:'3 verschiedene Spiele gespielt', test:s=>Object.keys(s.gamesPlayed||{}).length>=3, reward:10},
+  {id:'25_challenges', icon:'🎯', label:'25 Challenges geschafft', test:s=>s.challengesWon>=25, reward:10},
+  {id:'10_wins', icon:'🥇', label:'10 Rundensiege', test:s=>s.roundWins>=10, reward:15},
+  {id:'50_challenges', icon:'🎯', label:'50 Challenges geschafft', test:s=>s.challengesWon>=50, reward:15},
+  {id:'100_round_score', icon:'👑', label:'100+ Punkte in einer Runde', test:s=>s.bestRoundScore>=100, reward:15},
+  {id:'5_streak', icon:'🔥', label:'5 Runden-Siegesserie', test:s=>s.bestRoundStreak>=5, reward:15},
+  {id:'500_points', icon:'🌟', label:'500 Punkte insgesamt', test:s=>s.totalPoints>=500, reward:15},
+  {id:'500_spent', icon:'💸', label:'500 Punkte im Shop ausgegeben', test:s=>(s.spent||0)>=500, reward:15},
+  {id:'50_rounds', icon:'🎮', label:'50 Runden gespielt', test:s=>s.roundsPlayed>=50, reward:18},
+  {id:'25_wins', icon:'🥇', label:'25 Rundensiege', test:s=>s.roundWins>=25, reward:18},
+  {id:'1000_points', icon:'💎', label:'1000 Punkte insgesamt', test:s=>s.totalPoints>=1000, reward:20},
 ];
+let achievementsSelectedPlayer = null;
+function renderAchievementsPage(){
+  const names = Object.keys(statsStore);
+  const pickerRow = document.getElementById('achievements-player-picker');
+  const contentEl = document.getElementById('achievements-content');
+  if(!names.length){
+    pickerRow.innerHTML = '';
+    contentEl.innerHTML = '<div class="empty-hint">Noch keine Statistiken — spielt erst eine Runde.</div>';
+    return;
+  }
+  if(currentUser) achievementsSelectedPlayer = currentUser.username;
+  if(!achievementsSelectedPlayer || !names.includes(achievementsSelectedPlayer)) achievementsSelectedPlayer = names[0];
+  pickerRow.innerHTML = '';
+  names.forEach(n=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(n===achievementsSelectedPlayer?' active':'');
+    btn.innerHTML = avatarHTML(n,16)+' '+n;
+    btn.addEventListener('click', ()=>{ achievementsSelectedPlayer = n; renderAchievementsPage(); });
+    pickerRow.appendChild(btn);
+  });
+  const s = statsStore[achievementsSelectedPlayer];
+  const claimed = new Set((s && s.achievementsClaimed) || []);
+  const earnedCount = ACHIEVEMENTS_DEF.filter(a=>claimed.has(a.id)).length;
+  let html = `<p class="setup-info" style="margin-top:0;">${earnedCount} / ${ACHIEVEMENTS_DEF.length} freigeschaltet</p>`;
+  ACHIEVEMENTS_DEF.forEach(a=>{
+    const done = claimed.has(a.id);
+    html += `<div class="settings-row-btn" style="margin-top:8px;${done?'':'opacity:0.5;'}">
+      <span class="settings-row-icon">${done?a.icon:'🔒'}</span>
+      <span class="settings-row-text"><span class="settings-row-title">${a.label}</span><span class="settings-row-sub">${done?'Freigeschaltet':'Noch nicht erreicht'}</span></span>
+      <span class="settings-row-chev">+${a.reward} Pkt</span>
+    </div>`;
+  });
+  contentEl.innerHTML = html;
+}
+function checkAchievements(name){
+  const s = statsStore[name];
+  if(!s) return [];
+  s.achievementsClaimed = s.achievementsClaimed || [];
+  const newlyEarned = [];
+  ACHIEVEMENTS_DEF.forEach(a=>{
+    if(!s.achievementsClaimed.includes(a.id) && a.test(s)){
+      s.achievementsClaimed.push(a.id);
+      s.totalPoints = (s.totalPoints||0) + a.reward;
+      newlyEarned.push(a);
+    }
+  });
+  if(newlyEarned.length) saveStats();
+  return newlyEarned;
+}
 function favoriteGame(s){
   let best=null, bestCount=0;
   Object.entries(s.gamesPlayed||{}).forEach(([g,c])=>{ if(c>bestCount){ best=g; bestCount=c; } });
@@ -4793,6 +4965,13 @@ function recordRoundStats(){
     });
   }
   saveStats();
+  session.players.forEach(p=>notifyNewAchievements(checkAchievements(p)));
+}
+function notifyNewAchievements(newlyEarned){
+  if(!newlyEarned || !newlyEarned.length) return;
+  const totalReward = newlyEarned.reduce((s,a)=>s+a.reward,0);
+  const lines = newlyEarned.map(a=>`${a.icon} ${a.label} (+${a.reward} Pkt)`).join('\n');
+  showAlert(`🏅 Neues Achievement freigeschaltet!\n${lines}`, '🏅');
 }
 function showStatsPage(){ showView('stats'); renderStatsPage(); }
 async function resetStatsOnly(){
@@ -4820,7 +4999,8 @@ function renderStatsPage(){
     const badges = ACHIEVEMENTS_DEF.filter(a=>a.test(s));
     const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
-    html += `<div class="stat-card${banner && banner.animated ? ' stat-card-animated-banner' : ''}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}"` : ''}>
+    html += `<div class="stat-card${bannerClassFor(banner)}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}"` : ''}>
+      ${bannerBadgeStampHTML(banner, shopBadge)}
       <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
         <div class="stat-mini"><div class="stat-mini-val">${s.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
@@ -4845,6 +5025,11 @@ const SHOP_BADGES = [
   {id:'skull', icon:'💀', label:'Gefürchtet', cost:120},
   {id:'diamond', icon:'💎', label:'Diamant', cost:200},
   {id:'lightning', icon:'⚡', label:'Blitz', cost:170, animated:true},
+  {id:'rank_neuling', icon:'🌱', label:'Neuling', cost:0, requiresAchievementCount:5},
+  {id:'rank_anfaenger', icon:'🔰', label:'Anfänger', cost:0, requiresAchievementCount:10},
+  {id:'rank_erfahren', icon:'⭐', label:'Erfahrener', cost:0, requiresAchievementCount:15},
+  {id:'rank_profi', icon:'🎖️', label:'Profi', cost:0, requiresAchievementCount:19},
+  {id:'rank_ultimate', icon:'🌠', label:'Ultimativer Winner', cost:0, animated:true, requiresAchievementCount:20},
 ];
 const SHOP_HATS = [
   {id:'cap', icon:'🧢', label:'Cap', cost:40},
@@ -4923,15 +5108,18 @@ function renderShopPage(){
   const owned = (s && s.shopOwned) || {badges:[], banners:[], hats:[], sabotage:{}};
   const previewBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
   const previewBanner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
-  let html = `<div class="stat-card${previewBanner && previewBanner.animated ? ' stat-card-animated-banner' : ''}"${previewBanner ? ` style="background:${previewBanner.grad};${previewBanner.animated?'background-size:400% 400%;':''}"` : ''}>
+  let html = `<div class="stat-card${bannerClassFor(previewBanner)}"${previewBanner ? ` style="background:${previewBanner.grad};${previewBanner.animated?'background-size:400% 400%;':''}"` : ''}>
+    ${bannerBadgeStampHTML(previewBanner, previewBadge)}
     <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
   </div>`;
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎖️</span><div class="setup-step-title">Abzeichen (neben dem Namen)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
   SHOP_BADGES.forEach(b=>{
     const isOwned = owned.badges.includes(b.id);
     const isEquipped = s && s.equippedBadge===b.id;
-    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}">
-      <span>${b.animated?`<span class="badge-lightning-flash">${b.icon}</span>`:b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
+    const myAchievementCount = s ? (s.achievementsClaimed||[]).length : 0;
+    const locked = b.requiresAchievementCount && myAchievementCount < b.requiresAchievementCount;
+    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;${locked?'opacity:0.4;':''}" ${locked?'':`onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}"`}>
+      <span>${locked?'🔒':b.animated?`<span class="badge-lightning-flash">${b.icon}</span>`:b.icon}</span><span style="font-size:0.5rem;color:var(--text-muted);">${locked?`${b.requiresAchievementCount} Achievements nötig`:isOwned?(isEquipped?'aktiv':'ausrüsten'):(b.cost>0?b.cost+' Pkt':'freischalten')}</span>
     </div>`;
   });
   html += '</div></div>';
@@ -4952,7 +5140,7 @@ function renderShopPage(){
     const btnStyle = showHidden
       ? 'background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);'
       : `background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:400% 400%;':''}`;
-    html += `<button class="filter-pill${isEquipped?' active':''}${b.animated && !showHidden?' stat-card-animated-banner':''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${showHidden?b.hiddenLabel:b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
+    html += `<button class="filter-pill${isEquipped?' active':''}${!showHidden?bannerClassFor(b):''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${showHidden?b.hiddenLabel:b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">✨</span><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
