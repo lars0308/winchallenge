@@ -151,6 +151,7 @@
   .sb-challenge-item{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:14px; padding:12px 14px; transition:border-color 0.2s ease, opacity 0.2s ease; }
   .sb-challenge-item.won{ border-color:var(--win); }
   .sb-challenge-item.lost{ border-color:var(--lose); opacity:0.85; }
+  .sb-challenge-item.struck .sb-challenge-text{ text-decoration:line-through; color:var(--text-faint); }
   .sb-challenge-item.chaos{ background:linear-gradient(120deg, rgba(155,92,246,0.12), var(--bg-card) 40%); }
   .sb-diff-badge{ flex:none; font-size:0.66rem; font-weight:700; color:#08080d; padding:4px 8px; border-radius:8px; text-transform:uppercase; letter-spacing:0.03em; }
   .sb-challenge-text{ flex:1; min-width:140px; font-size:0.92rem; line-height:1.35; }
@@ -158,7 +159,7 @@
   .sb-challenge-item.won .sb-points{ color:var(--win); }
   .sb-challenge-item.lost .sb-points{ color:var(--lose); }
   .confetti-burst{ position:relative; display:inline-flex; }
-  .confetti-piece{ position:absolute; top:50%; left:50%; font-size:1.2rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 2.4s ease-out forwards; }
+  .confetti-piece{ position:absolute; top:50%; left:50%; font-size:2.1rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 2.4s ease-out forwards; }
   @keyframes confetti-pop-kf{
     0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
     14%{ opacity:1; }
@@ -487,6 +488,13 @@
       <button class="sb-btn" id="custom-confirm-cancel" style="flex:1;">Abbrechen</button>
       <button class="roll-btn" id="custom-confirm-ok" style="flex:1;">OK</button>
     </div>
+  </div>
+</div>
+<div class="custom-alert-backdrop hidden" id="friend-invite-modal-backdrop" onclick="if(event.target===this) closeFriendInviteModal();">
+  <div class="custom-alert-box" style="text-align:left;">
+    <button class="member-modal-close" onclick="closeFriendInviteModal()" aria-label="Schließen" style="position:absolute;top:12px;right:12px;">✕</button>
+    <div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">🤝</span><div class="setup-step-title">Freund einladen</div></div>
+    <div id="friend-invite-modal-list" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -1334,6 +1342,40 @@ function renderCustomChallengesPage(){
   });
   listEl.innerHTML = html;
 }
+async function openFriendInviteModal(){
+  if(!currentUser || !sb || !myTeam) return;
+  const backdrop = document.getElementById('friend-invite-modal-backdrop');
+  const listEl = document.getElementById('friend-invite-modal-list');
+  backdrop.classList.remove('hidden');
+  listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
+  try{
+    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar)').eq('user_id', currentUser.id);
+    if(error) throw error;
+    if(!data || !data.length){
+      listEl.innerHTML = `<div class="empty-hint">Noch keine Freunde. <a href="#" onclick="closeFriendInviteModal(); showView('friends'); return false;" style="color:var(--turquoise-bright);">Freund hinzufügen</a></div>`;
+      return;
+    }
+    const memberIds = new Set(teamMembers.map(m=>m.user_id));
+    let html = '';
+    data.forEach(f=>{
+      const p = f.profiles;
+      if(!p) return;
+      const alreadyIn = memberIds.has(p.id);
+      html += `<div class="chip readonly" style="width:100%;box-sizing:border-box;justify-content:space-between;margin-bottom:6px;">
+        <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
+        ${alreadyIn ? '<span style="color:var(--text-faint);">schon dabei</span>' : `<button class="header-menu-btn" style="width:32px;height:32px;font-size:1rem;" onclick="inviteFriendFromModal('${p.id}','${p.username}')">➕</button>`}
+      </div>`;
+    });
+    listEl.innerHTML = html;
+  }catch(e){ listEl.innerHTML = '<div class="empty-hint">Freundesliste konnte nicht geladen werden.</div>'; console.error(e); }
+}
+function closeFriendInviteModal(){
+  document.getElementById('friend-invite-modal-backdrop').classList.add('hidden');
+}
+async function inviteFriendFromModal(friendUserId, friendUsername){
+  await inviteFriendToTeam(friendUserId, friendUsername);
+  closeFriendInviteModal();
+}
 async function renderFriendsPage(){
   if(!currentUser || !sb){
     document.getElementById('friend-my-code').textContent = '—';
@@ -1790,11 +1832,11 @@ function badgeIconHTML(badge){
   if(!badge) return '';
   return badge.animated ? `<span class="badge-lightning-flash">${badge.icon}</span> ` : badge.icon+' ';
 }
-function playerCosmeticCardHTML(username, avatarBit){
+function playerCosmeticCardHTML(username, avatarBit, suffix){
   const c = cosmeticsFor(username);
   const bannerStyle = c.banner ? `background:${c.banner.grad};${c.banner.animated?'background-size:400% 400%;':''}` : '';
   const bannerClass = c.banner && c.banner.animated ? ' stat-card-animated-banner' : '';
-  return `<span class="player-cosmetic-card${bannerClass}" style="${bannerStyle}">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}</span>`;
+  return `<span class="player-cosmetic-card${bannerClass}" style="${bannerStyle}">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}${suffix||''}</span>`;
 }
 function glowNameHTML(name, displayText){
   const glow = cosmeticsFor(name).glow;
@@ -2022,6 +2064,7 @@ function unlockTeamRoundRender(){
 }
 let teamPersonallyDoneFor = null; // Round-ID, für die dieses Mitglied (nicht Host) schon "Fertig" gedrückt hat
 let teamCelebratedFor = null; // Round-ID, für die die Gewinn-Animation auf diesem Gerät schon lief
+let teamRenameEditing = false; // ob das Team-Namen-Bearbeitungsfeld (Host) gerade offen ist
 let teamHeroRevealDone = false, teamHeroRevealRoundId = null; // Roulette-Reveal ist pro Gerät/Runde einmalig
 function ensureHeroRevealState(){
   if(currentRound && currentRound.id !== teamHeroRevealRoundId){
@@ -2491,14 +2534,14 @@ function renderSabotagePanel(){
   if(!available.length){
     return `<div class="empty-hint" style="margin-top:10px;">🎯 Noch keine Sabotage-Items — im <a href="#" onclick="showView('shop'); return false;" style="color:var(--turquoise-bright);">Shop</a> kaufen, um sie hier einzusetzen.</div>`;
   }
-  let html = `<div class="settings-card" style="margin-top:12px;border-color:var(--lose);"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteil einsetzen</div></div>`;
+  let html = `<details class="hero-avatar-group" style="margin-top:12px;border-color:var(--lose);"><summary>🎯 Vorteil einsetzen</summary><div style="padding:0 14px 14px;">`;
   available.forEach(item=>{
     if(item.selfOnly){
       html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} (${owned[item.id]}x) — ${item.desc}</p>`;
       if(item.id==='delete_challenge'){
-        const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
+        const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result && it.diff!=='schwer');
         if(!myItems.length){
-          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen.</div>`;
+          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen (schwere Challenges gehen nicht).</div>`;
         } else {
           html += `<div class="filter-row" style="margin-bottom:8px;">`;
           myItems.forEach(it=>{
@@ -2518,7 +2561,7 @@ function renderSabotagePanel(){
     });
     html += `</div>`;
   });
-  html += `</div>`;
+  html += `</div></details>`;
   return html;
 }
 async function useSabotageItem(itemId, targetUserId, extraId){
@@ -2562,15 +2605,20 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       }
     } else if(itemId==='lucky'){
       const pool = personalPoolFor(currentRound.game_id, currentRound.game_mode);
-      const easyOnes = pool.filter(c=>c.diff==='leicht');
-      if(easyOnes.length){
-        const picks = [];
-        for(let i=0;i<5;i++) picks.push(easyOnes[randInt(0,easyOnes.length-1)]);
-        await sb.from('round_items').insert(picks.map(pick=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'leicht', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht'] })));
+      const easyOnes = shuffle(pool.filter(c=>c.diff==='leicht'));
+      const uniqueTexts = [];
+      const uniquePicks = [];
+      for(const c of easyOnes){ if(!uniqueTexts.includes(c.text)){ uniqueTexts.push(c.text); uniquePicks.push(c); } if(uniquePicks.length>=5) break; }
+      if(uniquePicks.length){
+        // Ersetzt die aktuellen offenen persönlichen Challenges statt sie nur zu ergänzen.
+        await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', targetUserId).eq('scope','personal').is('result', null);
+        await sb.from('round_items').insert(uniquePicks.map(pick=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'leicht', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht'] })));
       }
     } else if(itemId==='delete_challenge'){
       if(!extraId) return;
-      await sb.from('round_items').delete().eq('id', extraId);
+      const target = roundItems.find(it=>it.id===extraId);
+      if(!target || target.diff==='schwer') return;
+      await sb.from('round_items').update({ result: 'success', struck: true }).eq('id', extraId);
     }
     s.shopOwned.sabotage[itemId] = owned - 1;
     saveStats();
@@ -2975,7 +3023,7 @@ function renderTeamRoundSection(){
     if(others.length){
       html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
       html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18))}<span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18), ' '+(doneSet.has(m.user_id)?'✅':'⏳'))}</div>`
       ).join('') + `</div>`;
     }
     if(currentRound.mode === 'team'){
@@ -3017,10 +3065,10 @@ function renderTeamRoundSection(){
         const yes = Object.values(votesForItem).filter(v=>v===true).length;
         const no = Object.values(votesForItem).filter(v=>v===false).length;
         const myVote = votesForItem[currentUser.id];
-        html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}">
+        html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
           <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
           <div class="sb-challenge-text">${it.text}</div>
-          <div class="sb-points">${it.result==='success'?'+':it.result==='fail'?'−':''}${it.points} Pkt</div>`;
+          <div class="sb-points">${it.struck?'🗑️ gestrichen · ':it.result==='success'?'+':it.result==='fail'?'−':''}${it.points} Pkt</div>`;
         if(!it.result){
           html += `<div class="sb-actions">
             <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
@@ -3047,10 +3095,10 @@ function renderTeamRoundSection(){
           const yes = Object.values(votesForItem).filter(v=>v===true).length;
           const no = Object.values(votesForItem).filter(v=>v===false).length;
           const myVote = votesForItem[currentUser.id];
-          html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}">
+          html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
             <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
             <div class="sb-challenge-text">${it.text}</div>
-            <div class="sb-points">${it.points} Pkt</div>`;
+            <div class="sb-points">${it.struck?'🗑️ gestrichen · ':''}${it.points} Pkt</div>`;
           if(!it.result){
             html += `<div class="sb-actions">
               <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
@@ -3241,6 +3289,7 @@ async function renameTeam(){
   const { error } = await sb.from('teams').update({ name: newName }).eq('id', myTeam.id);
   if(error){ showAlert('Fehler beim Umbenennen: ' + error.message); return; }
   myTeam.name = newName;
+  teamRenameEditing = false;
   renderTeamPage();
 }
 function startSessionWithTeam(){
@@ -3341,28 +3390,29 @@ function renderTeamLobbyScreen(isHost, mine){
   if(isHost && mine && !mine.ready){ mine.ready = true; sb.from('team_members').update({ ready: true }).eq('team_id', myTeam.id).eq('user_id', currentUser.id).then(()=>{}); }
   let html = `
     <div class="scoreboard-head">
-      <div class="scoreboard-info">
-        <div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div>
+      <div class="scoreboard-info">`;
+  if(isHost && teamRenameEditing){
+    html += `<div class="player-input-row" style="max-width:280px;margin:0;">
+      <input type="text" id="team-rename-input" placeholder="Team-Name" maxlength="24" value="${myTeam.name||''}">
+      <button onclick="renameTeam()">✅</button>
+    </div>`;
+  } else {
+    html += `<div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}${isHost ? ` <button class="header-menu-btn" style="width:28px;height:28px;font-size:0.8rem;vertical-align:middle;" onclick="teamRenameEditing=true; renderTeamPage();" title="Team umbenennen">✏️</button>` : ''}</div>`;
+  }
+  html += `
         <div class="scoreboard-meta" style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:0.14em;color:var(--turquoise-bright);">${myTeam.code}</div>
       </div>
     </div>
-    <p class="setup-info" style="margin-top:0;">Code mit Freunden teilen — alle auf „Bereit" tippen.</p>
-    <div class="roll-zone" style="margin-bottom:14px;"><button class="sb-btn" onclick="showView('friends')">🤝 Freund direkt einladen</button></div>
+    <div class="roll-zone" style="margin-bottom:14px;"><button class="sb-btn" onclick="openFriendInviteModal()">🤝 Freund direkt einladen</button></div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div>
       <div class="player-chips">`;
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
     const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
-    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20))}${m.user_id===myTeam.host_id?' 👑':''}${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
-  if(isHost){
-    html += `<div class="player-input-row" style="max-width:320px;margin:16px auto 0;">
-      <input type="text" id="team-rename-input" placeholder="Neuer Team-Name" maxlength="24" value="${myTeam.name||''}">
-      <button onclick="renameTeam()">✏️ Speichern</button>
-    </div>`;
-  }
   html += `</div>`;
   if(!isHost && myTeam.draft_settings && myTeam.draft_settings.text){
     html += `<div class="settings-card" style="border-color:var(--turquoise);">
@@ -4272,18 +4322,44 @@ const TEAM_ROUND_PERSONAL_DIFF_POINTS = { leicht:2, mittel:4, schwer:7 }; // Nam
 /* ============================================================ HELPERS ============================================================ */
 /* Kurze, einmalige Konfetti-Animation an einer Ankerstelle (z. B. ums Trophäen-Icon) — für
    "jemand hat gewonnen"-Momente. Räumt sich nach ~1.4s selbst wieder auf. */
+function playFireworkSound(){
+  if(!userPrefs.soundVibration) return;
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    // Whoosh (Rauschen, steigt an)
+    const bufferSize = ctx.sampleRate * 0.25;
+    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (i/bufferSize);
+    const noise = ctx.createBufferSource(); noise.buffer = noiseBuffer;
+    const noiseFilter = ctx.createBiquadFilter(); noiseFilter.type = 'bandpass'; noiseFilter.frequency.setValueAtTime(800, ctx.currentTime); noiseFilter.frequency.exponentialRampToValueAtTime(2200, ctx.currentTime+0.25);
+    const noiseGain = ctx.createGain(); noiseGain.gain.setValueAtTime(0.2, ctx.currentTime); noiseGain.gain.linearRampToValueAtTime(0, ctx.currentTime+0.25);
+    noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(ctx.destination);
+    noise.start(); noise.stop(ctx.currentTime+0.25);
+    // Pop/Knall
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(180, ctx.currentTime+0.22);
+    osc.frequency.exponentialRampToValueAtTime(60, ctx.currentTime+0.4);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime+0.22);
+    gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime+0.25);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.45);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime+0.22); osc.stop(ctx.currentTime+0.46);
+  }catch(e){}
+}
 function spawnConfetti(targetId){
   if(!userPrefs.animations) return;
   const el = document.getElementById(targetId);
   if(!el) return;
   const EMOJI = ['🎉','✨','🏆','🎊','⭐','🥳'];
   function burst(){
-    for(let i=0;i<14;i++){
+    playFireworkSound();
+    for(let i=0;i<16;i++){
       const span = document.createElement('span');
       span.className = 'confetti-piece';
       span.textContent = EMOJI[randInt(0,EMOJI.length-1)];
       const angle = Math.random()*Math.PI*2;
-      const dist = 60 + Math.random()*95;
+      const dist = 80 + Math.random()*140;
       span.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
       span.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
       span.style.setProperty('--rot', (Math.random()*360-180)+'deg');
@@ -4781,7 +4857,7 @@ const SHOP_SABOTAGE = [
   {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort eine zusätzliche schwere Challenge dazu.', cost:220},
   {id:'force_reroll', icon:'🎲', label:'Zwangs-Reroll', desc:'Der Held des Zielspielers wird sofort neu ausgelost — ohne Abstimmung.', cost:200},
   {id:'lucky', icon:'🍀', label:'Glückspilz', desc:'Du bekommst sofort 5 zusätzliche leichte Challenges.', cost:200, selfOnly:true},
-  {id:'delete_challenge', icon:'🗑️', label:'Challenge streichen', desc:'Wählt eine eigene Challenge aus und streicht sie ersatzlos.', cost:150, selfOnly:true},
+  {id:'delete_challenge', icon:'🗑️', label:'Challenge streichen', desc:'Wählt eine eigene Challenge (nicht schwer) aus und streicht sie ersatzlos — volle Punkte, keine Bewertung mehr nötig.', cost:150, selfOnly:true},
 ];
 let shopSelectedPlayer = null;
 function shopBalance(name){
@@ -5735,10 +5811,10 @@ function renderScoreboard(){
 function renderChallengeListPlain(arr){
   let html = '<div class="sb-challenge-list">';
   sortByDifficulty(arr).forEach(c=>{
-    html += `<div class="sb-challenge-item">
+    html += `<div class="sb-challenge-item${c.struck?' struck':''}">
       <div class="sb-diff-badge" style="background:${DIFF_COLOR[c.diff]}">${DIFF_LABEL[c.diff]}</div>
       <div class="sb-challenge-text">${c.text}</div>
-      <div class="sb-points">${c.points} Pkt</div>
+      <div class="sb-points">${c.struck?'🗑️ gestrichen · ':''}${c.points} Pkt</div>
     </div>`;
   });
   html += '</div>';
@@ -6003,6 +6079,13 @@ renderGlobalPlayerChips();
 renderWwmRosterChips();
 renderScoreboard();
 updateContinueButton();
+// Free-Play Helden-Roulette pro Spiel initialisieren — je einzeln abgesichert, damit ein Fehler bei
+// einem Spiel nicht die Einrichtung der anderen verhindert.
+try{ setupHeroRandomizer('ow2', OW2_HEROES, Object.keys(ROLE_WEIGHTS.ow2), OW2_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('ow2 Roulette-Setup Fehler:', e); }
+try{ setupHeroRandomizer('mr', MR_HEROES, Object.keys(ROLE_WEIGHTS.mr), MR_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('mr Roulette-Setup Fehler:', e); }
+try{ setupHeroRandomizer('val', VAL_AGENTS, Object.keys(ROLE_WEIGHTS.val), VAL_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('val Roulette-Setup Fehler:', e); }
+try{ setupHeroRandomizer('finals', FINALS_CLASSES, Object.keys(ROLE_WEIGHTS.finals), FINALS_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('finals Roulette-Setup Fehler:', e); }
+try{ setupHeroRandomizer('fp', FP_HEROES, Object.keys(ROLE_WEIGHTS.fp), FP_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('fp Roulette-Setup Fehler:', e); }
 function checkPasswordRecoveryRedirect(){
   if(window.location.hash.indexOf('type=recovery') !== -1){
     showView('reset-password');
