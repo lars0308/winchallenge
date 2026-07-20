@@ -91,6 +91,7 @@
   .tile:nth-child(even):hover{ border-color:var(--turquoise); }
 
   .round-badge{ display:inline-block; background:var(--bg-elevated); border:1px solid var(--border); padding:4px 14px; border-radius:999px; font-size:0.8rem; font-weight:700; color:var(--turquoise-bright); }
+  .team-unit-banner{ text-align:center; font-family:'Rajdhani',sans-serif; font-weight:800; font-size:1.4rem; letter-spacing:0.1em; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); -webkit-background-clip:text; background-clip:text; color:transparent; margin:0 0 10px; }
   .scoreboard-head{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:12px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:20px; padding:18px 20px; margin-bottom:18px; }
   .scoreboard-info{ flex:1 1 180px; min-width:0; }
   .header-menu{ position:relative; }
@@ -1490,6 +1491,7 @@ async function checkActiveRound(){
   }
   renderTeamPage();
   updateContinueButton();
+  if(currentRound) await maybeResolveJokerVote();
 }
 async function loadRoundItems(){
   if(!currentRound || !sb) return;
@@ -1509,14 +1511,14 @@ function teamRoundOptionsFor(gameId, gameMode){
   const info = GAME_MODES[gameId] && GAME_MODES[gameId].find(m=>m.key===gameMode);
   if(info && info.fixedRounds) return [info.fixedRounds];
   if(info && info.noRounds) return [1];
-  if(matchStyleFor(gameId, gameMode)==='match') return [1,2,3,5];
+  if(teamRoundScope === 'match') return [1,2,3,5];
   return GAME_ROUND_PRESETS[gameId] || [1,2,3,5,7,10];
 }
 function renderTeamRoundPicker(){
   const scopeRow = document.getElementById('team-round-scope-picker');
   if(scopeRow){
     scopeRow.innerHTML = '';
-    [{key:'rounds',label:'🔁 Nach Runden'},{key:'games',label:'🎮 Nach Spielen'}].forEach(it=>{
+    [{key:'rounds',label:'🔁 Nach Runden'},{key:'match',label:'🏆 Nach Match'},{key:'games',label:'🎮 Nach Spielen'}].forEach(it=>{
       const btn = document.createElement('button');
       btn.className = 'filter-pill'+(it.key===teamRoundScope?' active':'');
       btn.textContent = it.label;
@@ -1526,13 +1528,15 @@ function renderTeamRoundPicker(){
     const desc = document.getElementById('team-round-scope-desc');
     if(desc) desc.textContent = teamRoundScope==='games'
       ? 'Ihr wählt mehrere Spiele, die nacheinander gespielt werden (je 1 Runde).'
-      : 'Ihr spielt ein Spiel über eine feste Rundenanzahl.';
+      : teamRoundScope==='match'
+        ? '🏆 MATCH: Der Held bleibt fürs ganze Match gleich, die Challenges sind größer und für das ganze Match gedacht (mehr davon, länger).'
+        : '🔁 RUNDE: Nach jeder Runde gibt es einen neuen Helden und neue, kürzere Challenges.';
   }
   const gameStep = document.getElementById('team-round-game-step');
   const gamesMultiStep = document.getElementById('team-round-gamesmulti-step');
   const countStep = document.getElementById('team-round-count-step');
-  if(gameStep) gameStep.style.display = teamRoundScope==='rounds' ? 'block' : 'none';
-  if(countStep) countStep.style.display = teamRoundScope==='rounds' ? 'block' : 'none';
+  if(gameStep) gameStep.style.display = (teamRoundScope==='rounds' || teamRoundScope==='match') ? 'block' : 'none';
+  if(countStep) countStep.style.display = (teamRoundScope==='rounds' || teamRoundScope==='match') ? 'block' : 'none';
   if(gamesMultiStep) gamesMultiStep.style.display = teamRoundScope==='games' ? 'block' : 'none';
 
   const gameRow = document.getElementById('team-round-game-picker');
@@ -1547,7 +1551,7 @@ function renderTeamRoundPicker(){
     });
   }
   const gmStep = document.getElementById('team-round-gamemode-step');
-  const gmPool = teamRoundScope==='rounds' ? GAME_MODES[teamRoundGameChoice] : null;
+  const gmPool = (teamRoundScope==='rounds' || teamRoundScope==='match') ? GAME_MODES[teamRoundGameChoice] : null;
   if(gmStep) gmStep.style.display = gmPool ? 'block' : 'none';
   if(gmPool){
     if(!teamRoundGameMode || !gmPool.some(m=>m.key===teamRoundGameMode)) teamRoundGameMode = gmPool[0].key;
@@ -1638,7 +1642,7 @@ function renderTeamRoundPicker(){
 function confirmTeamSettings(){
   const warn = document.getElementById('team-settings-warning');
   if(warn) warn.textContent = '';
-  if(teamRoundScope==='rounds' && !teamRoundGameChoice){
+  if((teamRoundScope==='rounds' || teamRoundScope==='match') && !teamRoundGameChoice){
     if(warn) warn.textContent = 'Bitte zuerst ein Spiel auswählen.';
     return;
   }
@@ -1655,17 +1659,19 @@ function confirmTeamSettings(){
 }
 function openTeamSettings(){ teamSettingsOpen = true; renderTeamPage(); syncDraftSettings(); }
 function campaignTotal(){ return teamRoundScope==='games' ? teamRoundSelectedGames.length : teamRoundCount; }
+function campaignUnitLabel(){ return teamRoundScope==='match' ? '🏆 MATCH' : teamRoundScope==='games' ? '🎮 SPIEL' : '🔁 RUNDE'; }
 function campaignSummaryText(){
   const gameLabel = teamRoundScope==='games'
     ? `${teamRoundSelectedGames.length} Spiele`
     : `${gameIconHTML(teamRoundGameChoice,18)} ${GAME_NAME[teamRoundGameChoice]||'–'}`;
-  const gmInfo = teamRoundScope==='rounds' && GAME_MODES[teamRoundGameChoice] && GAME_MODES[teamRoundGameChoice].find(m=>m.key===teamRoundGameMode);
+  const gmInfo = (teamRoundScope==='rounds' || teamRoundScope==='match') && GAME_MODES[teamRoundGameChoice] && GAME_MODES[teamRoundGameChoice].find(m=>m.key===teamRoundGameMode);
   const gmLabel = gmInfo ? ` (${gmInfo.label})` : '';
   const modeLabel = teamRoundModeChoice==='team' ? '🤝 Team' : '⚔️ Jeder gegen Jeden';
   const smLabel = teamRoundSessionModeChoice==='chaos' ? '🌀 Chaos' : '🎯 Challenge';
-  return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel} · Runde ${teamCampaignIndex+1}/${campaignTotal()}`;
+  return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel} · <strong>${campaignUnitLabel()} ${teamCampaignIndex+1}/${campaignTotal()}</strong>`;
 }
 function allMembersReady(){ return teamMembers.length > 0 && teamMembers.every(m=>m.ready); }
+let teamRoundTransitioning = false;
 async function startTeamRound(skipReadyCheck){
   if(!teamRoundGameChoice){ alert('Bitte zuerst ein Spiel auswählen.'); return; }
   if(!skipReadyCheck && !allMembersReady()){ alert('Noch nicht alle Mitglieder sind bereit.'); return; }
@@ -1677,11 +1683,11 @@ async function startTeamRound(skipReadyCheck){
   if(heroPool){
     heroAssignmentById = sessionMode==='chaos' ? assignHeroesChaos(heroPool, memberIds) : assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
   }
-  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, status:'active', hero_assignment: heroAssignmentById }).select().single();
-  if(error){ alert('Fehler beim Runde starten: ' + error.message); return; }
+  const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
+  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
+  if(error){ alert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
 
   let items = [];
-  const isMatchStyle = matchStyleFor(gameId, teamRoundGameMode)==='match' && sessionMode !== 'chaos';
   if(mode === 'team'){
     const rulesPool = rulesPoolFor(gameId, teamRoundGameMode);
     const comp = sessionMode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyle ? MATCH_STYLE_COMPOSITION[teamRoundDifficulty] : DIFF_COMPOSITION[teamRoundDifficulty]);
@@ -1697,15 +1703,20 @@ async function startTeamRound(skipReadyCheck){
     });
   }
   const { error: itErr } = await sb.from('round_items').insert(items);
-  if(itErr){ alert('Fehler beim Erstellen der Challenges: ' + itErr.message); return; }
+  if(itErr){ alert('Fehler beim Erstellen der Challenges: ' + itErr.message); teamRoundTransitioning = false; renderTeamPage(); return; }
   currentRound = round;
   await loadRoundItems();
+  teamRoundTransitioning = false;
   renderTeamPage();
 }
-function markTeamPersonallyDone(){
-  if(!currentRound) return;
+async function markTeamPersonallyDone(){
+  if(!currentRound || !currentUser || !sb) return;
   teamPersonallyDoneFor = currentRound.id;
+  const done = new Set(currentRound.personally_done || []);
+  done.add(currentUser.id);
+  currentRound.personally_done = Array.from(done);
   renderTeamPage();
+  await sb.from('game_rounds').update({ personally_done: currentRound.personally_done }).eq('id', currentRound.id);
 }
 async function enterRoundVoting(){
   if(!currentRound || !sb) return;
@@ -1714,6 +1725,113 @@ async function enterRoundVoting(){
   currentRound.status = 'voting';
   await loadRoundItems();
   renderTeamPage();
+}
+function maxJokerUses(){
+  // Wächst mit der Rundenlänge: pro angefangene 3 Runden/Matches gibt's einen weiteren Joker.
+  return Math.max(1, Math.ceil((currentRound.campaign_total || 1) / 3));
+}
+function jokerLabel(type){
+  return type==='hero' ? 'den Helden' : type==='team_challenge' ? 'die Team-Challenges' : 'seine Challenges';
+}
+async function requestJoker(type, forSelf){
+  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  if(currentRound.pending_joker){ alert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
+  const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
+  if(usedKey){
+    const used = currentRound[usedKey] || [];
+    const myUses = used.filter(id=>id===currentUser.id).length;
+    if(myUses >= maxJokerUses()){ alert(`Ihr habt für diese Runde schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`); return; }
+  } else if(type==='team_challenge'){
+    const uses = currentRound.team_challenge_joker_uses || 0;
+    if(uses >= maxJokerUses()){ alert(`Ihr habt für diese Runde schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`); return; }
+  }
+  const pending = { type, by: currentUser.id, byName: currentUser.username };
+  const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
+  if(error){ alert('Fehler: ' + error.message); return; }
+  currentRound.pending_joker = pending; currentRound.joker_votes = {};
+  renderTeamPage();
+}
+async function voteJoker(val){
+  if(!currentRound || !currentUser || !sb || !currentRound.pending_joker) return;
+  const votes = Object.assign({}, currentRound.joker_votes || {}, { [currentUser.id]: val });
+  currentRound.joker_votes = votes;
+  await sb.from('game_rounds').update({ joker_votes: votes }).eq('id', currentRound.id);
+  renderTeamPage();
+  await maybeResolveJokerVote();
+}
+async function maybeResolveJokerVote(){
+  if(!currentRound || !currentRound.pending_joker || !sb) return;
+  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
+  if(!isHost) return; // nur der Host führt die eigentliche Neu-Auslosung aus, damit es nicht doppelt passiert
+  const votes = currentRound.joker_votes || {};
+  const yes = Object.values(votes).filter(v=>v===true).length;
+  const no = Object.values(votes).filter(v=>v===false).length;
+  if(yes <= no) return;
+  const { type, by } = currentRound.pending_joker;
+  if(type === 'hero') await executeHeroJoker(by);
+  else if(type === 'personal_challenge') await executePersonalChallengeJoker(by);
+  else if(type === 'team_challenge') await executeTeamChallengeJoker();
+  await sb.from('game_rounds').update({ pending_joker: null, joker_votes: {} }).eq('id', currentRound.id);
+  currentRound.pending_joker = null; currentRound.joker_votes = {};
+  await loadRoundItems();
+  renderTeamPage();
+}
+async function executeHeroJoker(forUserId){
+  const pool = HERO_GAMES[currentRound.game_id];
+  if(!pool || !sb) return;
+  const used = (currentRound.hero_joker_used || []).slice();
+  used.push(forUserId);
+  const currentHero = currentRound.hero_assignment ? currentRound.hero_assignment[forUserId] : null;
+  let newHero, tries = 0;
+  do { newHero = pool[randInt(0, pool.length-1)]; tries++; } while(currentHero && pool.length>1 && newHero[0]===currentHero[0] && tries<20);
+  const newAssignment = Object.assign({}, currentRound.hero_assignment, { [forUserId]: newHero });
+  await sb.from('game_rounds').update({ hero_assignment: newAssignment, hero_joker_used: used }).eq('id', currentRound.id);
+  currentRound.hero_assignment = newAssignment;
+  currentRound.hero_joker_used = used;
+  if(forUserId === currentUser.id){ teamHeroRevealedFor = null; teamIdleReelCacheFor = null; }
+}
+async function executePersonalChallengeJoker(forUserId){
+  if(!sb) return;
+  await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', forUserId).eq('scope','personal');
+  const difficulty = currentRound.difficulty || 'Mittel';
+  const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [forUserId], currentRound.hero_assignment, null, personalPoolFor(currentRound.game_id, currentRound.game_mode));
+  const newItems = (singleSet[forUserId]||[]).map(c=>({ round_id: currentRound.id, user_id: forUserId, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
+  await sb.from('round_items').insert(newItems);
+  const used = (currentRound.challenge_joker_used || []).slice();
+  used.push(forUserId);
+  await sb.from('game_rounds').update({ challenge_joker_used: used }).eq('id', currentRound.id);
+  currentRound.challenge_joker_used = used;
+}
+async function executeTeamChallengeJoker(){
+  if(!sb) return;
+  await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('scope','shared');
+  const difficulty = currentRound.difficulty || 'Mittel';
+  const rulesPool = rulesPoolFor(currentRound.game_id, currentRound.game_mode);
+  const isMatchStyleRound = !!currentRound.is_match_style;
+  const comp = currentRound.session_mode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyleRound ? MATCH_STYLE_COMPOSITION[difficulty] : DIFF_COMPOSITION[difficulty]);
+  const chosen = pickByComposition(rulesPool, comp);
+  const newItems = chosen.map(c=>({ round_id: currentRound.id, user_id: null, scope:'shared', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
+  await sb.from('round_items').insert(newItems);
+  const uses = (currentRound.team_challenge_joker_uses || 0) + 1;
+  await sb.from('game_rounds').update({ team_challenge_joker_uses: uses }).eq('id', currentRound.id);
+  currentRound.team_challenge_joker_uses = uses;
+}
+function renderJokerVoteBanner(){
+  if(!currentRound || !currentRound.pending_joker) return '';
+  const p = currentRound.pending_joker;
+  const votes = currentRound.joker_votes || {};
+  const yes = Object.values(votes).filter(v=>v===true).length;
+  const no = Object.values(votes).filter(v=>v===false).length;
+  const myVote = votes[currentUser.id];
+  return `<div class="settings-card" style="border-color:var(--turquoise);">
+    <div class="setup-step-head"><span class="setup-step-icon">🃏</span><div class="setup-step-title">Joker-Abstimmung</div></div>
+    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${jokerLabel(p.type)} neu auslosen. Mehrheit entscheidet.</p>
+    <div class="roll-zone" style="gap:10px;">
+      <button class="sb-btn${myVote===true?' active':''}" onclick="voteJoker(true)">✅ Dafür</button>
+      <button class="sb-btn${myVote===false?' active':''}" onclick="voteJoker(false)">❌ Dagegen</button>
+    </div>
+    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes} · ❌ ${no}</div>
+  </div>`;
 }
 async function castVote(itemId, success){
   if(!currentUser || !sb) return;
@@ -1783,10 +1901,8 @@ async function finalizeTeamRound(){
 function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItems = []; roundVotes = {}; renderTeamPage(); }
 function renderTeamRoundHeader(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  // Der Runden-Zähler (Runde X/Y) ist nur host-lokal bekannt (nicht in der DB gespeichert),
-  // daher wird er nur beim Host selbst angezeigt, nicht bei beigetretenen Mitgliedern.
-  const isMatchStyleRound = isHost && matchStyleFor(currentRound.game_id, teamRoundGameMode)==='match';
-  const roundCounter = isHost ? ` · ${isMatchStyleRound?'Match':'Runde'} ${teamCampaignIndex+1}/${campaignTotal()}` : '';
+  const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : currentRound.scope==='games' ? '🎮 SPIEL' : '🔁 RUNDE';
+  const roundCounter = isHost ? ` · Runde ${teamCampaignIndex+1}/${campaignTotal()}` : '';
   const hostMenu = (isHost && currentRound.status !== 'done') ? `<div class="header-menu">
     <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
     <div class="header-menu-panel" id="round-header-menu">
@@ -1795,7 +1911,8 @@ function renderTeamRoundHeader(){
       <button class="danger" onclick="cancelTeamRound()">❌ Abbrechen</button>
     </div>
   </div>` : '';
-  return `<div class="scoreboard-head" style="margin-bottom:14px;">
+  return `<div class="team-unit-banner">${unitLabel}</div>
+  <div class="scoreboard-head" style="margin-bottom:14px;">
     <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
     <div class="scoreboard-actions">${hostMenu}</div>
   </div>`;
@@ -1930,19 +2047,46 @@ function renderTeamRoundSection(){
   const heroBlock = renderTeamHeroBlock();
 
   if(currentRound.status === 'active'){
+    const maxJokers = maxJokerUses();
     let html = header + `<div class="panel-block" style="margin-top:20px;">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
+    html += renderJokerVoteBanner();
     html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]]) : '');
+    const myHeroJokerUses = (currentRound.hero_joker_used||[]).filter(id=>id===currentUser.id).length;
+    if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
+      html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Held neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
+    }
     if(currentRound.mode === 'team'){
       html += `<div class="rules-note">Diese Regeln gelten für alle und sind für jeden sichtbar.</div>`;
       html += renderChallengeListPlain(roundItems.filter(it=>it.scope==='shared'));
+      const teamJokerUses = currentRound.team_challenge_joker_uses || 0;
+      if(teamJokerUses < maxJokers && !currentRound.pending_joker){
+        html += `<div class="roll-zone" style="margin:8px 0 4px;"><button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges neu auslosen (${maxJokers-teamJokerUses}x übrig)</button></div>`;
+      }
     } else {
       const mine = roundItems.filter(it=>it.user_id===currentUser.id);
       html += `<div class="rules-note">🔒 Nur du siehst diese Liste auf deinem Handy.</div>`;
       html += renderChallengeListPlain(mine);
+      const myChallengeJokerUses = (currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
+      if(myChallengeJokerUses < maxJokers && !currentRound.pending_joker){
+        html += `<div class="roll-zone" style="margin:8px 0 4px;"><button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges neu auslosen (${maxJokers-myChallengeJokerUses}x übrig)</button></div>`;
+      }
+    }
+    const doneSet = new Set(currentRound.personally_done || []);
+    const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
+    const missing = others.filter(m=>!doneSet.has(m.user_id));
+    if(others.length){
+      html += `<div class="rules-note" style="margin-top:16px;">Status:</div>`;
+      html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
+        `<div class="chip readonly"><span>${renderAccountAvatarHTML(m.avatar,18)}</span><span>${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+      ).join('') + `</div>`;
     }
     if(isHost){
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="enterRoundVoting()">🏁 Runde beenden &amp; bewerten</button></div></div>`;
+      if(missing.length){
+        html += `<div class="empty-hint" style="margin-top:8px;">Wartet noch auf: ${missing.map(m=>m.username).join(', ')}</div></div>`;
+      } else {
+        html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="enterRoundVoting()">🏁 Runde beenden &amp; bewerten</button></div></div>`;
+      }
     } else if(teamPersonallyDoneFor === currentRound.id){
       html += `<div class="empty-hint" style="margin-top:16px;">✅ Du bist fertig — warte auf den Team-Ersteller (👑)…</div></div>`;
     } else {
@@ -2012,8 +2156,7 @@ function renderTeamRoundSection(){
     const results = computeTeamRoundResults(currentRound, roundItems);
     const total = campaignTotal();
     const hasNext = isHost && (teamCampaignIndex + 1) < total;
-    const unitLabel = (isHost && matchStyleFor(currentRound.game_id, teamRoundGameMode)==='match') ? 'Match' : 'Runde';
-    const doneTitle = isHost ? `${unitLabel} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${unitLabel} abgeschlossen`;
+    const doneTitle = isHost ? `Runde ${teamCampaignIndex+1}/${total} abgeschlossen` : `Runde abgeschlossen`;
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
     html += heroBlock;
     html += renderLeaderboardTable(results, null, (username)=>{
@@ -2067,6 +2210,9 @@ function nextCampaignRound(){
   teamCampaignIndex++;
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[teamCampaignIndex];
   currentRound = null; roundItems = []; roundVotes = {};
+  teamHeroRevealedFor = null; teamIdleReelCacheFor = null; teamPersonallyDoneFor = null;
+  teamRoundTransitioning = true;
+  renderTeamPage();
   // Innerhalb einer laufenden Kampagne wurde beim Start bereits einmal "bereit" bestätigt —
   // die nächste Runde soll deshalb nahtlos weitergehen, statt jedes Mal zurück in die Lobby
   // zu springen und erneut "Bereit" zu verlangen.
@@ -2282,6 +2428,12 @@ function renderTeamPage(){
 
   const isHost = myTeam.host_id === currentUser.id;
   const mine = teamMembers.find(m=>m.user_id===currentUser.id);
+
+  if(teamRoundTransitioning){
+    setTeamPageChrome('⏳','Nächste Runde','','','');
+    el.innerHTML = `<div class="empty-hint" style="padding:60px 20px;">⏳ Nächste Runde wird vorbereitet…</div>`;
+    return;
+  }
 
   // Screen-Router: läuft gerade eine Runde? -> Live-Rundenansicht (unabhängig von Settings/Lobby)
   if(currentRound){
@@ -2609,7 +2761,23 @@ const ROLE_META = {
 /* ============================================================ RULES POOLS (shared, team-wide) ============================================================ */
 function C(text, diff, theme, roles){ return {text, diff, theme, roles}; }
 
-const HERO_CHALLENGES = [
+const OW2_CHALLENGES = [
+  C('Gewinnt das Match.','leicht','win'),
+  C('Jeder muss mindestens einmal das Objective berühren.','leicht','objective'),
+  C('Jeder muss mindestens einmal seine Ultimate treffen.','leicht','ultimate'),
+  C('Erzielt eine Elimination durch Umgebungsschaden (z. B. Abgrund, Fallschaden).','leicht','environmental-kill'),
+  C('Kein Heldentausch.','mittel','hero-lock'),
+  C('Nur eine Ultimate pro Match.','mittel','ultimate'),
+  C('Jeder muss innerhalb der ersten Minute eine Elimination holen.','mittel','fast-start'),
+  C('Schiebt den Payload/die Punkte am Stück durch, ohne dass er zurückrutscht.','mittel','objective'),
+  C('Gewinnt eine Karte erst in der Overtime.','mittel','overtime'),
+  C('Maximal 5 Tode.','schwer','deaths'),
+  C('Mindestens 15 Eliminierungen.','schwer','kills'),
+  C('Gewinnt, ohne dass ein Spieler stirbt.','schwer','flawless'),
+  C('Mindestens 3 Mehrfach-Eliminierungen (Multikills) im Match.','schwer','multikill'),
+  C('Gewinnt eine Kontrollpunkt-Karte 100:0.','schwer','control-sweep'),
+];
+const MR_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
   C('Jeder muss mindestens einmal das Objective berühren.','leicht','objective'),
   C('Jeder muss mindestens einmal seine Ultimate treffen.','leicht','ultimate'),
@@ -2839,7 +3007,7 @@ function personalPoolFor(gameId, gameMode){
   return override ? override.personal : PERSONAL_SOURCES[gameId];
 }
 const CHALLENGE_SOURCES = {
-  cs2: CS2_CHALLENGES, ow2: HERO_CHALLENGES, mr: HERO_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
+  cs2: CS2_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
   fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES,
 };
 
@@ -2877,7 +3045,23 @@ const VAL_PERSONAL = [
   C('Erster Ace des Matches.','schwer','ace-race', ['Duelist']),
   C('Die längste Killserie (Streak) des Matches.','schwer','streak-race', ['Duelist']),
 ];
-const HERO_PERSONAL = [
+const OW2_PERSONAL = [
+  C('Wenigste Tode im Match.','leicht','deaths-race', ['Tank','Damage','Support']),
+  C('Meiste Assists im Match.','leicht','assist-race', ['Tank','Damage','Support']),
+  C('Meiste Objective-Zeit (auf dem Punkt/am Payload).','leicht','objective-time-race', ['Tank','Damage','Support']),
+  C('Meiste Eliminierungen im Match.','mittel','kills-race', ['Damage']),
+  C('Erste Ultimate-Elimination des Matches.','mittel','ultimate-race', ['Tank','Damage','Support']),
+  C('Höchster Schaden im Match.','mittel','damage-race', ['Damage','Tank']),
+  C('Meiste Heilung im Match.','mittel','healing-race', ['Support']),
+  C('Meiste geblockte/absorbierte Schadenswerte.','mittel','block-race', ['Tank']),
+  C('Erste Umgebungs-Elimination (Kill durch Fallschaden o. Ä.).','mittel','environmental-kill-race', ['Damage','Tank']),
+  C('Meiste Rettungen (Teamkollegen kurz vorm Tod gerettet).','schwer','save-race', ['Support']),
+  C('Erste Mehrfach-Elimination (Multikill).','schwer','multikill-race', ['Damage']),
+  C('Höchste Einzel-Elimination-Serie.','schwer','streak-race', ['Damage']),
+  C('Meiste Kills mit einer einzigen Ultimate-Aktivierung.','schwer','ult-value-race', ['Damage','Tank','Support']),
+  C('Längste durchgehende Zeit am Leben als Frontliner.','schwer','survive-tank-race', ['Tank']),
+];
+const MR_PERSONAL = [
   C('Wenigste Tode im Match.','leicht','deaths-race', ['Tank','Damage','Support']),
   C('Meiste Assists im Match.','leicht','assist-race', ['Tank','Damage','Support']),
   C('Meiste Eliminierungen im Match.','mittel','kills-race', ['Damage']),
@@ -2950,7 +3134,7 @@ const FINALS_PERSONAL = [
   C('Bester Einzelspieler des Matches (Gruppenvotum).','schwer','mvp-race', ['Light','Medium','Heavy']),
 ];
 const PERSONAL_SOURCES = {
-  cs2: CS2_PERSONAL, ow2: HERO_PERSONAL, mr: HERO_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
+  cs2: CS2_PERSONAL, ow2: OW2_PERSONAL, mr: MR_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
   fg: FG_PERSONAL, ph: PH_PERSONAL, repo: REPO_PERSONAL, lethal: LETHAL_PERSONAL, cw: CW_PERSONAL,
 };
 
@@ -3560,9 +3744,9 @@ function renderSetupPage(){
   buildPillRow('setup-rounds', roundOptions.map(n=>({key:n,label:String(n)})), setupState.rounds, k=>{ setupState.rounds=k; });
   const isMatchStyle = matchStyleFor(setupState.gameId, setupState.gameMode)==='match';
   const roundsTitle = document.getElementById('setup-rounds-title');
-  if(roundsTitle) roundsTitle.textContent = isMatchStyle ? 'Anzahl Matches' : 'Anzahl Runden';
+  if(roundsTitle) roundsTitle.textContent = 'Anzahl Runden';
   const roundsHint = document.getElementById('setup-rounds-hint');
-  if(roundsHint) roundsHint.textContent = isMatchStyle ? '1 Runde = 1 komplettes Match mit größerem Challenge-Set.' : '';
+  if(roundsHint) roundsHint.textContent = isMatchStyle ? 'Bei diesem Modus deckt 1 Runde ein komplettes Match ab (größeres Challenge-Set).' : '';
 
   buildPillRow('setup-pointgoal', [{key:'none',label:'Kein Ziel'},{key:100,label:'100'},{key:250,label:'250'},{key:500,label:'500'},{key:'custom',label:'Eigenes'}], setupState.pointGoalChoice, k=>{ setupState.pointGoalChoice=k; });
   document.getElementById('setup-pointgoal-custom-wrap').style.display = setupState.pointGoalChoice==='custom' ? 'flex' : 'none';
@@ -4317,8 +4501,8 @@ function setupHeroRandomizer(prefix, heroes, roles, challengePool, challengeRang
   });
 }
 [
-  ['ow2', OW2_HEROES, ['Tank','Damage','Support'], HERO_CHALLENGES, [2,3], 'Zusatz-Challenges'],
-  ['mr', MR_HEROES, ['Tank','Damage','Support'], HERO_CHALLENGES, [2,3], 'Zusatz-Challenges'],
+  ['ow2', OW2_HEROES, ['Tank','Damage','Support'], OW2_CHALLENGES, [2,3], 'Zusatz-Challenges'],
+  ['mr', MR_HEROES, ['Tank','Damage','Support'], MR_CHALLENGES, [2,3], 'Zusatz-Challenges'],
   ['fp', FP_HEROES, ['Attack','Support'], FP_CHALLENGES, [3,5], 'Match-Challenges'],
   ['val', VAL_AGENTS, ['Duelist','Initiator','Controller','Sentinel'], VAL_CHALLENGES, [3,5], 'Match-Challenges'],
   ['finals', FINALS_CLASSES, ['Light','Medium','Heavy'], FINALS_CHALLENGES, [2,3], 'Match-Challenges'],
