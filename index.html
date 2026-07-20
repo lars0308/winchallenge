@@ -187,6 +187,12 @@
   .podium-step-3{ background:linear-gradient(180deg,#eab383,#b3763f); }
   .podium-medal{ font-size:1.6rem; }
   .podium-score{ font-family:'Rajdhani',sans-serif; font-weight:800; color:#1a1a22; font-size:0.92rem; margin-top:2px; }
+  .glow-name-text{ font-weight:700; animation: glow-name-kf 1.8s ease-in-out infinite; }
+  @keyframes glow-name-kf{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
+  .glow-name-rainbow{ font-weight:700; background:linear-gradient(90deg,#ff3b3b,#ff9d3b,#f6ff3b,#3bff6a,#3bd4ff,#7a3bff,#ff3bd4,#ff3b3b); background-size:400% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none; animation: rainbow-name-kf 2.4s linear infinite; }
+  @keyframes rainbow-name-kf{ 0%{ background-position:0% 50%; } 100%{ background-position:400% 50%; } }
+  .badge-lightning-flash{ display:inline-block; animation: lightning-flash-kf 1.4s ease-in-out infinite; }
+  @keyframes lightning-flash-kf{ 0%,45%,55%,100%{ opacity:1; filter:drop-shadow(0 0 2px #fff176); } 48%,52%{ opacity:0.25; filter:none; } }
   .rules-note{ text-align:center; color:var(--text-faint); font-size:0.8rem; margin:-6px auto 18px; max-width:440px; }
 
   .round-prompt{ text-align:center; background:var(--bg-card); border:1px solid var(--gold); border-radius:22px; padding:30px 26px; max-width:460px; margin:10px auto; }
@@ -1438,11 +1444,12 @@ function findHeroImageCI(heroName){
 }
 function cosmeticsFor(name){
   const s = statsStore[name];
-  if(!s) return { hat:null, badge:null, banner:null };
+  if(!s) return { hat:null, badge:null, banner:null, glow:null };
   return {
     hat: SHOP_HATS.find(h=>h.id===s.equippedHat) || null,
     badge: SHOP_BADGES.find(b=>b.id===s.equippedBadge) || null,
     banner: SHOP_BANNERS.find(b=>b.id===s.equippedBanner) || null,
+    glow: SHOP_GLOWS.find(g=>g.id===s.equippedGlow) || null,
   };
 }
 function withHatOverlay(name, avatarHtml, size){
@@ -1450,6 +1457,16 @@ function withHatOverlay(name, avatarHtml, size){
   if(!hat) return avatarHtml;
   const hatSize = Math.max(12, Math.round(size*0.6));
   return `<span style="position:relative;display:inline-block;width:${size}px;height:${size}px;vertical-align:middle;">${avatarHtml}<span style="position:absolute;top:-${Math.round(hatSize*0.5)}px;left:50%;transform:translateX(-50%) rotate(-10deg);font-size:${hatSize}px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.6));">${hat.icon}</span></span>`;
+}
+function badgeIconHTML(badge){
+  if(!badge) return '';
+  return badge.animated ? `<span class="badge-lightning-flash">${badge.icon}</span> ` : badge.icon+' ';
+}
+function glowNameHTML(name, displayText){
+  const glow = cosmeticsFor(name).glow;
+  if(!glow) return displayText;
+  if(glow.rainbow) return `<span class="glow-name-rainbow">${displayText}</span>`;
+  return `<span class="glow-name-text" style="color:${glow.color};text-shadow:0 0 6px ${glow.color},0 0 14px ${glow.color};">${displayText}</span>`;
 }
 function renderAccountAvatarHTML(avatarVal, size){
   size = size || 24;
@@ -2019,7 +2036,10 @@ function campaignSummaryText(){
   const diffLabel = teamRoundSessionModeChoice==='chaos' ? '' : ` · 📊 ${teamRoundDifficulty}`;
   return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel}${diffLabel} · <strong>${campaignUnitLabel()} ${teamCampaignIndex+1}/${campaignTotal()}</strong>`;
 }
-function allMembersReady(){ return teamMembers.length > 0 && teamMembers.every(m=>m.ready); }
+function allMembersReady(){
+  const others = teamMembers.filter(m=>m.user_id !== myTeam.host_id);
+  return others.every(m=>m.ready);
+}
 let teamRoundTransitioning = false;
 async function startTeamRound(skipReadyCheck){
   if(!teamRoundGameChoice){ showAlert('Bitte zuerst ein Spiel auswählen.'); return; }
@@ -2475,17 +2495,17 @@ function renderTeamHeroBlock(){
     const member = teamMembers.find(m=>m.user_id===uid);
     const username = member ? member.username : '?';
     const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 16), 16);
-    const badgeBit = cosmeticsFor(username).badge ? cosmeticsFor(username).badge.icon+' ' : '';
+    const badgeBit = badgeIconHTML(cosmeticsFor(username).badge);
     if(revealedSet.has(uid)){
       const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
       html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
         <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${username}</div><div class="solo-hero">${heroName}</div></div>
+        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero">${heroName}</div></div>
         <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
     } else {
       html += `<div class="solo-hero-item" style="opacity:0.55; transform:none;">
         <div class="solo-avatar" style="background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">🔒</div>
-        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${username}</div><div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div></div>
+        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div></div>
       </div>`;
     }
   });
@@ -2572,7 +2592,7 @@ function renderTeamRoundSection(){
     if(others.length){
       html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
       html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18)}</span><span>${cosmeticsFor(m.username).badge ? cosmeticsFor(m.username).badge.icon+' ' : ''}${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18)}</span><span>${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
       ).join('') + `</div>`;
     }
     if(currentRound.mode === 'team'){
@@ -2927,6 +2947,7 @@ function renderTeamSettingsScreen(){
 }
 /* ---- Screen 3: Lobby / Einladen (Code + Mitglieder, kein aktiver Round) ---- */
 function renderTeamLobbyScreen(isHost, mine){
+  if(isHost && mine && !mine.ready){ mine.ready = true; sb.from('team_members').update({ ready: true }).eq('team_id', myTeam.id).eq('user_id', currentUser.id).then(()=>{}); }
   let html = `
     <div class="scoreboard-head">
       <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">Teilt diesen Code mit Freunden:</div></div>
@@ -2940,7 +2961,7 @@ function renderTeamLobbyScreen(isHost, mine){
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
     const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
-    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20)}</span><span>${cosmeticsFor(m.username).badge ? cosmeticsFor(m.username).badge.icon+' ' : ''}${m.username}${m.user_id===myTeam.host_id?' 👑':''}</span>${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20)}</span><span>${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</span>${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   if(isHost){
@@ -2969,8 +2990,11 @@ function renderTeamLobbyScreen(isHost, mine){
       <p class="setup-info" style="margin-top:8px;margin-bottom:0;">Jede/r wählt die eigene Wunschrolle — Held und persönliche Challenges passen sich automatisch an.</p>
     </div>`;
   }
-  html += `<div class="roll-zone"><button class="roll-btn" onclick="toggleMyReady()">${mine && mine.ready ? '⏳ Nicht mehr bereit' : '✅ Bereit'}</button></div>`;
-
+  html += renderMemberLobbyExtras(isHost, mine);
+  return html;
+}
+function renderMemberLobbyExtras(isHost, mine){
+  let html = '';
   if(isHost){
     html += `<button class="settings-row-btn" style="margin-top:4px;" onclick="openTeamSettings()">
       <span class="settings-row-icon">⚙️</span>
@@ -2980,16 +3004,16 @@ function renderTeamLobbyScreen(isHost, mine){
       </span>
       <span class="settings-row-chev">›</span>
     </button>`;
-  }
-
-  if(isHost && teamRoundGameChoice){
-    const ready = allMembersReady();
-    html += `<div class="panel-block" style="margin-top:12px;">
-      ${ready ? '' : `<p class="setup-warning" style="margin-top:0;">⏳ Noch nicht alle Mitglieder sind bereit.</p>`}
-      <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" ${ready?'':'disabled'} onclick="startTeamRound()">🚀 Runde für alle starten</button></div>
-    </div>`;
-  } else if(!isHost){
+    if(teamRoundGameChoice){
+      const ready = allMembersReady();
+      html += `<div class="panel-block" style="margin-top:12px;">
+        ${ready ? '' : `<p class="setup-warning" style="margin-top:0;">⏳ Noch nicht alle Mitglieder sind bereit.</p>`}
+        <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" ${ready?'':'disabled'} onclick="startTeamRound()">🚀 Runde für alle starten</button></div>
+      </div>`;
+    }
+  } else {
     html += `<div class="empty-hint">📱 Wartet, bis der Team-Ersteller (👑) eine Runde startet…</div>`;
+    html += `<div class="roll-zone" style="margin-top:12px;"><button class="roll-btn" onclick="toggleMyReady()">${mine && mine.ready ? '⏳ Nicht mehr bereit' : '✅ Bereit'}</button></div>`;
   }
   return html;
 }
@@ -4287,7 +4311,7 @@ function renderStatsPage(){
     const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
     html += `<div class="stat-card${banner && banner.animated ? ' stat-card-animated-banner' : ''}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}"` : ''}>
-      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${shopBadge?shopBadge.icon+' ':''}${name}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
+      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
         <div class="stat-mini"><div class="stat-mini-val">${s.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
         <div class="stat-mini"><div class="stat-mini-val">${s.roundWins}</div><div class="stat-mini-label">Siege</div></div>
@@ -4310,14 +4334,15 @@ const SHOP_BADGES = [
   {id:'crown', icon:'👑', label:'König', cost:100},
   {id:'skull', icon:'💀', label:'Gefürchtet', cost:120},
   {id:'diamond', icon:'💎', label:'Diamant', cost:200},
+  {id:'lightning', icon:'⚡', label:'Blitz', cost:170, animated:true},
 ];
 const SHOP_HATS = [
   {id:'cap', icon:'🧢', label:'Cap', cost:40},
-  {id:'party', icon:'🎉', label:'Partyhut', cost:40},
+  {id:'sunhat', icon:'👒', label:'Sonnenhut', cost:40},
   {id:'tophat', icon:'🎩', label:'Zylinder', cost:80},
   {id:'graduate', icon:'🎓', label:'Doktorhut', cost:80},
+  {id:'helmet', icon:'🪖', label:'Helm', cost:100},
   {id:'crownhat', icon:'👑', label:'Krone', cost:150},
-  {id:'halo', icon:'😇', label:'Heiligenschein', cost:150},
 ];
 const SHOP_BANNERS = [
   {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(90deg,#ff7e5f,#feb47b)', cost:60},
@@ -4328,6 +4353,15 @@ const SHOP_BANNERS = [
   {id:'gold', label:'Gold', grad:'linear-gradient(90deg,#f7971e,#ffd200)', cost:150},
   {id:'diamond', label:'Diamant ✨', grad:'linear-gradient(120deg,#e0f7fa,#80deea,#4dd0e1,#b2ebf2,#e0f7fa)', cost:250, animated:true},
   {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:220, animated:true},
+  {id:'ice', label:'Eis ❄️', grad:'linear-gradient(120deg,#a1e8ff,#e0f7ff,#6ec6ea,#c8f1ff,#a1e8ff)', cost:220, animated:true},
+];
+const SHOP_GLOWS = [
+  {id:'cyan', icon:'✨', label:'Cyan-Glühen', color:'#5ee7ff', cost:130},
+  {id:'pink', icon:'✨', label:'Pink-Glühen', color:'#ff6ec7', cost:130},
+  {id:'toxic', icon:'✨', label:'Toxic-Glühen', color:'#39ff14', cost:150},
+  {id:'gold', icon:'✨', label:'Gold-Glühen', color:'#ffd76a', cost:180},
+  {id:'purple', icon:'✨', label:'Lila-Glühen', color:'#b388ff', cost:150},
+  {id:'rainbow', icon:'🌈', label:'Regenbogen', cost:280, rainbow:true},
 ];
 // Sabotage/Vorteils-Material: einmalig einsetzbar (wird beim Benutzen verbraucht), pro Item bis zu
 // 10 Stück auf Lager, bewusst teuer. Nur online, nur während der Helden-Auslosungsphase einsetzbar.
@@ -4352,7 +4386,7 @@ function renderShopPage(){
       statsStore[shopSelectedPlayer] = { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
       saveStats();
     }
-    pickerRow.innerHTML = `<div class="empty-hint" style="padding:2px 2px 6px;">🛒 Das ist dein persönlicher Shop, ${currentUser.username}.</div>`;
+    pickerRow.innerHTML = '';
   } else {
     const names = Object.keys(statsStore);
     if(!names.length){
@@ -4374,12 +4408,17 @@ function renderShopPage(){
   document.getElementById('shop-balance').textContent = `💰 Guthaben von ${shopSelectedPlayer}: ${shopBalance(shopSelectedPlayer)} Punkte`;
   const s = statsStore[shopSelectedPlayer];
   const owned = (s && s.shopOwned) || {badges:[], banners:[], hats:[], sabotage:{}};
-  let html = '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎖️</span><div class="setup-step-title">Abzeichen (neben dem Namen)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
+  const previewBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
+  const previewBanner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
+  let html = `<div class="stat-card${previewBanner && previewBanner.animated ? ' stat-card-animated-banner' : ''}"${previewBanner ? ` style="background:${previewBanner.grad};${previewBanner.animated?'background-size:400% 400%;':''}"` : ''}>
+    <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
+  </div>`;
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎖️</span><div class="setup-step-title">Abzeichen (neben dem Namen)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
   SHOP_BADGES.forEach(b=>{
     const isOwned = owned.badges.includes(b.id);
     const isEquipped = s && s.equippedBadge===b.id;
     html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}">
-      <span>${b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
+      <span>${b.animated?`<span class="badge-lightning-flash">${b.icon}</span>`:b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
     </div>`;
   });
   html += '</div></div>';
@@ -4399,6 +4438,15 @@ function renderShopPage(){
     html += `<button class="filter-pill${isEquipped?' active':''}${b.animated?' stat-card-animated-banner':''}" style="background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:400% 400%;':''}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">✨</span><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
+  SHOP_GLOWS.forEach(g=>{
+    const isOwned = owned.glows && owned.glows.includes(g.id);
+    const isEquipped = s && s.equippedGlow===g.id;
+    const btnClass = g.rainbow ? 'glow-name-rainbow' : 'glow-name-text';
+    const btnStyle = g.rainbow ? 'border-color:#b388ff;' : `color:${g.color};text-shadow:0 0 6px ${g.color},0 0 14px ${g.color};border-color:${g.color};`;
+    html += `<button class="filter-pill ${btnClass}${isEquipped?' active':''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('glow','${g.id}')`:`buyShopItem('glow','${g.id}')`}">${g.icon} ${g.label} ${isOwned?(isEquipped?'✓':''):'· '+g.cost+' Pkt'}</button>`;
+  });
+  html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
   SHOP_SABOTAGE.forEach(b=>{
     const ownedCount = (owned.sabotage && owned.sabotage[b.id]) || 0;
@@ -4414,19 +4462,21 @@ function renderShopPage(){
 function buyShopItem(kind, id){
   const name = shopSelectedPlayer;
   if(!name || !statsStore[name]) return;
-  const catalog = kind==='badge' ? SHOP_BADGES : kind==='hat' ? SHOP_HATS : SHOP_BANNERS;
+  const catalog = kind==='badge' ? SHOP_BADGES : kind==='hat' ? SHOP_HATS : kind==='glow' ? SHOP_GLOWS : SHOP_BANNERS;
   const item = catalog.find(i=>i.id===id);
   if(!item) return;
   if(shopBalance(name) < item.cost){ showAlert('Nicht genug Punkte dafür.', '💸'); return; }
   const s = statsStore[name];
   s.spent = (s.spent||0) + item.cost;
-  s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], sabotage:{}};
+  s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], glows:[], sabotage:{}};
   if(!s.shopOwned.hats) s.shopOwned.hats = [];
+  if(!s.shopOwned.glows) s.shopOwned.glows = [];
   if(!s.shopOwned.sabotage) s.shopOwned.sabotage = {};
-  const listKey = kind==='badge'?'badges':kind==='hat'?'hats':'banners';
+  const listKey = kind==='badge'?'badges':kind==='hat'?'hats':kind==='glow'?'glows':'banners';
   s.shopOwned[listKey].push(id);
   if(kind==='badge') s.equippedBadge = id;
   else if(kind==='hat') s.equippedHat = id;
+  else if(kind==='glow') s.equippedGlow = id;
   else s.equippedBanner = id;
   saveStats();
   renderShopPage();
@@ -4451,7 +4501,7 @@ function equipShopItem(kind, id){
   const name = shopSelectedPlayer;
   if(!name || !statsStore[name]) return;
   const s = statsStore[name];
-  const key = kind==='badge' ? 'equippedBadge' : kind==='hat' ? 'equippedHat' : 'equippedBanner';
+  const key = kind==='badge' ? 'equippedBadge' : kind==='hat' ? 'equippedHat' : kind==='glow' ? 'equippedGlow' : 'equippedBanner';
   s[key] = (s[key] === id) ? null : id; // nochmal draufklicken zieht es wieder aus
   saveStats();
   renderShopPage();
