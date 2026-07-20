@@ -35,7 +35,7 @@
   .view{ display:none; min-height:100vh; position:relative; }
   .view.active{ display:block; }
   .bg-watermark{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-size:min(60vw, 620px); opacity:0.035; pointer-events:none; z-index:0; user-select:none; filter:blur(1px); }
-  .topbar{ position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:16px; padding:18px 28px; background:linear-gradient(180deg, rgba(8,8,13,0.92) 0%, rgba(8,8,13,0.65) 80%, transparent 100%); backdrop-filter:blur(6px); }
+  .topbar{ position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:16px; padding:18px 28px; background:rgba(8,8,13,0.97); backdrop-filter:blur(10px); }
   .back-btn{ display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:10px 18px 10px 14px; border-radius:999px; font-weight:600; font-size:0.95rem; transition:all 0.2s ease; }
   .back-btn:hover{ border-color:var(--turquoise); box-shadow:0 0 0 1px var(--turquoise), 0 0 18px -4px var(--turquoise); transform:translateX(-2px); }
   .back-btn svg{ width:18px; height:18px; }
@@ -141,12 +141,12 @@
   .sb-hero-row{ margin-bottom:12px; }
 
   .sb-challenge-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:8px; }
-  .sb-challenge-item{ display:flex; align-items:center; gap:12px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:14px; padding:12px 14px; transition:border-color 0.2s ease, opacity 0.2s ease; }
+  .sb-challenge-item{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:14px; padding:12px 14px; transition:border-color 0.2s ease, opacity 0.2s ease; }
   .sb-challenge-item.won{ border-color:var(--win); }
   .sb-challenge-item.lost{ border-color:var(--lose); opacity:0.85; }
   .sb-challenge-item.chaos{ background:linear-gradient(120deg, rgba(155,92,246,0.12), var(--bg-card) 40%); }
   .sb-diff-badge{ flex:none; font-size:0.66rem; font-weight:700; color:#08080d; padding:4px 8px; border-radius:8px; text-transform:uppercase; letter-spacing:0.03em; }
-  .sb-challenge-text{ flex:1; font-size:0.92rem; line-height:1.35; }
+  .sb-challenge-text{ flex:1; min-width:140px; font-size:0.92rem; line-height:1.35; }
   .sb-points{ flex:none; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.9rem; color:var(--text-muted); min-width:44px; text-align:right; }
   .sb-challenge-item.won .sb-points{ color:var(--win); }
   .sb-challenge-item.lost .sb-points{ color:var(--lose); }
@@ -159,7 +159,7 @@
   }
   .winner-pop{ animation: winner-pop-kf 0.55s ease-out; }
   @keyframes winner-pop-kf{ 0%{ transform:scale(0.7); opacity:0.3; } 60%{ transform:scale(1.14); opacity:1; } 100%{ transform:scale(1); } }
-  .sb-actions{ flex:none; display:flex; gap:6px; }
+  .sb-actions{ flex:1 1 auto; display:flex; gap:6px; justify-content:flex-end; }
   .sb-actions button{ width:38px; height:42px; border-radius:10px; background:var(--bg-elevated); border:1px solid var(--border); font-size:1rem; transition:all 0.15s ease; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; line-height:1; }
   .sb-actions button .vote-count{ font-size:0.62rem; font-weight:700; color:var(--text-muted); }
   .sb-actions button[data-action="win"].active{ background:var(--win); border-color:var(--win); }
@@ -311,6 +311,8 @@
   .player-name{ font-size:2rem; font-weight:700; font-family:'Rajdhani',sans-serif; margin-top:8px; }
 
   .stat-card{ background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; max-width:640px; margin-left:auto; margin-right:auto; }
+  .stat-card-animated-banner{ animation: shimmer-banner-kf 6s ease infinite; }
+  @keyframes shimmer-banner-kf{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
   .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
   .stat-avatar{ font-size:1.6rem; }
   .stat-name{ font-weight:700; font-family:'Rajdhani',sans-serif; font-size:1.15rem; flex:1; }
@@ -368,8 +370,8 @@
   .auth-input-col input:focus{ outline:none; border-color:var(--turquoise); }
 
   @media (max-width:520px){
-    .home-header{ padding:44px 16px 6px; } .tile-grid{ padding:20px 16px 60px; } .topbar{ padding:14px 16px; }
-    .content{ padding:16px 14px 80px; } .landing-actions, .home-actions{ padding:0 14px; }
+    .home-header{ padding:44px 12px 6px; } .tile-grid{ padding:20px 10px 60px; } .topbar{ padding:14px 12px; }
+    .content{ padding:16px 8px 80px; } .landing-actions, .home-actions{ padding:0 8px; }
   }
   /* Desktop/PC: die App ist mobil-first gebaut (schmale, zentrierte Karten) — ab hier bekommt
      alles spürbar mehr Breite, damit es auf großen Bildschirmen nicht wie ein schmaler Handy-Streifen
@@ -419,6 +421,12 @@
   .chip.member-clickable{ cursor:pointer; transition:border-color 0.2s ease, transform 0.15s ease; }
   .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
   .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .custom-alert-backdrop.hidden{ display:none; }
+  .custom-alert-box{ background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:30px 26px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 24px 70px -20px rgba(0,0,0,0.85); animation:alert-pop-kf 0.25s ease; }
+  @keyframes alert-pop-kf{ from{ opacity:0; transform:scale(0.9) translateY(8px); } to{ opacity:1; transform:scale(1) translateY(0); } }
+  .custom-alert-icon{ font-size:2.4rem; margin-bottom:12px; }
+  .custom-alert-box p{ color:var(--text); font-size:0.98rem; line-height:1.5; margin:0 0 20px; }
   .member-modal-backdrop.hidden{ display:none; }
   .member-modal-card{ position:relative; width:100%; max-width:380px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
@@ -432,6 +440,13 @@
 </head>
 <body>
 <div class="member-modal-backdrop hidden" id="member-profile-modal" onclick="if(event.target===this) closeMemberProfileModal();"></div>
+<div class="custom-alert-backdrop hidden" id="custom-alert-backdrop" onclick="if(event.target===this) closeCustomAlert();">
+  <div class="custom-alert-box">
+    <div class="custom-alert-icon" id="custom-alert-icon">⚠️</div>
+    <p id="custom-alert-message"></p>
+    <button class="roll-btn" onclick="closeCustomAlert()">OK</button>
+  </div>
+</div>
 
 <!-- ===================== LANDING / HOME ===================== -->
 <section id="view-home" class="view">
@@ -729,6 +744,16 @@
       <div class="setup-step-head"><span class="setup-step-icon">🖼️</span><div class="setup-step-title">Spiel-Vorschaubilder</div></div>
       <p class="setup-info" style="margin-top:0;">Pro Spiel entweder ein eigenes Bild hochladen oder eine Bild-URL eintragen — gilt sofort online für alle. Ohne Bild bleibt der farbige Verlauf.</p>
       <div id="admin-cover-list"></div>
+    </div>
+
+    <div class="panel-block admin-tab-panel" id="admin-tab-points" style="max-width:none; display:none;">
+      <div class="setup-step-head"><span class="setup-step-icon">🪙</span><div class="setup-step-title">Punkte hinzufügen (zum Testen)</div></div>
+      <p class="setup-info" style="margin-top:0;">Wirkt nur lokal auf diesem Gerät — praktisch, um den Shop ohne echtes Spielen zu testen.</p>
+      <div class="filter-row" id="admin-points-player-picker" style="margin-bottom:10px;"></div>
+      <div class="player-input-row" style="max-width:320px;">
+        <input type="number" id="admin-points-amount" placeholder="z. B. 500" value="500">
+        <button onclick="adminAddPoints()">➕ Hinzufügen</button>
+      </div>
     </div>
   </div>
 </section>
@@ -1167,6 +1192,11 @@ function avatarHTML(name, size){
     const def = ICON_AVATARS.find(i=>'icon:'+i.id===val) || ICON_AVATARS[0];
     const s = Math.round(size*0.62);
     return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:8px;background:${def.color};vertical-align:middle;"><svg viewBox="0 0 24 24" width="${s}" height="${s}">${ICON_SVG[def.id]}</svg></span>`;
+  }
+  if(typeof val === 'string' && (val.indexOf('hero:') === 0 || val.indexOf('game:') === 0)){
+    // Kommt von einem synchronisierten Online-Account-Avatar (Helden-Bild oder Spiel-Icon) —
+    // dieselbe Auflösung wie renderAccountAvatarHTML nutzen, statt den rohen String zu zeigen.
+    return renderAccountAvatarHTML(val, size);
   }
   return `<span style="font-size:${Math.round(size*0.75)}px;">${val}</span>`;
 }
@@ -1675,6 +1705,14 @@ function showMemberProfile(userId){
   </div>`;
   modal.classList.remove('hidden');
 }
+function showAlert(message, icon){
+  document.getElementById('custom-alert-icon').textContent = icon || '⚠️';
+  document.getElementById('custom-alert-message').textContent = message;
+  document.getElementById('custom-alert-backdrop').classList.remove('hidden');
+}
+function closeCustomAlert(){
+  document.getElementById('custom-alert-backdrop').classList.add('hidden');
+}
 function closeMemberProfileModal(){
   const modal = document.getElementById('member-profile-modal');
   if(modal){ modal.classList.add('hidden'); modal.innerHTML = ''; }
@@ -1984,15 +2022,15 @@ async function requestJoker(type, forSelf){
   if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ alert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde geht kein Joker.'); return; }
   if(currentRound.pending_joker){ alert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
   const rerollCost = 3;
-  if(shopBalance(currentUser.username) < rerollCost){ alert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`); return; }
+  if(shopBalance(currentUser.username) < rerollCost){ showAlert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`, '💸'); return; }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
   if(usedKey){
     const used = currentRound[usedKey] || [];
     const myUses = used.filter(id=>id===currentUser.id).length;
-    if(myUses >= maxJokerUses()){ alert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`); return; }
+    if(myUses >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`, '🃏'); return; }
   } else if(type==='team_challenge'){
     const uses = currentRound.team_challenge_joker_uses || 0;
-    if(uses >= maxJokerUses()){ alert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`); return; }
+    if(uses >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`, '🃏'); return; }
   }
   const pending = { type, by: currentUser.id, byName: currentUser.username };
   const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
@@ -2880,6 +2918,7 @@ const ADMIN_TABS = [
   { key:'users', icon:'👥', label:'Benutzer' },
   { key:'heroes', icon:'🖼️', label:'Helden-Bilder' },
   { key:'covers', icon:'🎮', label:'Cover-Bilder' },
+  { key:'points', icon:'🪙', label:'Punkte (Test)' },
 ];
 let adminActiveTab = 'users';
 function renderAdminTabs(){
@@ -2900,6 +2939,33 @@ function showAdminTab(key){
     if(panel) panel.style.display = (t.key===key) ? 'block' : 'none';
   });
   renderAdminTabs();
+  if(key==='points') renderAdminPointsTab();
+}
+let adminPointsSelectedPlayer = null;
+function renderAdminPointsTab(){
+  const names = Object.keys(statsStore);
+  const row = document.getElementById('admin-points-player-picker');
+  if(!row) return;
+  if(!names.length){ row.innerHTML = '<div class="empty-hint">Noch keine lokalen Spieler-Statistiken vorhanden.</div>'; return; }
+  if(!adminPointsSelectedPlayer || !names.includes(adminPointsSelectedPlayer)) adminPointsSelectedPlayer = names[0];
+  row.innerHTML = '';
+  names.forEach(n=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(n===adminPointsSelectedPlayer?' active':'');
+    btn.innerHTML = avatarHTML(n,16)+' '+n;
+    btn.addEventListener('click', ()=>{ adminPointsSelectedPlayer = n; renderAdminPointsTab(); });
+    row.appendChild(btn);
+  });
+}
+function adminAddPoints(){
+  const name = adminPointsSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const amount = parseInt(document.getElementById('admin-points-amount').value, 10);
+  if(!amount || amount === 0) return;
+  statsStore[name].totalPoints = (statsStore[name].totalPoints||0) + amount;
+  saveStats();
+  if(document.getElementById('view-shop').classList.contains('active')) renderShopPage();
+  if(document.getElementById('view-stats').classList.contains('active')) renderStatsPage();
 }
 async function renderAdminUsers(){
   const el = document.getElementById('admin-users-list');
@@ -4058,7 +4124,7 @@ function renderStatsPage(){
     const badges = ACHIEVEMENTS_DEF.filter(a=>a.test(s));
     const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
-    html += `<div class="stat-card"${banner ? ` style="background:${banner.grad};"` : ''}>
+    html += `<div class="stat-card${banner && banner.animated ? ' stat-card-animated-banner' : ''}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:300% 300%;':''}"` : ''}>
       <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${avatarHTML(name,26)}</span><div class="stat-name">${shopBadge?shopBadge.icon+' ':''}${name}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
         <div class="stat-mini"><div class="stat-mini-val">${s.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
@@ -4098,6 +4164,8 @@ const SHOP_BANNERS = [
   {id:'midnight', label:'Mitternacht', grad:'linear-gradient(90deg,#000428,#004e92)', cost:80},
   {id:'purple', label:'Neon-Lila', grad:'linear-gradient(90deg,#a044ff,#6a3093)', cost:100},
   {id:'gold', label:'Gold', grad:'linear-gradient(90deg,#f7971e,#ffd200)', cost:150},
+  {id:'diamond', label:'Diamant ✨', grad:'linear-gradient(120deg,#e0f7fa,#80deea,#4dd0e1,#b2ebf2,#e0f7fa)', cost:250, animated:true},
+  {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:220, animated:true},
 ];
 // Sabotage/Vorteils-Material: einmalig einsetzbar (wird beim Benutzen verbraucht), pro Item bis zu
 // 10 Stück auf Lager, bewusst teuer. Nur online, nur während der Helden-Auslosungsphase einsetzbar.
@@ -4156,7 +4224,7 @@ function renderShopPage(){
   SHOP_BANNERS.forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
-    html += `<button class="filter-pill${isEquipped?' active':''}" style="background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
+    html += `<button class="filter-pill${isEquipped?' active':''}${b.animated?' stat-card-animated-banner':''}" style="background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:300% 300%;':''}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
@@ -4177,7 +4245,7 @@ function buyShopItem(kind, id){
   const catalog = kind==='badge' ? SHOP_BADGES : kind==='hat' ? SHOP_HATS : SHOP_BANNERS;
   const item = catalog.find(i=>i.id===id);
   if(!item) return;
-  if(shopBalance(name) < item.cost){ alert('Nicht genug Punkte dafür.'); return; }
+  if(shopBalance(name) < item.cost){ showAlert('Nicht genug Punkte dafür.', '💸'); return; }
   const s = statsStore[name];
   s.spent = (s.spent||0) + item.cost;
   s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], sabotage:{}};
@@ -4200,8 +4268,8 @@ function buySabotageItem(id){
   s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], sabotage:{}};
   if(!s.shopOwned.sabotage) s.shopOwned.sabotage = {};
   const owned = s.shopOwned.sabotage[id] || 0;
-  if(owned >= 10){ alert('Maximal 10 Stück von diesem Item auf Lager.'); return; }
-  if(shopBalance(name) < item.cost){ alert('Nicht genug Punkte dafür.'); return; }
+  if(owned >= 10){ showAlert('Maximal 10 Stück von diesem Item auf Lager.', '📦'); return; }
+  if(shopBalance(name) < item.cost){ showAlert('Nicht genug Punkte dafür.', '💸'); return; }
   s.spent = (s.spent||0) + item.cost;
   s.shopOwned.sabotage[id] = owned + 1;
   saveStats();
