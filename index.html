@@ -187,9 +187,10 @@
   .podium-step-3{ background:linear-gradient(180deg,#eab383,#b3763f); }
   .podium-medal{ font-size:1.6rem; }
   .podium-score{ font-family:'Rajdhani',sans-serif; font-weight:800; color:#1a1a22; font-size:0.92rem; margin-top:2px; }
-  .glow-name-text{ font-weight:700; animation: glow-name-kf 1.8s ease-in-out infinite; }
+  .glow-name-text{ font-weight:700; animation: glow-name-kf 3.2s ease-in-out infinite; }
   @keyframes glow-name-kf{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(1.35); } }
-  .glow-name-rainbow{ font-weight:700; background:linear-gradient(90deg,#ff3b3b,#ff9d3b,#f6ff3b,#3bff6a,#3bd4ff,#7a3bff,#ff3bd4,#ff3b3b); background-size:400% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none; animation: rainbow-name-kf 2.4s linear infinite; }
+  .player-cosmetic-card{ display:inline-flex; align-items:center; gap:6px; background:var(--bg-elevated); border:1px solid var(--border-soft); border-radius:999px; padding:3px 10px 3px 3px; font-size:0.82rem; font-weight:600; max-width:100%; overflow:hidden; }
+  .glow-name-rainbow{ font-weight:700; background:linear-gradient(90deg,#ff3b3b,#ff9d3b,#f6ff3b,#3bff6a,#3bd4ff,#7a3bff,#ff3bd4,#ff3b3b); background-size:400% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none; animation: rainbow-name-kf 5s linear infinite; }
   @keyframes rainbow-name-kf{ 0%{ background-position:0% 50%; } 100%{ background-position:400% 50%; } }
   .badge-lightning-flash{ display:inline-block; animation: lightning-flash-kf 1.4s ease-in-out infinite; }
   @keyframes lightning-flash-kf{ 0%,45%,55%,100%{ opacity:1; filter:drop-shadow(0 0 2px #fff176); } 48%,52%{ opacity:0.25; filter:none; } }
@@ -338,7 +339,7 @@
   .player-name{ font-size:2rem; font-weight:700; font-family:'Rajdhani',sans-serif; margin-top:8px; }
 
   .stat-card{ background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; max-width:640px; margin-left:auto; margin-right:auto; }
-  .stat-card-animated-banner{ animation: shimmer-banner-kf 2.8s ease infinite; }
+  .stat-card-animated-banner{ animation: shimmer-banner-kf 5.5s ease infinite; }
   @keyframes shimmer-banner-kf{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
   .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
   .stat-avatar{ font-size:1.6rem; }
@@ -478,6 +479,16 @@
     <button class="roll-btn" onclick="closeCustomAlert()">OK</button>
   </div>
 </div>
+<div class="custom-alert-backdrop hidden" id="custom-confirm-backdrop">
+  <div class="custom-alert-box">
+    <div class="custom-alert-icon" id="custom-confirm-icon">❓</div>
+    <p id="custom-confirm-message"></p>
+    <div class="filter-row" style="justify-content:center;gap:10px;flex-wrap:nowrap;">
+      <button class="sb-btn" id="custom-confirm-cancel" style="flex:1;">Abbrechen</button>
+      <button class="roll-btn" id="custom-confirm-ok" style="flex:1;">OK</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===================== LANDING / HOME ===================== -->
 <section id="view-home" class="view">
@@ -491,6 +502,9 @@
       <button onclick="showView('dice')">🎲 Würfel &amp; Münze</button>
       <button onclick="showView('shop')">🛒 Shop</button>
       <button onclick="showStatsPage()">📊 Statistiken</button>
+      <button onclick="showView('custom-challenges')">📝 Eigene Challenges</button>
+      <button onclick="showView('friends')">🤝 Freunde</button>
+      <button onclick="showView('user-settings')">⚙️ Einstellungen</button>
       <div id="home-menu-account"></div>
     </div>
   </div>
@@ -740,6 +754,94 @@
     <div class="filter-row" id="shop-player-picker" style="margin-bottom:8px;"></div>
     <div class="setup-info" id="shop-balance" style="margin-top:0;margin-bottom:18px;"></div>
     <div id="shop-content"></div>
+  </div>
+</section>
+
+<!-- ===================== EIGENE CHALLENGES ===================== -->
+<section id="view-custom-challenges" class="view">
+  <div class="bg-watermark">📝</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">📝</span> Eigene Challenges</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Selbst erstellt</div><h2>Eigene Challenges</h2><p>Werden ab sofort mit in den Topf für dieses Spiel gemischt — für alle, die dieses Spiel spielen.</p></div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Spiel</div></div>
+      <div class="filter-row" id="cc-game-picker" style="margin-bottom:4px;"></div>
+    </div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">➕</span><div class="setup-step-title">Neue Challenge</div></div>
+      <div class="player-input-row" style="max-width:none;">
+        <input type="text" id="cc-text-input" placeholder="z. B. Gewinnt eine Runde ohne zu schießen" maxlength="140">
+      </div>
+      <div class="filter-row" id="cc-diff-picker" style="margin-top:10px;margin-bottom:10px;"></div>
+      <div class="filter-row" id="cc-scope-picker" style="margin-bottom:12px;"></div>
+      <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="submitCustomChallenge()">✅ Hinzufügen</button></div>
+    </div>
+    <div id="cc-list"></div>
+  </div>
+</section>
+
+<!-- ===================== FREUNDE ===================== -->
+<section id="view-friends" class="view">
+  <div class="bg-watermark">🤝</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">🤝</span> Freunde</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Live-Liste</div><h2>Freunde</h2><p>Freunde per Freundescode hinzufügen — dann könnt ihr euch gegenseitig direkt in eine Team-Lobby einladen, ohne den Code abzutippen.</p></div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">🪪</span><div class="setup-step-title">Dein Freundescode</div></div>
+      <div class="team-code-display" id="friend-my-code" style="font-size:1.8rem;">—</div>
+    </div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">➕</span><div class="setup-step-title">Freund hinzufügen</div></div>
+      <div class="player-input-row" style="max-width:none;">
+        <input type="text" id="friend-code-input" placeholder="Freundescode eingeben" maxlength="8" style="text-transform:uppercase;">
+        <button onclick="addFriendByCode()">Hinzufügen</button>
+      </div>
+      <div class="setup-warning" id="friend-add-warning"></div>
+    </div>
+    <div class="setup-info" id="friend-invite-hint" style="display:none;">Ihr seid in einer Team-Lobby — tippt auf einen Freund, um ihn direkt einzuladen.</div>
+    <div id="friends-list"></div>
+    <div class="section-divider" id="friend-invites-divider" style="display:none;">📩 Einladungen</div>
+    <div id="friend-invites-list"></div>
+  </div>
+</section>
+
+<!-- ===================== BENUTZER-EINSTELLUNGEN ===================== -->
+<section id="view-user-settings" class="view">
+  <div class="bg-watermark">⚙️</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">⚙️</span> Einstellungen</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Nur für dich</div><h2>Persönliche Einstellungen</h2><p>Rein kosmetisch — haben keinen Einfluss aufs Spiel oder auf andere Mitspieler.</p></div>
+    <div class="settings-card">
+      <div class="settings-row-btn" style="cursor:pointer;" onclick="togglePref('confirmDialogs')">
+        <span class="settings-row-icon">✅</span>
+        <span class="settings-row-text"><span class="settings-row-title">Sicherheitsabfragen</span><span class="settings-row-sub">„Wirklich...?"-Fragen vor Aktionen wie Verlassen oder Abbrechen</span></span>
+        <span class="settings-row-chev" id="pref-toggle-confirmDialogs"></span>
+      </div>
+      <div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="togglePref('animations')">
+        <span class="settings-row-icon">🎉</span>
+        <span class="settings-row-text"><span class="settings-row-title">Konfetti &amp; Animationen</span><span class="settings-row-sub">Feier-Effekte bei Sieg oder Rundenende</span></span>
+        <span class="settings-row-chev" id="pref-toggle-animations"></span>
+      </div>
+      <div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="togglePref('soundVibration')">
+        <span class="settings-row-icon">🔔</span>
+        <span class="settings-row-text"><span class="settings-row-title">Ton &amp; Vibration</span><span class="settings-row-sub">Kurzer Ton/Vibration, wenn eine Runde startet</span></span>
+        <span class="settings-row-chev" id="pref-toggle-soundVibration"></span>
+      </div>
+    </div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">🏠</span><div class="setup-step-title">Startseite</div></div>
+      <p class="setup-info" style="margin-top:0;">Was soll beim Öffnen der App zuerst kommen?</p>
+      <div class="filter-row" id="pref-defaulttab-picker"></div>
+    </div>
   </div>
 </section>
 
@@ -1171,6 +1273,222 @@ function loadSetupState(){ try{ const raw = localStorage.getItem(LS_SETUP); if(r
 function clearSetupState(){ try{ localStorage.removeItem(LS_SETUP); }catch(e){} }
 function savePlayers(){ try{ localStorage.setItem(LS_PLAYERS, JSON.stringify(globalPlayers)); }catch(e){} }
 function loadPlayers(){ try{ const raw = localStorage.getItem(LS_PLAYERS); if(raw) return JSON.parse(raw); }catch(e){} return []; }
+const LS_CUSTOM_CHALLENGES = 'winchallenge_custom_challenges_v1';
+function saveCustomChallenges(){ try{ localStorage.setItem(LS_CUSTOM_CHALLENGES, JSON.stringify(customChallenges)); }catch(e){} }
+function loadCustomChallenges(){ try{ const raw = localStorage.getItem(LS_CUSTOM_CHALLENGES); if(raw) return JSON.parse(raw); }catch(e){} return {}; }
+function addCustomChallenge(gameId, text, diff, scope){
+  if(!text || !text.trim()) return;
+  customChallenges[gameId] = customChallenges[gameId] || [];
+  customChallenges[gameId].push({ text: text.trim(), diff, scope, id: Date.now()+'-'+Math.random().toString(36).slice(2,7) });
+  saveCustomChallenges();
+}
+function removeCustomChallenge(gameId, id){
+  if(!customChallenges[gameId]) return;
+  customChallenges[gameId] = customChallenges[gameId].filter(c=>c.id!==id);
+  saveCustomChallenges();
+  renderCustomChallengesPage();
+}
+let ccSelectedGame = null, ccDiff = 'mittel', ccScope = 'shared';
+function renderCustomChallengesPage(){
+  if(!ccSelectedGame) ccSelectedGame = GAMES[0].id;
+  const gameRow = document.getElementById('cc-game-picker');
+  gameRow.innerHTML = '';
+  GAMES.filter(g=>g.id!=='wwm').forEach(g=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(g.id===ccSelectedGame?' active':'');
+    btn.innerHTML = gameIconHTML(g.id,16)+' '+g.name;
+    btn.addEventListener('click', ()=>{ ccSelectedGame = g.id; renderCustomChallengesPage(); });
+    gameRow.appendChild(btn);
+  });
+  const diffRow = document.getElementById('cc-diff-picker');
+  diffRow.innerHTML = '';
+  [['leicht','LEICHT'],['mittel','MITTEL'],['schwer','SCHWER']].forEach(([k,label])=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(k===ccDiff?' active':'');
+    btn.textContent = label;
+    btn.addEventListener('click', ()=>{ ccDiff = k; renderCustomChallengesPage(); });
+    diffRow.appendChild(btn);
+  });
+  const scopeRow = document.getElementById('cc-scope-picker');
+  scopeRow.innerHTML = '';
+  [['shared','🤝 Team-Regel'],['personal','😎 Persönlich (namenbasiert)']].forEach(([k,label])=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(k===ccScope?' active':'');
+    btn.textContent = label;
+    btn.addEventListener('click', ()=>{ ccScope = k; renderCustomChallengesPage(); });
+    scopeRow.appendChild(btn);
+  });
+  const list = (customChallenges[ccSelectedGame] || []);
+  const listEl = document.getElementById('cc-list');
+  if(!list.length){
+    listEl.innerHTML = '<div class="empty-hint" style="margin-top:16px;">Noch keine eigenen Challenges für dieses Spiel.</div>';
+    return;
+  }
+  let html = `<div class="section-divider">📖 Eure eigenen Challenges für ${GAME_NAME[ccSelectedGame]}</div>`;
+  list.forEach(c=>{
+    html += `<div class="sb-challenge-item">
+      <div class="sb-diff-badge" style="background:${DIFF_COLOR[c.diff]}">${DIFF_LABEL[c.diff]}</div>
+      <div class="sb-challenge-text">${c.text}${c.scope==='personal'?' <span style="color:var(--text-faint);font-size:0.75rem;">· persönlich</span>':''}</div>
+      <button class="sb-btn danger" style="padding:6px 10px;" onclick="removeCustomChallenge('${ccSelectedGame}','${c.id}')">✕</button>
+    </div>`;
+  });
+  listEl.innerHTML = html;
+}
+async function renderFriendsPage(){
+  if(!currentUser || !sb){
+    document.getElementById('friend-my-code').textContent = '—';
+    document.getElementById('friends-list').innerHTML = '<div class="empty-hint">Bitte zuerst einloggen.</div>';
+    return;
+  }
+  document.getElementById('friend-my-code').textContent = currentUser.friend_code || '…';
+  document.getElementById('friend-invite-hint').style.display = myTeam ? 'block' : 'none';
+  document.getElementById('friend-add-warning').textContent = '';
+  const listEl = document.getElementById('friends-list');
+  listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
+  try{
+    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar)').eq('user_id', currentUser.id);
+    if(error) throw error;
+    if(!data || !data.length){
+      listEl.innerHTML = '<div class="empty-hint">Noch keine Freunde — Code eines Freundes oben eingeben.</div>';
+    } else {
+      let html = '<div class="section-divider">👥 Deine Freunde</div>';
+      data.forEach(f=>{
+        const p = f.profiles;
+        if(!p) return;
+        html += `<div class="chip readonly${myTeam?' member-clickable':''}" style="width:100%;box-sizing:border-box;justify-content:space-between;" ${myTeam?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
+          <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
+          ${myTeam?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':''}
+        </div>`;
+      });
+      listEl.innerHTML = html;
+    }
+  }catch(e){ listEl.innerHTML = '<div class="empty-hint">Freundesliste konnte nicht geladen werden.</div>'; console.error(e); }
+  await renderPendingInvites();
+}
+async function addFriendByCode(){
+  const input = document.getElementById('friend-code-input');
+  const warn = document.getElementById('friend-add-warning');
+  warn.textContent = '';
+  const code = input.value.trim().toUpperCase();
+  if(!code){ warn.textContent = 'Bitte einen Freundescode eingeben.'; return; }
+  if(!currentUser || !sb) return;
+  try{
+    const { data, error } = await sb.from('profiles').select('id, username').eq('friend_code', code).maybeSingle();
+    if(error || !data){ warn.textContent = 'Kein Account mit diesem Code gefunden.'; return; }
+    if(data.id === currentUser.id){ warn.textContent = 'Das ist dein eigener Code.'; return; }
+    await sb.from('friendships').upsert([
+      { user_id: currentUser.id, friend_id: data.id },
+      { user_id: data.id, friend_id: currentUser.id },
+    ], { onConflict: 'user_id,friend_id' });
+    input.value = '';
+    renderFriendsPage();
+  }catch(e){ warn.textContent = 'Fehler: ' + e.message; }
+}
+async function inviteFriendToTeam(friendUserId, friendUsername){
+  if(!myTeam || !currentUser || !sb) return;
+  try{
+    await sb.from('team_invites').insert({ team_id: myTeam.id, from_user: currentUser.id, to_user: friendUserId, status: 'pending' });
+    showAlert(`Einladung an ${friendUsername} verschickt.`, '📨');
+  }catch(e){ showAlert('Einladung konnte nicht verschickt werden: ' + e.message, '⚠️'); }
+}
+async function renderPendingInvites(){
+  const divider = document.getElementById('friend-invites-divider');
+  const listEl = document.getElementById('friend-invites-list');
+  if(!currentUser || !sb){ divider.style.display='none'; listEl.innerHTML=''; return; }
+  try{
+    const { data, error } = await sb.from('team_invites').select('id, team_id, status, teams(name, code), profiles!team_invites_from_user_fkey(username)').eq('to_user', currentUser.id).eq('status','pending');
+    if(error) throw error;
+    if(!data || !data.length){ divider.style.display='none'; listEl.innerHTML=''; return; }
+    divider.style.display = 'block';
+    let html = '';
+    data.forEach(inv=>{
+      html += `<div class="settings-row-btn" style="margin-bottom:8px;">
+        <span class="settings-row-icon">📨</span>
+        <span class="settings-row-text"><span class="settings-row-title">${inv.profiles?inv.profiles.username:'?'} lädt dich ein</span><span class="settings-row-sub">${inv.teams?inv.teams.name||'Team':'Team'}</span></span>
+        <button class="sb-btn" style="padding:8px 12px;" onclick="acceptTeamInvite('${inv.id}','${inv.teams?inv.teams.code:''}')">✅ Beitreten</button>
+      </div>`;
+    });
+    listEl.innerHTML = html;
+  }catch(e){ console.error(e); }
+}
+async function acceptTeamInvite(inviteId, teamCode){
+  if(!teamCode){ showAlert('Dieses Team existiert nicht mehr.', '⚠️'); return; }
+  await sb.from('team_invites').update({ status: 'accepted' }).eq('id', inviteId);
+  await joinTeam(teamCode);
+  showView('team');
+}
+function togglePref(key){
+  userPrefs[key] = !userPrefs[key];
+  savePrefs();
+  renderUserSettingsPage();
+}
+function renderUserSettingsPage(){
+  ['confirmDialogs','animations','soundVibration'].forEach(key=>{
+    const el = document.getElementById('pref-toggle-'+key);
+    if(el) el.textContent = userPrefs[key] ? '✅ An' : '⬜ Aus';
+  });
+  const row = document.getElementById('pref-defaulttab-picker');
+  if(row){
+    row.innerHTML = '';
+    [['home','🚀 Startseite'],['start-choice','🎮 Direkt zu Spiel starten']].forEach(([k,label])=>{
+      const btn = document.createElement('button');
+      btn.className = 'filter-pill'+(userPrefs.defaultTab===k?' active':'');
+      btn.textContent = label;
+      btn.addEventListener('click', ()=>{ userPrefs.defaultTab = k; savePrefs(); renderUserSettingsPage(); });
+      row.appendChild(btn);
+    });
+  }
+}
+function submitCustomChallenge(){
+  const input = document.getElementById('cc-text-input');
+  const text = input.value.trim();
+  if(!text){ showAlert('Bitte einen Text für die Challenge eingeben.', '📝'); return; }
+  addCustomChallenge(ccSelectedGame, text, ccDiff, ccScope);
+  input.value = '';
+  renderCustomChallengesPage();
+}
+const LS_PREFS = 'winchallenge_prefs_v1';
+function savePrefs(){ try{ localStorage.setItem(LS_PREFS, JSON.stringify(userPrefs)); }catch(e){} }
+function loadPrefs(){
+  const defaults = { confirmDialogs:true, animations:true, soundVibration:true, defaultTab:'home' };
+  try{ const raw = localStorage.getItem(LS_PREFS); if(raw) return Object.assign(defaults, JSON.parse(raw)); }catch(e){}
+  return defaults;
+}
+function confirmAction(msg, icon){
+  if(!userPrefs.confirmDialogs) return Promise.resolve(true);
+  return new Promise(resolve=>{
+    document.getElementById('custom-confirm-icon').textContent = icon || '❓';
+    document.getElementById('custom-confirm-message').textContent = msg;
+    const backdrop = document.getElementById('custom-confirm-backdrop');
+    backdrop.classList.remove('hidden');
+    const okBtn = document.getElementById('custom-confirm-ok');
+    const cancelBtn = document.getElementById('custom-confirm-cancel');
+    const cleanup = (result)=>{
+      backdrop.classList.add('hidden');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk = ()=>cleanup(true);
+    const onCancel = ()=>cleanup(false);
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+function playStartCue(){
+  if(!userPrefs.soundVibration) return;
+  try{ if(navigator.vibrate) navigator.vibrate([70,40,70]); }catch(e){}
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.type = 'sine'; osc.frequency.setValueAtTime(680, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime+0.16);
+    gain.gain.setValueAtTime(0.16, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.32);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime+0.34);
+  }catch(e){}
+}
 function saveSession(){ try{ if(session) localStorage.setItem(LS_SESSION, JSON.stringify(session)); else localStorage.removeItem(LS_SESSION); }catch(e){} }
 function loadSession(){ try{ const raw = localStorage.getItem(LS_SESSION); if(raw) return JSON.parse(raw); }catch(e){} return null; }
 function saveStats(){ try{ localStorage.setItem(LS_STATS, JSON.stringify(statsStore)); }catch(e){} }
@@ -1297,7 +1615,7 @@ async function restoreAuthSession(){
     const { data:{ session:authSession } } = await sb.auth.getSession();
     if(authSession){
       await loadProfile(authSession.user.id);
-      if(currentUser){ await restoreMyTeam(); showHome(); }
+      if(currentUser){ await restoreMyTeam(); showHome(); if(userPrefs.defaultTab==='start-choice') showView('start-choice'); }
     }
   }catch(e){ console.error(e); }
   renderAuthBar();
@@ -1306,6 +1624,15 @@ async function loadProfile(userId){
   try{
     const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
     if(!error && data) currentUser = data;
+    if(currentUser && !currentUser.friend_code) await ensureFriendCode();
+  }catch(e){ console.error(e); }
+}
+async function ensureFriendCode(){
+  if(!currentUser || !sb) return;
+  const code = Array.from({length:6}, ()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[randInt(0,32)]).join('');
+  try{
+    const { error } = await sb.from('profiles').update({ friend_code: code }).eq('id', currentUser.id);
+    if(!error) currentUser.friend_code = code;
   }catch(e){ console.error(e); }
 }
 async function restoreMyTeam(){
@@ -1462,6 +1789,12 @@ function withHatOverlay(name, avatarHtml, size){
 function badgeIconHTML(badge){
   if(!badge) return '';
   return badge.animated ? `<span class="badge-lightning-flash">${badge.icon}</span> ` : badge.icon+' ';
+}
+function playerCosmeticCardHTML(username, avatarBit){
+  const c = cosmeticsFor(username);
+  const bannerStyle = c.banner ? `background:${c.banner.grad};${c.banner.animated?'background-size:400% 400%;':''}` : '';
+  const bannerClass = c.banner && c.banner.animated ? ' stat-card-animated-banner' : '';
+  return `<span class="player-cosmetic-card${bannerClass}" style="${bannerStyle}">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}</span>`;
 }
 function glowNameHTML(name, displayText){
   const glow = cosmeticsFor(name).glow;
@@ -1707,6 +2040,7 @@ let teamRoundSelectedGames = [];    // gewählte Spiele bei scope 'games' (belie
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
 let teamCampaignHistory = [];       // Host-lokal: Zusammenfassung jeder abgeschlossenen Runde dieser Kampagne (für die Endübersicht)
 let teamCampaignSyncedFor = null;   // Round-ID, für die die Endübersicht zuletzt an den Server (teams.campaign_summary) geschickt wurde
+let teamRoundCuedFor = null;        // Round-ID, für die der Start-Sound/Vibration schon abgespielt wurde
 function stopTeamPolling(){ if(teamPollInterval){ clearInterval(teamPollInterval); teamPollInterval = null; } }
 function startTeamPolling(){
   stopTeamPolling();
@@ -1805,7 +2139,7 @@ function closeMemberProfileModal(){
 }
 async function kickMember(userId){
   if(!myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
-  if(!confirm('Dieses Mitglied wirklich aus dem Team entfernen?')) return;
+  if(!(await confirmAction('Dieses Mitglied wirklich aus dem Team entfernen?'))) return;
   await sb.from('team_members').delete().eq('team_id', myTeam.id).eq('user_id', userId);
   await refreshTeamMembers();
 }
@@ -2151,7 +2485,6 @@ async function requestJoker(type, forSelf){
 function renderSabotagePanel(){
   if(!currentUser || !currentRound) return '';
   const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
-  if(!others.length) return '';
   const s = statsStore[currentUser.username];
   const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
   const available = SHOP_SABOTAGE.filter(item => (owned[item.id]||0) > 0);
@@ -2160,6 +2493,25 @@ function renderSabotagePanel(){
   }
   let html = `<div class="settings-card" style="margin-top:12px;border-color:var(--lose);"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteil einsetzen</div></div>`;
   available.forEach(item=>{
+    if(item.selfOnly){
+      html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} (${owned[item.id]}x) — ${item.desc}</p>`;
+      if(item.id==='delete_challenge'){
+        const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
+        if(!myItems.length){
+          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen.</div>`;
+        } else {
+          html += `<div class="filter-row" style="margin-bottom:8px;">`;
+          myItems.forEach(it=>{
+            html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
+          });
+          html += `</div>`;
+        }
+      } else {
+        html += `<div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" onclick="useSabotageItem('${item.id}','${currentUser.id}')">${item.icon} Einsetzen</button></div>`;
+      }
+      return;
+    }
+    if(!others.length) return;
     html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} (${owned[item.id]}x) — Ziel wählen:</p><div class="filter-row" style="margin-bottom:8px;">`;
     others.forEach(m=>{
       html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${m.user_id}')">${m.username}</button>`;
@@ -2169,7 +2521,7 @@ function renderSabotagePanel(){
   html += `</div>`;
   return html;
 }
-async function useSabotageItem(itemId, targetUserId){
+async function useSabotageItem(itemId, targetUserId, extraId){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
   const s = statsStore[currentUser.username];
   const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage[itemId]) || 0;
@@ -2177,7 +2529,8 @@ async function useSabotageItem(itemId, targetUserId){
   const item = SHOP_SABOTAGE.find(i=>i.id===itemId);
   const target = teamMembers.find(m=>m.user_id===targetUserId);
   if(!item || !target) return;
-  if(!confirm(`"${item.label}" gegen ${target.username} einsetzen? Wird dabei aus eurem Bestand verbraucht.`)) return;
+  const confirmMsg = item.selfOnly ? `"${item.label}" einsetzen? Wird dabei aus eurem Bestand verbraucht.` : `"${item.label}" gegen ${target.username} einsetzen? Wird dabei aus eurem Bestand verbraucht.`;
+  if(!(await confirmAction(confirmMsg))) return;
   try{
     if(itemId==='lock_joker'){
       const list = new Set(currentRound.sabotaged_no_joker || []);
@@ -2207,6 +2560,17 @@ async function useSabotageItem(itemId, targetUserId){
         const pick = hardOnes[randInt(0,hardOnes.length-1)];
         await sb.from('round_items').insert({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'schwer', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['schwer'] });
       }
+    } else if(itemId==='lucky'){
+      const pool = personalPoolFor(currentRound.game_id, currentRound.game_mode);
+      const easyOnes = pool.filter(c=>c.diff==='leicht');
+      if(easyOnes.length){
+        const picks = [];
+        for(let i=0;i<5;i++) picks.push(easyOnes[randInt(0,easyOnes.length-1)]);
+        await sb.from('round_items').insert(picks.map(pick=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'leicht', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht'] })));
+      }
+    } else if(itemId==='delete_challenge'){
+      if(!extraId) return;
+      await sb.from('round_items').delete().eq('id', extraId);
     }
     s.shopOwned.sabotage[itemId] = owned - 1;
     saveStats();
@@ -2479,7 +2843,7 @@ function toggleRoundMenu(ev){
 }
 async function cancelTeamRound(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
-  if(!confirm(`${unitWord(currentRound.scope)} für alle sofort abbrechen? Es gibt kein Ergebnis, alle springen zurück in die Gruppe.`)) return;
+  if(!(await confirmAction(`${unitWord(currentRound.scope)} für alle sofort abbrechen? Es gibt kein Ergebnis, alle springen zurück in die Gruppe.`))) return;
   unlockTeamRoundRender();
   await sb.from('game_rounds').delete().eq('id', currentRound.id);
   currentRound = null; roundItems = []; roundVotes = {};
@@ -2500,7 +2864,7 @@ function returnToLobbyFromDone(){
 }
 async function endTeamRoundNow(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id) return;
-  if(!confirm(`${unitWord(currentRound.scope)} wirklich sofort beenden? Noch offene Challenges ohne Ergebnis zählen dann nicht.`)) return;
+  if(!(await confirmAction(`${unitWord(currentRound.scope)} wirklich sofort beenden? Noch offene Challenges ohne Ergebnis zählen dann nicht.`))) return;
   unlockTeamRoundRender();
   await finalizeTeamRound();
 }
@@ -2513,20 +2877,17 @@ function renderTeamHeroBlock(){
     const member = teamMembers.find(m=>m.user_id===uid);
     const username = member ? member.username : '?';
     const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 16), 16);
-    const badgeBit = badgeIconHTML(cosmeticsFor(username).badge);
-    const banner = cosmeticsFor(username).banner;
-    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
-    const bannerClass = banner && banner.animated ? ' stat-card-animated-banner' : '';
+    const playerCard = playerCosmeticCardHTML(username, avatarBit);
     if(revealedSet.has(uid)){
       const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
-      html += `<div class="solo-hero-item${bannerClass}" style="opacity:1; transform:none;${bannerStyle}">
+      html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
         <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero">${heroName}</div></div>
+        <div class="solo-info"><div class="solo-player">${playerCard}</div><div class="solo-hero">${heroName}</div></div>
         <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
     } else {
-      html += `<div class="solo-hero-item${bannerClass}" style="opacity:0.55; transform:none;${bannerStyle}">
+      html += `<div class="solo-hero-item" style="opacity:0.55; transform:none;">
         <div class="solo-avatar" style="background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">🔒</div>
-        <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(username,username)}</div><div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div></div>
+        <div class="solo-info"><div class="solo-player">${playerCard}</div><div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div></div>
       </div>`;
     }
   });
@@ -2597,6 +2958,7 @@ function renderTeamRoundSection(){
   const heroBlock = renderTeamHeroBlock();
 
   if(currentRound.status === 'active'){
+    if(teamRoundCuedFor !== currentRound.id){ teamRoundCuedFor = currentRound.id; playStartCue(); }
     const maxJokers = maxJokerUses();
     let html = header + `<div class="panel-block" style="margin-top:20px;">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
@@ -2613,7 +2975,7 @@ function renderTeamRoundSection(){
     if(others.length){
       html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
       html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18)}</span><span>${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18))}<span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
       ).join('') + `</div>`;
     }
     if(currentRound.mode === 'team'){
@@ -2679,7 +3041,7 @@ function renderTeamRoundSection(){
         const first = items[0];
         const username = first.profiles ? first.profiles.username : '?';
         const avatar = withHatOverlay(username, renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18), 18);
-        html += `<div class="player-block-label"><span style="color:var(--text)">${avatar} ${badgeIconHTML(cosmeticsFor(username).badge)}${glowNameHTML(username,username)}</span></div>`;
+        html += `<div class="player-block-label">${playerCosmeticCardHTML(username, avatar)}</div>`;
         sortByDifficulty(items).forEach(it=>{
           const votesForItem = roundVotes[it.id] || {};
           const yes = Object.values(votesForItem).filter(v=>v===true).length;
@@ -2753,7 +3115,7 @@ function renderTeamRoundSection(){
     }
     if(teamCelebratedFor !== currentRound.id){
       teamCelebratedFor = currentRound.id;
-      setTimeout(()=>spawnConfetti('team-done-confetti'), 0);
+      setTimeout(()=>spawnConfetti('team-done-confetti'), 50);
     }
     return html;
   }
@@ -2861,7 +3223,7 @@ async function toggleMyReady(){
 }
 async function leaveTeam(){
   if(!myTeam || !currentUser || !sb) return;
-  if(!confirm('Team wirklich verlassen?')) return;
+  if(!(await confirmAction('Team wirklich verlassen?'))) return;
   unlockTeamRoundRender();
   await sb.from('team_members').delete().eq('team_id', myTeam.id).eq('user_id', currentUser.id);
   if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
@@ -2985,13 +3347,14 @@ function renderTeamLobbyScreen(isHost, mine){
       </div>
     </div>
     <p class="setup-info" style="margin-top:0;">Code mit Freunden teilen — alle auf „Bereit" tippen.</p>
+    <div class="roll-zone" style="margin-bottom:14px;"><button class="sb-btn" onclick="showView('friends')">🤝 Freund direkt einladen</button></div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div>
       <div class="player-chips">`;
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
     const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
-    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20)}</span><span>${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</span>${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20))}${m.user_id===myTeam.host_id?' 👑':''}${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   if(isHost){
@@ -3737,11 +4100,15 @@ const MODE_CHALLENGE_OVERRIDES = {
 };
 function rulesPoolFor(gameId, gameMode){
   const override = MODE_CHALLENGE_OVERRIDES[gameId+'_'+gameMode];
-  return override ? override.rules : CHALLENGE_SOURCES[gameId];
+  const base = override ? override.rules : CHALLENGE_SOURCES[gameId];
+  const custom = (customChallenges[gameId] || []).filter(c=>c.scope==='shared').map(c=>C(c.text, c.diff, 'custom'));
+  return custom.length ? (base||[]).concat(custom) : base;
 }
 function personalPoolFor(gameId, gameMode){
   const override = MODE_CHALLENGE_OVERRIDES[gameId+'_'+gameMode];
-  return override ? override.personal : PERSONAL_SOURCES[gameId];
+  const base = override ? override.personal : PERSONAL_SOURCES[gameId];
+  const custom = (customChallenges[gameId] || []).filter(c=>c.scope==='personal').map(c=>C(c.text, c.diff, 'custom'));
+  return custom.length ? (base||[]).concat(custom) : base;
 }
 const CHALLENGE_SOURCES = {
   cs2: CS2_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
@@ -3906,6 +4273,7 @@ const TEAM_ROUND_PERSONAL_DIFF_POINTS = { leicht:2, mittel:4, schwer:7 }; // Nam
 /* Kurze, einmalige Konfetti-Animation an einer Ankerstelle (z. B. ums Trophäen-Icon) — für
    "jemand hat gewonnen"-Momente. Räumt sich nach ~1.4s selbst wieder auf. */
 function spawnConfetti(targetId){
+  if(!userPrefs.animations) return;
   const el = document.getElementById(targetId);
   if(!el) return;
   const EMOJI = ['🎉','✨','🏆','🎊','⭐','🥳'];
@@ -3974,6 +4342,8 @@ function rollButton(btn, onDone, spins=10, delay=70){
 
 /* ============================================================ GLOBAL PLAYER LIST ============================================================ */
 let globalPlayers = loadPlayers();
+let customChallenges = loadCustomChallenges();
+let userPrefs = loadPrefs();
 function renderGlobalPlayerChips(){
   const wrap = document.getElementById('global-player-chips'); wrap.innerHTML = '';
   if(!globalPlayers.length){ wrap.innerHTML = `<div class="empty-hint" style="padding:4px 2px;">Noch keine Spieler hinzugefügt.</div>`; }
@@ -4030,6 +4400,9 @@ function showView(id, skipHistory){
   if(id==='blitz') renderBlitzPage();
   if(id==='shop') renderShopPage();
   if(id==='local-choice') renderLocalChoicePage();
+  if(id==='custom-challenges') renderCustomChallengesPage();
+  if(id==='friends') renderFriendsPage();
+  if(id==='user-settings') renderUserSettingsPage();
 }
 function goBack(){
   try{
@@ -4321,12 +4694,12 @@ function recordRoundStats(){
   saveStats();
 }
 function showStatsPage(){ showView('stats'); renderStatsPage(); }
-function resetStatsOnly(){
-  if(!confirm('Statistiken (Punkte, Siege, Erfolge) wirklich zurücksetzen? Das kann nicht rückgängig gemacht werden.')) return;
+async function resetStatsOnly(){
+  if(!(await confirmAction('Statistiken (Punkte, Siege, Erfolge) wirklich zurücksetzen? Das kann nicht rückgängig gemacht werden.'))) return;
   statsStore = {}; saveStats(); renderStatsPage();
 }
-function resetAllLocalData(){
-  if(!confirm('WIRKLICH ALLES zurücksetzen? Statistiken, lokale Mitspieler und Avatare auf diesem Gerät gehen verloren. Euer Online-Account/Team bleibt bestehen.')) return;
+async function resetAllLocalData(){
+  if(!(await confirmAction('WIRKLICH ALLES zurücksetzen? Statistiken, lokale Mitspieler und Avatare auf diesem Gerät gehen verloren. Euer Online-Account/Team bleibt bestehen.'))) return;
   statsStore = {}; saveStats();
   globalPlayers = []; savePlayers();
   avatarMap = {}; saveAvatars();
@@ -4381,15 +4754,16 @@ const SHOP_HATS = [
   {id:'crownhat', icon:'👑', label:'Krone', cost:150},
 ];
 const SHOP_BANNERS = [
-  {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(90deg,#ff7e5f,#feb47b)', cost:60},
-  {id:'ocean', label:'Ozean', grad:'linear-gradient(90deg,#2193b0,#6dd5ed)', cost:60},
-  {id:'toxic', label:'Toxic', grad:'linear-gradient(90deg,#0f9b0f,#00f260)', cost:80},
-  {id:'midnight', label:'Mitternacht', grad:'linear-gradient(90deg,#000428,#004e92)', cost:80},
-  {id:'purple', label:'Neon-Lila', grad:'linear-gradient(90deg,#a044ff,#6a3093)', cost:100},
-  {id:'gold', label:'Gold', grad:'linear-gradient(90deg,#f7971e,#ffd200)', cost:150},
+  {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(120deg,#ff7e5f,#feb47b,#ff7e5f)', cost:60, animated:true},
+  {id:'ocean', label:'Ozean', grad:'linear-gradient(120deg,#2193b0,#6dd5ed,#2193b0)', cost:60, animated:true},
+  {id:'toxic', label:'Toxic', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:80, animated:true},
+  {id:'midnight', label:'Mitternacht', grad:'linear-gradient(120deg,#000428,#004e92,#000428)', cost:80, animated:true},
+  {id:'purple', label:'Neon-Lila', grad:'linear-gradient(120deg,#a044ff,#6a3093,#a044ff)', cost:100, animated:true},
+  {id:'gold', label:'Gold', grad:'linear-gradient(120deg,#f7971e,#ffd200,#f7971e)', cost:150, animated:true},
   {id:'diamond', label:'Diamant ✨', grad:'linear-gradient(120deg,#e0f7fa,#80deea,#4dd0e1,#b2ebf2,#e0f7fa)', cost:250, animated:true},
   {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:220, animated:true},
   {id:'ice', label:'Eis ❄️', grad:'linear-gradient(120deg,#a1e8ff,#e0f7ff,#6ec6ea,#c8f1ff,#a1e8ff)', cost:220, animated:true},
+  {id:'mystery', label:'🌌 Kosmos', hiddenLabel:'❓ Geheim', grad:'linear-gradient(120deg,#ff3b3b,#ff9d3b,#f6ff3b,#3bff6a,#3bd4ff,#7a3bff,#ff3bd4,#ff3b3b)', cost:1000, animated:true, mystery:true},
 ];
 const SHOP_GLOWS = [
   {id:'cyan', icon:'✨', label:'Cyan-Glühen', color:'#5ee7ff', cost:130},
@@ -4406,6 +4780,8 @@ const SHOP_SABOTAGE = [
   {id:'hero_steal', icon:'🔀', label:'Helden-Klau', desc:'Tauscht sofort deinen Helden mit dem Zielspieler.', cost:250},
   {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort eine zusätzliche schwere Challenge dazu.', cost:220},
   {id:'force_reroll', icon:'🎲', label:'Zwangs-Reroll', desc:'Der Held des Zielspielers wird sofort neu ausgelost — ohne Abstimmung.', cost:200},
+  {id:'lucky', icon:'🍀', label:'Glückspilz', desc:'Du bekommst sofort 5 zusätzliche leichte Challenges.', cost:200, selfOnly:true},
+  {id:'delete_challenge', icon:'🗑️', label:'Challenge streichen', desc:'Wählt eine eigene Challenge aus und streicht sie ersatzlos.', cost:150, selfOnly:true},
 ];
 let shopSelectedPlayer = null;
 function shopBalance(name){
@@ -4471,7 +4847,11 @@ function renderShopPage(){
   SHOP_BANNERS.forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
-    html += `<button class="filter-pill${isEquipped?' active':''}${b.animated?' stat-card-animated-banner':''}" style="background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:400% 400%;':''}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
+    const showHidden = b.mystery && !isOwned;
+    const btnStyle = showHidden
+      ? 'background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);'
+      : `background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:400% 400%;':''}`;
+    html += `<button class="filter-pill${isEquipped?' active':''}${b.animated && !showHidden?' stat-card-animated-banner':''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${showHidden?b.hiddenLabel:b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">✨</span><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
@@ -4573,11 +4953,11 @@ function visibleSteps(){
   });
 }
 
-function startFreshSetup(){
+async function startFreshSetup(){
   continueFromSession = false;
   const saved = loadSetupState();
   if(saved && saved.setupState && (saved.setupState.gameId || (saved.setupState.selectedGames && saved.setupState.selectedGames.length))){
-    const resume = confirm('Du hast eine unvollendete Runden-Einrichtung. Fortsetzen? (Abbrechen = neu starten)');
+    const resume = await confirmAction('Du hast eine unvollendete Runden-Einrichtung. Fortsetzen? (Abbrechen = neu starten)', '🔁');
     if(resume){
       setupState = saved.setupState;
       stepIndex = saved.stepIndex || 0;
@@ -4719,7 +5099,7 @@ function renderSetupPage(){
       const row = document.createElement('div');
       row.className = 'player-block-label';
       row.style.cssText = 'flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:10px;';
-      row.innerHTML = `<span style="color:var(--text)">${avatarHTML(p,20)} ${p}</span>`;
+      row.innerHTML = playerCosmeticCardHTML(p, withHatOverlay(p, avatarHTML(p,20), 20));
       const pillRow = document.createElement('div');
       pillRow.className = 'filter-row';
       pillRow.style.marginTop = '2px';
@@ -4993,6 +5373,7 @@ if(session && session.heroRevealDone === undefined){
 }
 
 function buildRound(){
+  playStartCue();
   const heroPool = HERO_GAMES[session.gameId] || null;
   let heroesFreshlyAssigned = false;
   if(heroPool){
@@ -5084,8 +5465,8 @@ function extendSession(){
   if(session.finished){ session.finished = false; session.awaitingNextGameChoice = true; }
   saveSession(); renderScoreboard(); updateContinueButton();
 }
-function endSession(){
-  if(!confirm('Session wirklich beenden? Der Fortschritt dieser Session geht verloren.')) return;
+async function endSession(){
+  if(!(await confirmAction('Session wirklich beenden? Der Fortschritt dieser Session geht verloren.'))) return;
   session = null; saveSession(); renderScoreboard(); updateContinueButton(); showHome();
 }
 function newSessionFromScoreboard(){ startFreshSetup(); }
@@ -5138,13 +5519,10 @@ function renderHeroRow(entries, avatarResolver){
   entries.forEach(([playerName, hero])=>{
     const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
     const avatarBit = withHatOverlay(playerName, avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,16), 16);
-    const badgeBit = badgeIconHTML(cosmeticsFor(playerName).badge);
-    const banner = cosmeticsFor(playerName).banner;
-    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
-    const bannerClass = banner && banner.animated ? ' stat-card-animated-banner' : '';
-    html += `<div class="solo-hero-item${bannerClass}" style="opacity:1; transform:none;${bannerStyle}">
+    const playerCard = playerCosmeticCardHTML(playerName, avatarBit);
+    html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
       <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-      <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(playerName,playerName)}</div><div class="solo-hero">${heroName}</div></div>
+      <div class="solo-info"><div class="solo-player">${playerCard}</div><div class="solo-hero">${heroName}</div></div>
       <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
   });
   html += '</div>'; return html;
@@ -5326,7 +5704,7 @@ function renderScoreboard(){
       html += `<div class="rules-note">🗳️ Jetzt gemeinsam bewerten — alle sehen alle Challenges.</div>`;
       session.players.forEach(p=>{
         const live = (session.cumulativePlayers[p]||0) + scoreOf(session.personalChallenges[p]) + sharedScore;
-        html += `<div class="player-block-label"><span style="color:var(--text)">${avatarHTML(p,20)} ${p}</span><span>${live} Pkt</span></div>`;
+        html += `<div class="player-block-label">${playerCosmeticCardHTML(p, withHatOverlay(p, avatarHTML(p,20), 20))}<span>${live} Pkt</span></div>`;
         if(session.heroAssignment) html += renderHeroRow([[p, session.heroAssignment[p]]]);
         html += renderChallengeToggleList(p, session.personalChallenges[p]);
       });
@@ -5336,7 +5714,7 @@ function renderScoreboard(){
       session.players.forEach(p=>{
         const revealed = session.revealedPlayer === p;
         const safeName = p.replace(/'/g, "\\'");
-        html += `<div class="player-block-label"><span style="color:var(--text)">${avatarHTML(p,20)} ${p}</span></div>`;
+        html += `<div class="player-block-label">${playerCosmeticCardHTML(p, withHatOverlay(p, avatarHTML(p,20), 20))}</div>`;
         if(session.heroAssignment) html += renderHeroRow([[p, session.heroAssignment[p]]]);
         if(revealed){
           html += renderChallengeListPlain(session.personalChallenges[p]);
@@ -5382,9 +5760,9 @@ function toggleChallenge(scope, cid, action){
   item.state = item.state === action ? 'pending' : action;
   saveSession(); renderScoreboard();
 }
-function buyoutChallenge(playerName, cid, cost){
+async function buyoutChallenge(playerName, cid, cost){
   if(shopBalance(playerName) < cost) return;
-  if(!confirm(`${cost} Punkte ausgeben, um diese Challenge automatisch als erledigt zu markieren?`)) return;
+  if(!(await confirmAction(`${cost} Punkte ausgeben, um diese Challenge automatisch als erledigt zu markieren?`))) return;
   const s = statsStore[playerName]; if(!s) return;
   s.spent = (s.spent||0) + cost;
   saveStats();
@@ -5498,11 +5876,11 @@ function finalizeSoloReel(heroWrap, challWrap, results, challengePool, challenge
   const list = document.createElement('div'); list.className = 'solo-hero-list reel-done-list';
   results.forEach(([playerName, heroEntry], i)=>{
     const [heroName, role] = heroEntry; const meta = ROLE_META[role]; const bg = heroImageCache[heroName] ? '#000' : heroColor(heroName);
-    const banner = cosmeticsFor(playerName).banner;
-    const bannerStyle = banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : '';
-    const item = document.createElement('div'); item.className = 'solo-hero-item'+(banner && banner.animated ? ' stat-card-animated-banner' : ''); item.style.animationDelay = (i*0.06)+'s'; item.style.cssText += bannerStyle;
+    const avatarBit = withHatOverlay(playerName, avatarHTML(playerName,16), 16);
+    const playerCard = playerCosmeticCardHTML(playerName, avatarBit);
+    const item = document.createElement('div'); item.className = 'solo-hero-item'; item.style.animationDelay = (i*0.06)+'s';
     item.innerHTML = `<div class="solo-avatar" style="background:${bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-      <div class="solo-info"><div class="solo-player">${withHatOverlay(playerName, avatarHTML(playerName,16), 16)} ${badgeIconHTML(cosmeticsFor(playerName).badge)}${glowNameHTML(playerName,playerName)}</div><div class="solo-hero">${heroName}</div></div>
+      <div class="solo-info"><div class="solo-player">${playerCard}</div><div class="solo-hero">${heroName}</div></div>
       <div class="solo-role" style="background:${meta.color}">${role}</div>`;
     list.appendChild(item);
   });
