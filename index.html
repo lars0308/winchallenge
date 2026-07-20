@@ -359,6 +359,30 @@
     .home-header{ padding:44px 16px 6px; } .tile-grid{ padding:20px 16px 60px; } .topbar{ padding:14px 16px; }
     .content{ padding:16px 14px 80px; } .landing-actions, .home-actions{ padding:0 14px; }
   }
+  /* Desktop/PC: die App ist mobil-first gebaut (schmale, zentrierte Karten) — ab hier bekommt
+     alles spürbar mehr Breite, damit es auf großen Bildschirmen nicht wie ein schmaler Handy-Streifen
+     in der Bildschirmmitte aussieht. */
+  @media (min-width:900px){
+    body{ font-size:1.04rem; }
+    .content{ max-width:1180px; padding:28px 40px 120px; }
+    .home-header{ padding:64px 20px 12px; }
+    .landing-actions{ max-width:640px; }
+    .tile-grid{ max-width:1280px; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); }
+    .goal-bar-wrap, .rules-note, .round-prompt, .setup-info, .setup-warning, .choice-card-row,
+    .empty-hint, .player-manager, .wwm-roster{ max-width:640px; }
+    .setup-step, .admin-block, .panel-block, .setup-nav, .challenge-list{ max-width:820px; }
+    .hero-card{ max-width:520px; }
+    .solo-hero-list{ max-width:720px; }
+    .reel-block{ max-width:560px; }
+    .stat-card{ max-width:860px; }
+    .avatar-grid{ max-width:520px; }
+    .leaderboard, .scoreboard-head{ max-width:820px; margin-left:auto; margin-right:auto; }
+    .topbar{ padding:22px 40px; }
+  }
+  @media (min-width:1280px){
+    .content{ max-width:1320px; }
+    .tile-grid{ max-width:1400px; }
+  }
 </style>
 </head>
 <body>
@@ -1585,6 +1609,10 @@ function renderTeamRoundPicker(){
     teamRoundGameMode = null;
   }
   const countRow = document.getElementById('team-round-count-picker');
+  const countTitle = document.getElementById('team-round-count-title');
+  if(countTitle){
+    countTitle.textContent = teamRoundScope==='match' ? 'Wie viele Matches wollt ihr spielen?' : 'Anzahl Runden';
+  }
   if(countRow){
     countRow.innerHTML = '';
     const opts = teamRoundOptionsFor(teamRoundGameChoice, teamRoundGameMode);
@@ -1681,7 +1709,8 @@ function campaignSummaryText(){
   const gmLabel = gmInfo ? ` (${gmInfo.label})` : '';
   const modeLabel = teamRoundModeChoice==='team' ? '🤝 Team' : '⚔️ Jeder gegen Jeden';
   const smLabel = teamRoundSessionModeChoice==='chaos' ? '🌀 Chaos' : '🎯 Challenge';
-  return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel} · <strong>${campaignUnitLabel()} ${teamCampaignIndex+1}/${campaignTotal()}</strong>`;
+  const diffLabel = teamRoundSessionModeChoice==='chaos' ? '' : ` · 📊 ${teamRoundDifficulty}`;
+  return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel}${diffLabel} · <strong>${campaignUnitLabel()} ${teamCampaignIndex+1}/${campaignTotal()}</strong>`;
 }
 function allMembersReady(){ return teamMembers.length > 0 && teamMembers.every(m=>m.ready); }
 let teamRoundTransitioning = false;
@@ -2333,7 +2362,7 @@ function renderTeamSettingsScreen(){
         <div class="setup-info" id="team-round-gamemode-desc" style="margin-top:0;"></div>
       </div>
       <div id="team-round-count-step" style="margin-top:16px;">
-        <div class="setup-step-head"><span class="setup-step-icon">🔁</span><div class="setup-step-title">Anzahl Runden</div></div>
+        <div class="setup-step-head"><span class="setup-step-icon">🔁</span><div class="setup-step-title" id="team-round-count-title">Anzahl Runden</div></div>
         <div class="filter-row" id="team-round-count-picker"></div>
       </div>
       <div id="team-round-gamesmulti-step" style="margin-top:16px;">
