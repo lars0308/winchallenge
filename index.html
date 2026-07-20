@@ -65,7 +65,9 @@
   .landing-btn.primary:not(.disabled):hover{ box-shadow:0 14px 34px -14px rgba(155,92,246,0.6); }
   .landing-btn.disabled{ opacity:0.45; cursor:default; }
 
-  .home-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:26px auto 0; padding:0 24px; position:relative; z-index:1; }
+  .home-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:26px auto 0; padding:0 24px; max-width:440px; position:relative; z-index:1; }
+  .home-actions .home-action-btn{ justify-content:center; }
+  .home-actions .home-action-btn.span-2{ grid-column:1 / -1; }
   .home-action-btn{ display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:999px; font-weight:600; font-size:0.84rem; transition:all 0.2s ease; }
   .home-action-btn:hover{ border-color:var(--purple); box-shadow:0 0 18px -4px var(--purple); transform:translateY(-1px); }
   .player-count-badge{ background:linear-gradient(90deg,var(--purple),var(--turquoise)); color:#08080d; font-weight:700; font-size:0.75rem; padding:2px 9px; border-radius:999px; }
@@ -151,7 +153,7 @@
   .sb-challenge-item.won .sb-points{ color:var(--win); }
   .sb-challenge-item.lost .sb-points{ color:var(--lose); }
   .confetti-burst{ position:relative; display:inline-flex; }
-  .confetti-piece{ position:absolute; top:50%; left:50%; font-size:1.2rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 1.1s ease-out forwards; }
+  .confetti-piece{ position:absolute; top:50%; left:50%; font-size:1.2rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 2.4s ease-out forwards; }
   @keyframes confetti-pop-kf{
     0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
     14%{ opacity:1; }
@@ -181,6 +183,8 @@
   .final-summary .big-emoji{ font-size:3rem; }
 
   .filter-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .scope-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .scope-grid .filter-pill{ padding:10px 8px; font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .filter-pill{ padding:9px 20px; border-radius:999px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-muted); font-weight:600; font-size:0.9rem; transition:all 0.2s ease; }
   .filter-pill.active{ color:#08080d; border-color:transparent; background:linear-gradient(90deg,var(--purple),var(--turquoise)); }
   .filter-pill:hover:not(.active){ border-color:var(--text-faint); color:var(--text); }
@@ -421,12 +425,14 @@
   .chip.member-clickable{ cursor:pointer; transition:border-color 0.2s ease, transform 0.15s ease; }
   .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
   .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; }
-  .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:24px; }
   .custom-alert-backdrop.hidden{ display:none; }
-  .custom-alert-box{ background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:30px 26px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 24px 70px -20px rgba(0,0,0,0.85); animation:alert-pop-kf 0.25s ease; }
-  @keyframes alert-pop-kf{ from{ opacity:0; transform:scale(0.9) translateY(8px); } to{ opacity:1; transform:scale(1) translateY(0); } }
-  .custom-alert-icon{ font-size:2.4rem; margin-bottom:12px; }
-  .custom-alert-box p{ color:var(--text); font-size:0.98rem; line-height:1.5; margin:0 0 20px; }
+  .custom-alert-box{ position:relative; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:24px; padding:34px 26px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 24px 70px -20px rgba(0,0,0,0.85); animation:alert-pop-kf 0.28s cubic-bezier(.2,.9,.3,1.2); overflow:hidden; }
+  .custom-alert-box::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); }
+  @keyframes alert-pop-kf{ from{ opacity:0; transform:scale(0.88) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
+  .custom-alert-icon{ display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, rgba(168,120,255,0.18), rgba(90,225,220,0.18)); font-size:2rem; margin-bottom:16px; }
+  .custom-alert-box p{ color:var(--text); font-size:0.98rem; line-height:1.5; margin:0 0 22px; }
+  .custom-alert-box .roll-btn{ padding:12px 0; }
   .member-modal-backdrop.hidden{ display:none; }
   .member-modal-card{ position:relative; width:100%; max-width:380px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
@@ -470,7 +476,7 @@
   <div class="home-actions">
     <button class="home-action-btn" onclick="showView('players')">👥 Mitspieler <span class="player-count-badge" id="home-player-count">0</span></button>
     <button class="home-action-btn" onclick="showView('dice')">🎲 Würfel & Münze</button>
-    <button class="home-action-btn" onclick="showView('shop')">🛒 Shop</button>
+    <button class="home-action-btn span-2" onclick="showView('shop')">🛒 Shop</button>
   </div>
   <div id="auth-status-bar" style="margin-top:26px;"></div>
 </section>
@@ -624,9 +630,8 @@
       <div class="auth-input-col">
         <input type="text" id="profile-username" placeholder="Anzeigename" maxlength="20">
         <input type="text" id="profile-motto" placeholder="Motto / Status (optional)" maxlength="40">
-        <select id="profile-favgame" style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:12px 14px; color:var(--text); font-size:0.95rem;">
-          <option value="">Lieblingsspiel (optional)</option>
-        </select>
+        <div class="setup-label" style="text-align:left;color:var(--text-muted);font-size:0.78rem;text-transform:uppercase;margin:2px 2px 6px;">Lieblingsspiel (optional)</div>
+        <div class="filter-row" id="profile-favgame-picker" style="margin-bottom:2px;"></div>
         <select id="profile-role" style="background:var(--bg-elevated); border:1px solid var(--border); border-radius:12px; padding:12px 14px; color:var(--text); font-size:0.95rem;">
           <option value="">Bevorzugte Rolle (optional)</option>
           <option value="attack">⚔️ Angriff/Damage</option>
@@ -1341,7 +1346,7 @@ async function handleRegister(){
       ? 'Diese E-Mail-Adresse ist schon registriert.' : 'Fehler: ' + error.message;
     return;
   }
-  if(!data.session){ errEl.textContent = ''; alert('Fast fertig! Falls eine Bestätigungsmail aktiv ist, prüft euer Postfach. Ihr könnt euch sonst direkt einloggen.'); authMode='login'; renderAuthPage(); return; }
+  if(!data.session){ errEl.textContent = ''; showAlert('Fast fertig! Falls eine Bestätigungsmail aktiv ist, prüft euer Postfach. Ihr könnt euch sonst direkt einloggen.'); authMode='login'; renderAuthPage(); return; }
   await loadProfile(data.user.id);
   await restoreMyTeam();
   renderAuthBar();
@@ -1390,12 +1395,12 @@ function renderAuthBar(){
   const bar = document.getElementById('auth-status-bar');
   if(currentUser){
     bar.innerHTML = `<div class="home-actions" style="margin-top:0;">
-      <button class="home-action-btn" onclick="openProfilePage()">${renderAccountAvatarHTML(currentUser.avatar,20)} ${currentUser.username}</button>
+      <button class="home-action-btn span-2" onclick="openProfilePage()">${renderAccountAvatarHTML(currentUser.avatar,20)} ${currentUser.username}</button>
       ${currentUser.is_admin ? `<button class="home-action-btn" onclick="showAdminPanel()">🛠️ Admin</button>` : ''}
-      <button class="home-action-btn" onclick="handleLogout()">🚪 Logout</button>
+      <button class="home-action-btn${currentUser.is_admin ? '' : ' span-2'}" onclick="handleLogout()">🚪 Logout</button>
     </div>`;
   } else {
-    bar.innerHTML = `<div class="home-actions" style="margin-top:0;"><button class="home-action-btn" onclick="showView('auth-welcome')">👤 Account</button></div>`;
+    bar.innerHTML = `<div class="home-actions" style="margin-top:0;"><button class="home-action-btn span-2" onclick="showView('auth-welcome')">👤 Account</button></div>`;
   }
 }
 function goToAuthForm(mode){ authMode = mode; showView('auth'); }
@@ -1431,14 +1436,14 @@ function renderAccountAvatarHTML(avatarVal, size){
 }
 const PROFILE_AVATAR_EMOJI = ['😎','🔥','🎮','🐺','🦊','🐉','👾','🤖','💀','👑','🥷','🍀','⚡','🎯','🛡️','🚀'];
 let profileAvatarChoice = '😎';
+let profileFavGameChoice = '';
 function openProfilePage(){
   if(!currentUser) return;
   profileAvatarChoice = currentUser.avatar || '😎';
   document.getElementById('profile-username').value = currentUser.username || '';
   document.getElementById('profile-motto').value = currentUser.bio || '';
-  const sel = document.getElementById('profile-favgame');
-  sel.innerHTML = '<option value="">Lieblingsspiel (optional)</option>' + GAMES.map(g=>`<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
-  sel.value = currentUser.favorite_game || '';
+  profileFavGameChoice = currentUser.favorite_game || '';
+  renderProfileFavGamePicker();
   document.getElementById('profile-role').value = currentUser.preferred_role || '';
   document.getElementById('profile-skill').value = currentUser.skill_level || '';
   document.getElementById('profile-preferred-mode').value = currentUser.preferred_mode || '';
@@ -1446,6 +1451,22 @@ function openProfilePage(){
   renderProfileAvatarGrid();
   renderProfileHeroAvatarGroups();
   showView('profile');
+}
+function renderProfileFavGamePicker(){
+  const row = document.getElementById('profile-favgame-picker'); if(!row) return;
+  row.innerHTML = '';
+  const noneBtn = document.createElement('button');
+  noneBtn.className = 'filter-pill'+(profileFavGameChoice===''?' active':'');
+  noneBtn.textContent = '— Keins';
+  noneBtn.addEventListener('click', ()=>{ profileFavGameChoice = ''; renderProfileFavGamePicker(); });
+  row.appendChild(noneBtn);
+  GAMES.forEach(g=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(profileFavGameChoice===g.id?' active':'');
+    btn.innerHTML = gameIconHTML(g.id,16)+' '+g.name;
+    btn.addEventListener('click', ()=>{ profileFavGameChoice = g.id; renderProfileFavGamePicker(); });
+    row.appendChild(btn);
+  });
 }
 function renderProfileAvatarGrid(){
   document.getElementById('profile-avatar-preview').innerHTML = renderAccountAvatarHTML(profileAvatarChoice, 64);
@@ -1497,7 +1518,7 @@ async function saveProfile(){
   if(!currentUser || !sb) return;
   const username = document.getElementById('profile-username').value.trim();
   const bio = document.getElementById('profile-motto').value.trim();
-  const favorite_game = document.getElementById('profile-favgame').value || null;
+  const favorite_game = profileFavGameChoice || null;
   const preferred_role = document.getElementById('profile-role').value || null;
   const skill_level = document.getElementById('profile-skill').value || null;
   const preferred_mode = document.getElementById('profile-preferred-mode').value || null;
@@ -1534,7 +1555,7 @@ async function createTeam(){
   const name = (nameInput && nameInput.value.trim()) || (currentUser.username + 's Team');
   const code = genTeamCode();
   const { data, error } = await sb.from('teams').insert({ code, host_id: currentUser.id, name }).select().single();
-  if(error){ alert('Fehler beim Team erstellen: ' + error.message); return; }
+  if(error){ showAlert('Fehler beim Team erstellen: ' + error.message); return; }
   myTeam = data;
   teamEntryMode = null; teamSettingsOpen = true; // Host landet direkt auf der eigenen Einstellungs-Seite
   await sb.from('team_members').insert({ team_id: data.id, user_id: currentUser.id, ready: false });
@@ -1580,7 +1601,7 @@ async function setMyRoundRole(role){
   if(mine) mine.round_role = role; // optimistisch, damit der Klick sofort sichtbar reagiert
   renderTeamPage();
   const { error } = await sb.from('team_members').update({ round_role: role }).eq('team_id', myTeam.id).eq('user_id', currentUser.id);
-  if(error){ console.error('Rolle konnte nicht gespeichert werden:', error); alert('Fehler beim Speichern der Rolle: ' + error.message + ' — führt in Supabase im SQL Editor aus: alter table team_members add column if not exists round_role text;'); }
+  if(error){ console.error('Rolle konnte nicht gespeichert werden:', error); showAlert('Fehler beim Speichern der Rolle: ' + error.message + ' — führt in Supabase im SQL Editor aus: alter table team_members add column if not exists round_role text;'); }
 }
 function handleRemovedFromTeam(){
   unlockTeamRoundRender();
@@ -1590,7 +1611,7 @@ function handleRemovedFromTeam(){
   teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = [];
   updateContinueButton();
   showHome();
-  alert('Du wurdest aus der Gruppe entfernt.');
+  showAlert('Du wurdest aus der Gruppe entfernt.');
 }
 let currentRound = null, roundItems = [], roundVotes = {}, teamRoundGameChoice = null, teamRoundModeChoice = 'versus', teamRoundSessionModeChoice = 'challenge';
 let teamRoundDifficulty = 'Mittel';
@@ -1777,11 +1798,14 @@ function renderTeamRoundPicker(){
   const scopeRow = document.getElementById('team-round-scope-picker');
   if(scopeRow){
     scopeRow.innerHTML = '';
-    [{key:'rounds',label:'🔁 Nach Runden'},{key:'match',label:'🏆 Nach Match'},{key:'games',label:'🎮 Nach Spielen'}].forEach(it=>{
+    [{key:'rounds',label:'🔁 Nach Runden'},{key:'match',label:'🏆 Nach Match'},{key:'games',label:'🎮 Nach Spielen'},{key:'blitz',label:'⚡ Blitzrunde'}].forEach(it=>{
       const btn = document.createElement('button');
       btn.className = 'filter-pill'+(it.key===teamRoundScope?' active':'');
       btn.textContent = it.label;
-      btn.addEventListener('click', ()=>{ teamRoundScope = it.key; renderTeamRoundPicker(); });
+      btn.addEventListener('click', ()=>{
+        if(it.key==='blitz'){ blitzOnlineIntent = true; showView('blitz'); return; }
+        teamRoundScope = it.key; renderTeamRoundPicker();
+      });
       scopeRow.appendChild(btn);
     });
     const desc = document.getElementById('team-round-scope-desc');
@@ -1952,8 +1976,8 @@ function campaignSummaryText(){
 function allMembersReady(){ return teamMembers.length > 0 && teamMembers.every(m=>m.ready); }
 let teamRoundTransitioning = false;
 async function startTeamRound(skipReadyCheck){
-  if(!teamRoundGameChoice){ alert('Bitte zuerst ein Spiel auswählen.'); return; }
-  if(!skipReadyCheck && !allMembersReady()){ alert('Noch nicht alle Mitglieder sind bereit.'); return; }
+  if(!teamRoundGameChoice){ showAlert('Bitte zuerst ein Spiel auswählen.'); return; }
+  if(!skipReadyCheck && !allMembersReady()){ showAlert('Noch nicht alle Mitglieder sind bereit.'); return; }
   if(!myTeam || !currentUser || !sb) return;
   const gameId = teamRoundGameChoice, mode = teamRoundModeChoice, sessionMode = teamRoundSessionModeChoice;
   const heroPool = HERO_GAMES[gameId] || null;
@@ -1967,7 +1991,7 @@ async function startTeamRound(skipReadyCheck){
   }
   const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
   const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
-  if(error){ alert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
+  if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
 
   let items = [];
   if(mode === 'team'){
@@ -1986,7 +2010,7 @@ async function startTeamRound(skipReadyCheck){
     });
   }
   const { error: itErr } = await sb.from('round_items').insert(items);
-  if(itErr){ alert('Fehler beim Erstellen der Challenges: ' + itErr.message); teamRoundTransitioning = false; renderTeamPage(); return; }
+  if(itErr){ showAlert('Fehler beim Erstellen der Challenges: ' + itErr.message); teamRoundTransitioning = false; renderTeamPage(); return; }
   currentRound = round;
   await loadRoundItems();
   teamRoundTransitioning = false;
@@ -2019,8 +2043,8 @@ function jokerLabel(type){
 }
 async function requestJoker(type, forSelf){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
-  if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ alert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde geht kein Joker.'); return; }
-  if(currentRound.pending_joker){ alert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
+  if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ showAlert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde geht kein Joker.'); return; }
+  if(currentRound.pending_joker){ showAlert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
   const rerollCost = 3;
   if(shopBalance(currentUser.username) < rerollCost){ showAlert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`, '💸'); return; }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
@@ -2034,7 +2058,7 @@ async function requestJoker(type, forSelf){
   }
   const pending = { type, by: currentUser.id, byName: currentUser.username };
   const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
-  if(error){ alert('Fehler: ' + error.message); return; }
+  if(error){ showAlert('Fehler: ' + error.message); return; }
   currentRound.pending_joker = pending; currentRound.joker_votes = {};
   const payer = statsStore[currentUser.username];
   if(payer){ payer.spent = (payer.spent||0) + rerollCost; saveStats(); }
@@ -2042,11 +2066,14 @@ async function requestJoker(type, forSelf){
 }
 function renderSabotagePanel(){
   if(!currentUser || !currentRound) return '';
+  const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
+  if(!others.length) return '';
   const s = statsStore[currentUser.username];
   const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
   const available = SHOP_SABOTAGE.filter(item => (owned[item.id]||0) > 0);
-  const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
-  if(!available.length || !others.length) return '';
+  if(!available.length){
+    return `<div class="empty-hint" style="margin-top:10px;">🎯 Noch keine Sabotage-Items — im <a href="#" onclick="showView('shop'); return false;" style="color:var(--turquoise-bright);">Shop</a> kaufen, um sie hier einzusetzen.</div>`;
+  }
   let html = `<div class="settings-card" style="margin-top:12px;border-color:var(--lose);"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteil einsetzen</div></div>`;
   available.forEach(item=>{
     html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} (${owned[item.id]}x) — Ziel wählen:</p><div class="filter-row" style="margin-bottom:8px;">`;
@@ -2102,7 +2129,7 @@ async function useSabotageItem(itemId, targetUserId){
     await loadRoundItems();
     renderTeamPage();
   }catch(e){
-    alert('Fehler beim Einsetzen: ' + e.message);
+    showAlert('Fehler beim Einsetzen: ' + e.message);
   }
 }
 async function voteJoker(val){
@@ -2668,7 +2695,7 @@ async function renameTeam(){
   const newName = input.value.trim();
   if(!newName) return;
   const { error } = await sb.from('teams').update({ name: newName }).eq('id', myTeam.id);
-  if(error){ alert('Fehler beim Umbenennen: ' + error.message); return; }
+  if(error){ showAlert('Fehler beim Umbenennen: ' + error.message); return; }
   myTeam.name = newName;
   renderTeamPage();
 }
@@ -2725,7 +2752,7 @@ function renderTeamSettingsScreen(){
 
     <div class="settings-card" style="margin-top:18px;">
       <div class="setup-step-head"><span class="setup-step-icon">📏</span><div class="setup-step-title">Ablauf</div></div>
-      <div class="filter-row" id="team-round-scope-picker" style="margin-bottom:8px;"></div>
+      <div class="filter-row scope-grid" id="team-round-scope-picker" style="margin-bottom:8px;"></div>
       <div class="setup-info" id="team-round-scope-desc" style="margin-top:0;margin-bottom:0;"></div>
 
       <div id="team-round-game-step" style="margin-top:16px;">
@@ -3695,20 +3722,28 @@ function spawnConfetti(targetId){
   const el = document.getElementById(targetId);
   if(!el) return;
   const EMOJI = ['🎉','✨','🏆','🎊','⭐','🥳'];
-  for(let i=0;i<16;i++){
-    const span = document.createElement('span');
-    span.className = 'confetti-piece';
-    span.textContent = EMOJI[randInt(0,EMOJI.length-1)];
-    const angle = Math.random()*Math.PI*2;
-    const dist = 55 + Math.random()*65;
-    span.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
-    span.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
-    span.style.setProperty('--rot', (Math.random()*360-180)+'deg');
-    span.style.animationDelay = (Math.random()*0.12)+'s';
-    el.appendChild(span);
+  function burst(){
+    for(let i=0;i<14;i++){
+      const span = document.createElement('span');
+      span.className = 'confetti-piece';
+      span.textContent = EMOJI[randInt(0,EMOJI.length-1)];
+      const angle = Math.random()*Math.PI*2;
+      const dist = 60 + Math.random()*95;
+      span.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
+      span.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
+      span.style.setProperty('--rot', (Math.random()*360-180)+'deg');
+      span.style.animationDelay = (Math.random()*0.15)+'s';
+      el.appendChild(span);
+      setTimeout(()=>{ span.remove(); }, 2700);
+    }
   }
   el.classList.add('winner-pop');
-  setTimeout(()=>{ el.classList.remove('winner-pop'); el.querySelectorAll('.confetti-piece').forEach(p=>p.remove()); }, 1400);
+  burst();
+  const waveTimer = setInterval(burst, 900);
+  setTimeout(()=>{
+    clearInterval(waveTimer);
+    el.classList.remove('winner-pop');
+  }, 5000);
 }
 function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function pickN(arr, n){ return shuffle(arr).slice(0,n); }
@@ -3863,7 +3898,7 @@ function startBlitzRound(gameId){
     savePlayers(); saveAvatars();
   }
   if(globalPlayers.length < 2){
-    alert('Für die Blitzrunde braucht ihr mindestens 2 angemeldete Mitspieler. Ihr werdet jetzt zur Spielerverwaltung weitergeleitet.');
+    showAlert('Für die Blitzrunde braucht ihr mindestens 2 angemeldete Mitspieler. Ihr werdet jetzt zur Spielerverwaltung weitergeleitet.');
     showView('players'); return;
   }
   if(!gameId) gameId = SESSION_GAMES[randInt(0, SESSION_GAMES.length-1)];
@@ -3881,9 +3916,9 @@ function startBlitzRound(gameId){
 }
 async function startOnlineBlitzRound(gameId){
   if(!myTeam || !currentUser || !sb) return;
-  if(myTeam.host_id !== currentUser.id){ alert('Nur der Team-Ersteller (👑) kann eine Blitzrunde für die Gruppe starten.'); showView('team'); return; }
-  if(currentRound){ alert('In eurer Gruppe läuft schon eine Runde.'); showView('team'); return; }
-  if(teamMembers.length < 2){ alert('Für die Blitzrunde braucht ihr mindestens 2 Mitspieler in der Gruppe.'); return; }
+  if(myTeam.host_id !== currentUser.id){ showAlert('Nur der Team-Ersteller (👑) kann eine Blitzrunde für die Gruppe starten.'); showView('team'); return; }
+  if(currentRound){ showAlert('In eurer Gruppe läuft schon eine Runde.'); showView('team'); return; }
+  if(teamMembers.length < 2){ showAlert('Für die Blitzrunde braucht ihr mindestens 2 Mitspieler in der Gruppe.'); return; }
   if(!gameId) gameId = SESSION_GAMES[randInt(0, SESSION_GAMES.length-1)];
   const modes = allowedModesFor(gameId);
   teamRoundGameChoice = gameId;
@@ -4110,7 +4145,7 @@ function resetAllLocalData(){
   avatarMap = {}; saveAvatars();
   session = null; saveSession();
   renderGlobalPlayerChips(); renderStatsPage(); updateContinueButton();
-  alert('Erledigt — lokale Daten wurden zurückgesetzt.');
+  showAlert('Erledigt — lokale Daten wurden zurückgesetzt.');
 }
 function renderStatsPage(){
   const el = document.getElementById('stats-content');
@@ -4182,23 +4217,33 @@ function shopBalance(name){
   return Math.max(0, (s.totalPoints||0) - (s.spent||0));
 }
 function renderShopPage(){
-  const names = Object.keys(statsStore);
   const pickerRow = document.getElementById('shop-player-picker');
-  if(!names.length){
+  if(currentUser){
+    // Eingeloggt: der Shop gehört immer dem eigenen Account — kein Umschalten auf andere Spieler.
+    shopSelectedPlayer = currentUser.username;
+    if(!statsStore[shopSelectedPlayer]){
+      statsStore[shopSelectedPlayer] = { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
+      saveStats();
+    }
+    pickerRow.innerHTML = `<div class="empty-hint" style="padding:2px 2px 6px;">🛒 Das ist dein persönlicher Shop, ${currentUser.username}.</div>`;
+  } else {
+    const names = Object.keys(statsStore);
+    if(!names.length){
+      pickerRow.innerHTML = '';
+      document.getElementById('shop-balance').textContent = '';
+      document.getElementById('shop-content').innerHTML = '<div class="empty-hint">Noch keine Statistiken — spielt erst eine Runde, um Punkte zu sammeln.</div>';
+      return;
+    }
+    if(!shopSelectedPlayer || !names.includes(shopSelectedPlayer)) shopSelectedPlayer = names[0];
     pickerRow.innerHTML = '';
-    document.getElementById('shop-balance').textContent = '';
-    document.getElementById('shop-content').innerHTML = '<div class="empty-hint">Noch keine Statistiken — spielt erst eine Runde, um Punkte zu sammeln.</div>';
-    return;
+    names.forEach(n=>{
+      const btn = document.createElement('button');
+      btn.className = 'filter-pill'+(n===shopSelectedPlayer?' active':'');
+      btn.innerHTML = avatarHTML(n,16)+' '+n;
+      btn.addEventListener('click', ()=>{ shopSelectedPlayer = n; renderShopPage(); });
+      pickerRow.appendChild(btn);
+    });
   }
-  if(!shopSelectedPlayer || !names.includes(shopSelectedPlayer)) shopSelectedPlayer = names[0];
-  pickerRow.innerHTML = '';
-  names.forEach(n=>{
-    const btn = document.createElement('button');
-    btn.className = 'filter-pill'+(n===shopSelectedPlayer?' active':'');
-    btn.innerHTML = avatarHTML(n,16)+' '+n;
-    btn.addEventListener('click', ()=>{ shopSelectedPlayer = n; renderShopPage(); });
-    pickerRow.appendChild(btn);
-  });
   document.getElementById('shop-balance').textContent = `💰 Guthaben von ${shopSelectedPlayer}: ${shopBalance(shopSelectedPlayer)} Punkte`;
   const s = statsStore[shopSelectedPlayer];
   const owned = (s && s.shopOwned) || {badges:[], banners:[], hats:[], sabotage:{}};
