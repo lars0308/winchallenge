@@ -150,10 +150,22 @@
   .sb-points{ flex:none; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.9rem; color:var(--text-muted); min-width:44px; text-align:right; }
   .sb-challenge-item.won .sb-points{ color:var(--win); }
   .sb-challenge-item.lost .sb-points{ color:var(--lose); }
+  .confetti-burst{ position:relative; display:inline-flex; }
+  .confetti-piece{ position:absolute; top:50%; left:50%; font-size:1.2rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 1.1s ease-out forwards; }
+  @keyframes confetti-pop-kf{
+    0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
+    14%{ opacity:1; }
+    100%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity:0; }
+  }
+  .winner-pop{ animation: winner-pop-kf 0.55s ease-out; }
+  @keyframes winner-pop-kf{ 0%{ transform:scale(0.7); opacity:0.3; } 60%{ transform:scale(1.14); opacity:1; } 100%{ transform:scale(1); } }
   .sb-actions{ flex:none; display:flex; gap:6px; }
-  .sb-actions button{ width:36px; height:36px; border-radius:10px; background:var(--bg-elevated); border:1px solid var(--border); font-size:1rem; transition:all 0.15s ease; }
+  .sb-actions button{ width:38px; height:42px; border-radius:10px; background:var(--bg-elevated); border:1px solid var(--border); font-size:1rem; transition:all 0.15s ease; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; line-height:1; }
+  .sb-actions button .vote-count{ font-size:0.62rem; font-weight:700; color:var(--text-muted); }
   .sb-actions button[data-action="win"].active{ background:var(--win); border-color:var(--win); }
+  .sb-actions button[data-action="win"].active .vote-count{ color:#08080d; }
   .sb-actions button[data-action="lose"].active{ background:var(--lose); border-color:var(--lose); }
+  .sb-actions button[data-action="lose"].active .vote-count{ color:#08080d; }
   .session-empty{ text-align:center; color:var(--text-faint); padding:60px 20px; }
   .section-divider{ text-align:center; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.15em; font-weight:700; margin:26px 0 12px; }
   .rules-note{ text-align:center; color:var(--text-faint); font-size:0.8rem; margin:-6px auto 18px; max-width:440px; }
@@ -1491,6 +1503,7 @@ function unlockTeamRoundRender(){
   if(teamRoundLockTimer){ clearTimeout(teamRoundLockTimer); teamRoundLockTimer = null; }
 }
 let teamPersonallyDoneFor = null; // Round-ID, für die dieses Mitglied (nicht Host) schon "Fertig" gedrückt hat
+let teamCelebratedFor = null; // Round-ID, für die die Gewinn-Animation auf diesem Gerät schon lief
 let teamHeroRevealDone = false, teamHeroRevealRoundId = null; // Roulette-Reveal ist pro Gerät/Runde einmalig
 function ensureHeroRevealState(){
   if(currentRound && currentRound.id !== teamHeroRevealRoundId){
@@ -2300,11 +2313,13 @@ function renderTeamRoundSection(){
           <div class="sb-points">${it.result==='success'?'+':it.result==='fail'?'−':''}${it.points} Pkt</div>`;
         if(!it.result){
           html += `<div class="sb-actions">
-            <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅</button>
-            <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌</button>
+            <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
+            <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
           </div>`;
+        } else {
+          html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
         }
-        html += `</div><div class="score-sub" style="margin:-4px 0 8px;">Stimmen: ✅ ${yes} · ❌ ${no}</div>`;
+        html += `</div>`;
       });
       if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
       else { html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die Bewertung abschließt…</div>`; }
@@ -2328,11 +2343,13 @@ function renderTeamRoundSection(){
             <div class="sb-points">${it.points} Pkt</div>`;
           if(!it.result){
             html += `<div class="sb-actions">
-              <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅</button>
-              <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌</button>
+              <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
+              <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
             </div>`;
+          } else {
+            html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
           }
-          html += `</div><div class="score-sub" style="margin:-4px 0 8px;">Stimmen: ✅ ${yes} · ❌ ${no}</div>`;
+          html += `</div>`;
         });
       });
       if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
@@ -2348,7 +2365,7 @@ function renderTeamRoundSection(){
     const hasNext = isHost && (teamCampaignIndex + 1) < total;
     const uwDone = unitWord(currentRound.scope);
     const doneTitle = isHost ? `${uwDone} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${uwDone} abgeschlossen`;
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
+    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon confetti-burst" id="team-done-confetti">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
     html += heroBlock;
     html += renderLeaderboardTable(results, null, (username)=>{
       const member = teamMembers.find(m=>m.username===username);
@@ -2368,6 +2385,10 @@ function renderTeamRoundSection(){
       html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die nächste Runde startet…</div>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
+    }
+    if(teamCelebratedFor !== currentRound.id){
+      teamCelebratedFor = currentRound.id;
+      setTimeout(()=>spawnConfetti('team-done-confetti'), 0);
     }
     return html;
   }
@@ -3420,6 +3441,27 @@ const MATCH_STYLE_COMPOSITION = {
 const TEAM_ROUND_DIFF_POINTS = { leicht:1, mittel:3, schwer:5 };
 
 /* ============================================================ HELPERS ============================================================ */
+/* Kurze, einmalige Konfetti-Animation an einer Ankerstelle (z. B. ums Trophäen-Icon) — für
+   "jemand hat gewonnen"-Momente. Räumt sich nach ~1.4s selbst wieder auf. */
+function spawnConfetti(targetId){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  const EMOJI = ['🎉','✨','🏆','🎊','⭐','🥳'];
+  for(let i=0;i<16;i++){
+    const span = document.createElement('span');
+    span.className = 'confetti-piece';
+    span.textContent = EMOJI[randInt(0,EMOJI.length-1)];
+    const angle = Math.random()*Math.PI*2;
+    const dist = 55 + Math.random()*65;
+    span.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
+    span.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
+    span.style.setProperty('--rot', (Math.random()*360-180)+'deg');
+    span.style.animationDelay = (Math.random()*0.12)+'s';
+    el.appendChild(span);
+  }
+  el.classList.add('winner-pop');
+  setTimeout(()=>{ el.classList.remove('winner-pop'); el.querySelectorAll('.confetti-piece').forEach(p=>p.remove()); }, 1400);
+}
 function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function pickN(arr, n){ return shuffle(arr).slice(0,n); }
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
@@ -4510,19 +4552,22 @@ function renderScoreboard(){
   }
 
   if(session.finished){
-    html += `<div class="final-summary"><div class="big-emoji">🏁</div><h3>Session beendet</h3><p style="color:var(--text-muted);">${session.currentRound} Runde${session.currentRound>1?'n':''} gespielt</p></div>`;
+    html += `<div class="final-summary"><div class="big-emoji confetti-burst" id="local-done-confetti">🏁</div><h3>Session beendet</h3><p style="color:var(--text-muted);">${session.currentRound} Runde${session.currentRound>1?'n':''} gespielt</p></div>`;
     html += roundScoreSummary();
     if(session.mode==='team'){ html += `<div class="score-total">Endstand: <span>${session.cumulativeTeam}</span> Punkte</div>`; }
     else { const scored = session.players.map(p=>({name:p, score:session.cumulativePlayers[p]||0})).sort((a,b)=>b.score-a.score); html += renderLeaderboardTable(scored, null); }
     html += `<div class="round-prompt-actions"><button class="round-prompt-btn primary" onclick="newSessionFromScoreboard()">🚀 Neue Session</button></div>`;
-    el.innerHTML = html; animateMiniGoalBars(el); return;
+    el.innerHTML = html; animateMiniGoalBars(el);
+    const finKey = 'finished_'+session.currentRound;
+    if(localCelebratedKey !== finKey){ localCelebratedKey = finKey; setTimeout(()=>spawnConfetti('local-done-confetti'), 0); }
+    return;
   }
 
   if(session.awaitingNextGameChoice){
     if(session.scope === 'games'){
       const nextId = session.gameSequence[session.currentGameIndex+1];
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! 🎉</h3>
+        <h3>Runde ${session.currentRound} beendet! <span class="confetti-burst" id="local-round-confetti">🎉</span></h3>
         ${roundScoreSummary()}
         <p>Weiter geht's mit ${gameIconHTML(nextId,18)} ${GAME_NAME[nextId]} (Spiel ${session.currentGameIndex+2} von ${session.gameSequence.length}).</p>
         <div class="round-prompt-actions"><button class="round-prompt-btn primary" onclick="advanceGameSequence()">▶️ Weiter</button></div>
@@ -4530,7 +4575,7 @@ function renderScoreboard(){
     } else {
       const otherGames = SESSION_GAMES.filter(id=> id!==session.gameId && allowedModesFor(id).includes(session.mode));
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! 🎉</h3>
+        <h3>Runde ${session.currentRound} beendet! <span class="confetti-burst" id="local-round-confetti">🎉</span></h3>
         ${roundScoreSummary()}
         <p>Noch ${session.totalRounds - session.currentRound} Runde${(session.totalRounds - session.currentRound)>1?'n':''} übrig. Weiterspielen mit demselben Spiel oder ein anderes wählen?</p>
         <div class="round-prompt-actions">
@@ -4542,7 +4587,10 @@ function renderScoreboard(){
         </div>
       </div>`;
     }
-    el.innerHTML = html; animateMiniGoalBars(el); return;
+    el.innerHTML = html; animateMiniGoalBars(el);
+    const roundKey = 'round_'+session.currentRound;
+    if(localCelebratedKey !== roundKey){ localCelebratedKey = roundKey; setTimeout(()=>spawnConfetti('local-round-confetti'), 0); }
+    return;
   }
 
   if(session.mode === 'team'){
@@ -4606,6 +4654,7 @@ function renderChallengeListPlain(arr){
   html += '</div>';
   return html;
 }
+let localCelebratedKey = null; // verhindert, dass die Gewinn-Animation bei jedem Re-Render erneut abspielt
 function toggleReveal(playerName){
   session.revealedPlayer = session.revealedPlayer === playerName ? null : playerName;
   saveSession(); renderScoreboard();
