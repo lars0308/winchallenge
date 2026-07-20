@@ -722,12 +722,6 @@
     <div class="section-lead"><div class="eyebrow">Dauerhaft</div><h2>Gesamtrangliste</h2><p>Wird nach jeder beendeten Runde automatisch aktualisiert.</p></div>
     <div id="stats-content"></div>
     <div class="roll-zone" style="margin-top:16px;"><button class="roll-btn" onclick="showView('shop')">🛒 Punkte-Shop</button></div>
-    <div class="panel-block" style="margin-top:24px;">
-      <div class="setup-step-head"><span class="setup-step-icon">⚙️</span><div class="setup-step-title">Einstellungen</div></div>
-      <p class="setup-info" style="margin-top:0;">Zum Testen: setzt lokale Daten auf diesem Gerät zurück. Betrifft nur dieses Gerät, nicht euer Online-Konto.</p>
-      <div class="roll-zone" style="margin-bottom:10px;"><button class="sb-btn danger" onclick="resetStatsOnly()">🗑️ Nur Statistiken zurücksetzen</button></div>
-      <div class="roll-zone" style="margin-bottom:0;"><button class="sb-btn danger" onclick="resetAllLocalData()">🧨 Alles zurücksetzen (Statistiken, Mitspieler, Avatare)</button></div>
-    </div>
   </div>
 </section>
 
@@ -788,6 +782,10 @@
         <input type="number" id="admin-points-amount" placeholder="z. B. 500" value="500">
         <button onclick="adminAddPoints()">➕ Hinzufügen</button>
       </div>
+      <div class="setup-step-head" style="margin-top:24px;"><span class="setup-step-icon">🧨</span><div class="setup-step-title">Lokale Daten zurücksetzen</div></div>
+      <p class="setup-info" style="margin-top:0;">Praktisch, bevor ihr die App an Freunde weitergebt. Betrifft nur dieses Gerät, nicht euer Online-Konto.</p>
+      <div class="roll-zone" style="margin-bottom:10px;"><button class="sb-btn danger" onclick="resetStatsOnly()">🗑️ Statistiken &amp; Shop zurücksetzen (Punkte, Guthaben, Mützen, Abzeichen, Banner …)</button></div>
+      <div class="roll-zone" style="margin-bottom:0;"><button class="sb-btn danger" onclick="resetAllLocalData()">🧨 Alles auf Standard (zusätzlich Mitspieler &amp; Avatare)</button></div>
     </div>
   </div>
 </section>
@@ -1780,10 +1778,11 @@ function showMemberProfile(userId){
   const factsHTML = facts.length
     ? facts.map(([label,val])=>`<div class="member-modal-fact"><span><span class="fact-label">${label}</span>${val}</span></div>`).join('')
     : `<div class="empty-hint" style="padding:14px;">${m.username} hat noch keine Angaben in den Benutzer-Einstellungen gemacht.</div>`;
-  modal.innerHTML = `<div class="member-modal-card" onclick="event.stopPropagation();">
+  const memberBanner = cosmeticsFor(m.username).banner;
+  modal.innerHTML = `<div class="member-modal-card${memberBanner && memberBanner.animated ? ' stat-card-animated-banner' : ''}" style="${memberBanner ? `background:${memberBanner.grad};${memberBanner.animated?'background-size:400% 400%;':''}` : ''}" onclick="event.stopPropagation();">
     <button class="member-modal-close" onclick="closeMemberProfileModal()" aria-label="Schließen">✕</button>
-    <div class="member-modal-avatar">${renderAccountAvatarHTML(m.avatar,52)}</div>
-    <div class="member-modal-name">${m.username}${m.user_id===myTeam.host_id?' 👑':''}</div>
+    <div class="member-modal-avatar">${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,52), 52)}</div>
+    <div class="member-modal-name">${badgeIconHTML(cosmeticsFor(m.username).badge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</div>
     ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
     <div class="member-modal-facts">${factsHTML}</div>
   </div>`;
@@ -1866,7 +1865,6 @@ function renderTeamRoundPicker(){
       btn.className = 'filter-pill'+(it.key===teamRoundScope?' active':'');
       btn.textContent = it.label;
       btn.addEventListener('click', ()=>{
-        if(it.key==='blitz'){ blitzOnlineIntent = true; showView('blitz'); return; }
         teamRoundScope = it.key; renderTeamRoundPicker();
       });
       scopeRow.appendChild(btn);
@@ -1876,14 +1874,31 @@ function renderTeamRoundPicker(){
       ? 'Ihr wählt mehrere Spiele, die nacheinander gespielt werden (je 1 Runde).'
       : teamRoundScope==='match'
         ? '🏆 MATCH: Der Held bleibt fürs ganze Match gleich, die Challenges sind größer und für das ganze Match gedacht (mehr davon, länger).'
-        : '🔁 RUNDE: Nach jeder Runde gibt es einen neuen Helden und neue, kürzere Challenges.';
+        : teamRoundScope==='blitz'
+          ? '⚡ BLITZRUNDE: Spiel optional wählen, der Rest (Modus, Schwierigkeit, Spielart) wird zufällig gewürfelt — startet sofort für alle.'
+          : '🔁 RUNDE: Nach jeder Runde gibt es einen neuen Helden und neue, kürzere Challenges.';
   }
   const gameStep = document.getElementById('team-round-game-step');
   const gamesMultiStep = document.getElementById('team-round-gamesmulti-step');
   const countStep = document.getElementById('team-round-count-step');
-  if(gameStep) gameStep.style.display = (teamRoundScope==='rounds' || teamRoundScope==='match') ? 'block' : 'none';
+  const modeCard = document.getElementById('team-round-mode-card');
+  const sessionModeCard = document.getElementById('team-round-sessionmode-card');
+  const difficultyCard = document.getElementById('team-round-difficulty-step');
+  const confirmZone = document.getElementById('team-round-confirm-zone');
+  const blitzZone = document.getElementById('team-round-blitz-zone');
+  const isBlitz = teamRoundScope==='blitz';
+  if(gameStep) gameStep.style.display = (teamRoundScope==='rounds' || teamRoundScope==='match' || isBlitz) ? 'block' : 'none';
   if(countStep) countStep.style.display = (teamRoundScope==='rounds' || teamRoundScope==='match') ? 'block' : 'none';
   if(gamesMultiStep) gamesMultiStep.style.display = teamRoundScope==='games' ? 'block' : 'none';
+  if(modeCard) modeCard.style.display = isBlitz ? 'none' : 'block';
+  if(sessionModeCard) sessionModeCard.style.display = isBlitz ? 'none' : 'block';
+  if(difficultyCard) difficultyCard.style.display = isBlitz ? 'none' : 'block';
+  if(confirmZone) confirmZone.style.display = isBlitz ? 'none' : 'block';
+  if(blitzZone) blitzZone.style.display = isBlitz ? 'block' : 'none';
+  if(isBlitz){
+    const gmStepEl = document.getElementById('team-round-gamemode-step');
+    if(gmStepEl) gmStepEl.style.display = 'none';
+  }
 
   const gameRow = document.getElementById('team-round-game-picker');
   if(gameRow){
@@ -2695,30 +2710,37 @@ function renderTeamRoundSection(){
     const uwDone = unitWord(currentRound.scope);
     const doneTitle = isHost ? `${uwDone} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${uwDone} abgeschlossen`;
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon confetti-burst" id="team-done-confetti">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
-    html += heroBlock;
-    html += renderLeaderboardTable(results, null, (username)=>{
-      const member = teamMembers.find(m=>m.username===username);
-      return renderAccountAvatarHTML(member ? member.avatar : null, 20);
-    });
     if(hasNext){
+      html += heroBlock;
+      html += renderLeaderboardTable(results, null, (username)=>{
+        const member = teamMembers.find(m=>m.username===username);
+        return renderAccountAvatarHTML(member ? member.avatar : null, 20);
+      });
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${teamCampaignIndex+2}/${total})</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
     } else if(isHost){
       if(teamCampaignSyncedFor !== currentRound.id){ teamCampaignSyncedFor = currentRound.id; syncCampaignSummary(); }
+      html += renderCampaignFinalSummary(teamCampaignHistory);
+      html += heroBlock;
       html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen (${total}/${total} ${unitWordPlural(currentRound.scope)} gespielt).</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
       html += `</div>`;
-      html += renderCampaignFinalSummary(teamCampaignHistory);
       html += renderCampaignSummaryBlock(teamCampaignHistory);
     } else if(campaignDoneForMember){
+      html += renderCampaignFinalSummary(syncedSummary.history);
+      html += heroBlock;
       html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen — wartet auf den Team-Ersteller (👑) für eine neue Runde.</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
-      html += renderCampaignFinalSummary(syncedSummary.history);
       html += renderCampaignSummaryBlock(syncedSummary.history);
     } else {
+      html += heroBlock;
+      html += renderLeaderboardTable(results, null, (username)=>{
+        const member = teamMembers.find(m=>m.username===username);
+        return renderAccountAvatarHTML(member ? member.avatar : null, 20);
+      });
       html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die nächste Runde startet…</div>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
@@ -2767,8 +2789,8 @@ function renderPodium(ranked){
     const member = teamMembers.find(m=>m.username===p.name);
     html += `<div class="podium-col">
       <div class="podium-fireworks">🎆</div>
-      <div class="podium-avatar">${renderAccountAvatarHTML(member?member.avatar:null,36)}</div>
-      <div class="podium-name">${p.name}</div>
+      <div class="podium-avatar">${withHatOverlay(p.name, renderAccountAvatarHTML(member?member.avatar:null,36), 36)}</div>
+      <div class="podium-name">${badgeIconHTML(cosmeticsFor(p.name).badge)}${glowNameHTML(p.name,p.name)}</div>
       <div class="podium-step podium-step-${idx+1}" style="height:${heights[idx]};">
         <span class="podium-medal">${medals[idx]}</span>
         <span class="podium-score">${p.score} Pkt</span>
@@ -2928,11 +2950,11 @@ function renderTeamSettingsScreen(){
       </div>
     </div>
 
-    <div class="settings-card">
+    <div class="settings-card" id="team-round-mode-card">
       <div class="setup-step-head"><span class="setup-step-icon">🤝</span><div class="setup-step-title">Modus</div></div>
       <div class="filter-row" id="team-round-mode-picker"></div>
     </div>
-    <div class="settings-card">
+    <div class="settings-card" id="team-round-sessionmode-card">
       <div class="setup-step-head"><span class="setup-step-icon">🌀</span><div class="setup-step-title">Spielart</div></div>
       <div class="filter-row" id="team-round-sessionmode-picker"></div>
     </div>
@@ -2942,7 +2964,8 @@ function renderTeamSettingsScreen(){
     </div>
 
     <div class="setup-warning" id="team-settings-warning"></div>
-    <div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="confirmTeamSettings()">✅ Weiter zur Lobby &amp; Einladen</button></div>
+    <div class="roll-zone" id="team-round-confirm-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="confirmTeamSettings()">✅ Weiter zur Lobby &amp; Einladen</button></div>
+    <div class="roll-zone" id="team-round-blitz-zone" style="margin-top:16px; margin-bottom:0; display:none;"><button class="roll-btn" onclick="startOnlineBlitzRound(teamRoundGameChoice || null)">⚡ Blitzrunde für alle starten</button></div>
   </div>`;
 }
 /* ---- Screen 3: Lobby / Einladen (Code + Mitglieder, kein aktiver Round) ---- */
@@ -5098,10 +5121,11 @@ function renderHeroRow(entries, avatarResolver){
   let html = '<div class="solo-hero-list sb-hero-row">';
   entries.forEach(([playerName, hero])=>{
     const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
-    const avatarBit = avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,16);
+    const avatarBit = withHatOverlay(playerName, avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,16), 16);
+    const badgeBit = badgeIconHTML(cosmeticsFor(playerName).badge);
     html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
       <div class="solo-avatar" style="background:${heroImageCache[heroName]?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-      <div class="solo-info"><div class="solo-player">${avatarBit} ${playerName}</div><div class="solo-hero">${heroName}</div></div>
+      <div class="solo-info"><div class="solo-player">${avatarBit} ${badgeBit}${glowNameHTML(playerName,playerName)}</div><div class="solo-hero">${heroName}</div></div>
       <div class="solo-role" style="background:${meta.color}">${role}</div></div>`;
   });
   html += '</div>'; return html;
@@ -5168,9 +5192,10 @@ function renderLeaderboardTable(scored, goal, avatarResolver){
   let html = '<div class="leaderboard">';
   scored.forEach((s,i)=>{
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
-    const avatarBit = avatarResolver ? avatarResolver(s.name) : avatarHTML(s.name,20);
+    const avatarBit = withHatOverlay(s.name, avatarResolver ? avatarResolver(s.name) : avatarHTML(s.name,20), 20);
+    const badgeBit = badgeIconHTML(cosmeticsFor(s.name).badge);
     html += `<div class="leaderboard-row ${i===0?'lead':''}">
-      <div class="leaderboard-row-main"><div class="lb-rank">${medal}</div><div class="lb-avatar">${avatarBit}</div><div class="lb-name">${s.name}</div><div class="lb-score">${s.score} Pkt</div></div>
+      <div class="leaderboard-row-main"><div class="lb-rank">${medal}</div><div class="lb-avatar">${avatarBit}</div><div class="lb-name">${badgeBit}${glowNameHTML(s.name,s.name)}</div><div class="lb-score">${s.score} Pkt</div></div>
       ${goal ? miniGoalBar(s.score, goal) : ''}
     </div>`;
   });
