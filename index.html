@@ -1029,6 +1029,44 @@ const LS_SESSION = 'winchallenge_session_v4';
 const LS_STATS = 'winchallenge_stats_v1';
 const LS_AVATARS = 'winchallenge_avatars_v1';
 const LS_SETUP = 'winchallenge_setup_wip_v1';
+const LS_TEAM_CAMPAIGN = 'winchallenge_team_campaign_v1';
+/* Die Kampagnen-Einstellungen des Hosts (welches Spiel, Modus, Runden-Scope, aktuelle Position …)
+   lagen bisher nur im Arbeitsspeicher. Ein Reload zwischen zwei Matches/Runden hat sie dadurch
+   verloren, wodurch "Nächstes Match" mit einem leeren Spiel abstürzte ("Bitte zuerst ein Spiel
+   auswählen"). Werden jetzt zusätzlich lokal gespeichert und beim Wiedereinstieg restauriert. */
+function saveTeamCampaignState(){
+  if(!myTeam) return;
+  try{
+    localStorage.setItem(LS_TEAM_CAMPAIGN, JSON.stringify({
+      teamId: myTeam.id, teamRoundScope, teamRoundGameChoice, teamRoundGameMode, teamRoundModeChoice,
+      teamRoundSessionModeChoice, teamRoundDifficulty, teamRoundCount, teamRoundSelectedGames,
+      teamCampaignIndex, teamCampaignHistory,
+    }));
+  }catch(e){}
+}
+function loadTeamCampaignState(teamId){
+  try{
+    const raw = localStorage.getItem(LS_TEAM_CAMPAIGN);
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(data && data.teamId === teamId) return data;
+  }catch(e){}
+  return null;
+}
+function restoreTeamCampaignState(teamId){
+  const saved = loadTeamCampaignState(teamId);
+  if(!saved) return;
+  teamRoundScope = saved.teamRoundScope || teamRoundScope;
+  teamRoundGameChoice = saved.teamRoundGameChoice || teamRoundGameChoice;
+  teamRoundGameMode = saved.teamRoundGameMode || teamRoundGameMode;
+  teamRoundModeChoice = saved.teamRoundModeChoice || teamRoundModeChoice;
+  teamRoundSessionModeChoice = saved.teamRoundSessionModeChoice || teamRoundSessionModeChoice;
+  teamRoundDifficulty = saved.teamRoundDifficulty || teamRoundDifficulty;
+  teamRoundCount = saved.teamRoundCount || teamRoundCount;
+  teamRoundSelectedGames = saved.teamRoundSelectedGames || teamRoundSelectedGames;
+  teamCampaignIndex = typeof saved.teamCampaignIndex === 'number' ? saved.teamCampaignIndex : teamCampaignIndex;
+  teamCampaignHistory = saved.teamCampaignHistory || teamCampaignHistory;
+}
 function saveSetupState(){ try{ localStorage.setItem(LS_SETUP, JSON.stringify({ setupState, stepIndex })); }catch(e){} }
 function loadSetupState(){ try{ const raw = localStorage.getItem(LS_SETUP); if(raw) return JSON.parse(raw); }catch(e){} return null; }
 function clearSetupState(){ try{ localStorage.removeItem(LS_SETUP); }catch(e){} }
@@ -1172,6 +1210,7 @@ async function restoreMyTeam(){
     const { data, error } = await sb.from('team_members').select('team_id, teams(*)').eq('user_id', currentUser.id).limit(1).maybeSingle();
     if(!error && data && data.teams){
       myTeam = data.teams;
+      restoreTeamCampaignState(myTeam.id);
       await subscribeTeam(myTeam.id);
       await refreshTeamMembers();
     }
@@ -1329,7 +1368,7 @@ function openProfilePage(){
   document.getElementById('profile-username').value = currentUser.username || '';
   document.getElementById('profile-motto').value = currentUser.bio || '';
   const sel = document.getElementById('profile-favgame');
-  sel.innerHTML = '<option value="">Lieblingsspiel (optional)</option>' + GAMES.filter(g=>g.id!=='wwm').map(g=>`<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
+  sel.innerHTML = '<option value="">Lieblingsspiel (optional)</option>' + GAMES.map(g=>`<option value="${g.id}">${g.icon} ${g.name}</option>`).join('');
   sel.value = currentUser.favorite_game || '';
   document.getElementById('profile-role').value = currentUser.preferred_role || '';
   document.getElementById('profile-skill').value = currentUser.skill_level || '';
@@ -1618,6 +1657,16 @@ async function checkActiveRound(){
   const wasTrackingThisRound = !!(currentRound && data && currentRound.id === data.id);
   if(!error && data && (data.status === 'active' || data.status === 'voting' || (data.status === 'done' && wasTrackingThisRound))){
     currentRound = data;
+    // Diese Felder beschreiben die laufende Kampagne vollständig — bei einem Reload mitten in
+    // einer Runde (oder einem frischen Tab) waren teamRoundGameChoice & Co. sonst leer, wodurch
+    // "Nächstes Match" mit "Bitte zuerst ein Spiel auswählen" abstürzte. Jetzt vom Server aufgefrischt.
+    teamRoundGameChoice = currentRound.game_id || teamRoundGameChoice;
+    teamRoundGameMode = currentRound.game_mode || null;
+    teamRoundModeChoice = currentRound.mode || teamRoundModeChoice;
+    teamRoundSessionModeChoice = currentRound.session_mode || teamRoundSessionModeChoice;
+    teamRoundDifficulty = currentRound.difficulty || teamRoundDifficulty;
+    teamRoundScope = currentRound.scope || teamRoundScope;
+    if(typeof currentRound.campaign_total === 'number' && teamRoundScope !== 'games') teamRoundCount = currentRound.campaign_total;
     await loadRoundItems();
   } else {
     currentRound = null; roundItems = []; roundVotes = {};
@@ -1791,6 +1840,7 @@ function confirmTeamSettings(){
   teamCampaignHistory = [];
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[0];
   teamSettingsOpen = false;
+  saveTeamCampaignState();
   if(sb && myTeam){
     const gid = (teamRoundScope==='rounds' || teamRoundScope==='match') ? teamRoundGameChoice : null;
     sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
@@ -1863,6 +1913,7 @@ async function startTeamRound(skipReadyCheck){
   currentRound = round;
   await loadRoundItems();
   teamRoundTransitioning = false;
+  saveTeamCampaignState();
   renderTeamPage();
 }
 async function markTeamPersonallyDone(){
@@ -2207,6 +2258,11 @@ function renderTeamRoundSection(){
 
   if(needsReveal){
     const pool = HERO_GAMES[currentRound.game_id];
+    const mine = teamMembers.find(m=>m.user_id===currentUser.id);
+    const myChosenRole = mine && mine.round_role && mine.round_role!=='all' ? mine.round_role : null;
+    const roleLine = myChosenRole
+      ? ` · deine Rolle: ${ROLE_META[myChosenRole]?ROLE_META[myChosenRole].icon:''} ${myChosenRole}`
+      : (myHero ? ` · Rolle: ${ROLE_META[myHero[1]]?ROLE_META[myHero[1]].icon:''} ${myHero[1]}` : '');
     // Cache the idle reel's random background items per round instead of regenerating them
     // on every re-render — background polling (every ~3s) would otherwise silently reshuffle
     // the idle reel, which looks like it's twitching on its own before the player taps Start.
@@ -2218,7 +2274,7 @@ function renderTeamRoundSection(){
       <div class="section-lead" style="padding-top:0;">
         <div class="eyebrow">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · Helden-Auslosung</div>
         <h2 style="font-size:1.7rem;display:flex;align-items:center;gap:10px;">${gameIconHTML(currentRound.game_id,30)} ${GAME_NAME[currentRound.game_id]}</h2>
-        <p style="margin:2px 0 0;color:var(--text-muted);">Dein Held</p>
+        <p style="margin:2px 0 0;color:var(--text-muted);">Dein Held${roleLine}</p>
       </div>
       <div class="reel-block">
         <div class="reel-outer"><div class="reel-viewport reel-idle"><div class="reel-center-marker"></div><div class="reel-track" id="team-reel-track">${teamIdleReelCacheHTML}</div></div></div>
@@ -2259,6 +2315,15 @@ function renderTeamRoundSection(){
     if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
       html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Helden für alle neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
     }
+    const doneSet = new Set(currentRound.personally_done || []);
+    const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
+    const missing = others.filter(m=>!doneSet.has(m.user_id));
+    if(others.length){
+      html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
+      html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
+        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${renderAccountAvatarHTML(m.avatar,18)}</span><span>${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+      ).join('') + `</div>`;
+    }
     if(currentRound.mode === 'team'){
       html += `<div class="rules-note">Diese Regeln gelten für alle und sind für jeden sichtbar.</div>`;
       html += renderChallengeListPlain(roundItems.filter(it=>it.scope==='shared'));
@@ -2274,15 +2339,6 @@ function renderTeamRoundSection(){
       if(myChallengeJokerUses < maxJokers && !currentRound.pending_joker){
         html += `<div class="roll-zone" style="margin:8px 0 4px;"><button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges neu auslosen (${maxJokers-myChallengeJokerUses}x übrig)</button></div>`;
       }
-    }
-    const doneSet = new Set(currentRound.personally_done || []);
-    const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
-    const missing = others.filter(m=>!doneSet.has(m.user_id));
-    if(others.length){
-      html += `<div class="rules-note" style="margin-top:16px;">Status:</div>`;
-      html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${renderAccountAvatarHTML(m.avatar,18)}</span><span>${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
-      ).join('') + `</div>`;
     }
     if(isHost){
       if(missing.length){
@@ -2425,6 +2481,7 @@ function nextCampaignRound(){
   currentRound = null; roundItems = []; roundVotes = {};
   teamHeroRevealedFor = null; teamIdleReelCacheFor = null; teamPersonallyDoneFor = null;
   teamRoundTransitioning = true;
+  saveTeamCampaignState();
   renderTeamPage();
   // Innerhalb einer laufenden Kampagne wurde beim Start bereits einmal "bereit" bestätigt —
   // die nächste Runde soll deshalb nahtlos weitergehen, statt jedes Mal zurück in die Lobby
@@ -2605,6 +2662,14 @@ function renderTeamLobbyScreen(isHost, mine){
   html += `<div class="roll-zone"><button class="roll-btn" onclick="toggleMyReady()">${mine && mine.ready ? '⏳ Nicht mehr bereit' : '✅ Bereit'}</button></div>`;
 
   if(isHost){
+    html += `<button class="settings-row-btn" style="margin-top:4px;" onclick="blitzOnlineIntent=true; showView('blitz');">
+      <span class="settings-row-icon">⚡</span>
+      <span class="settings-row-text">
+        <span class="settings-row-title">Blitzrunde</span>
+        <span class="settings-row-sub">Spiel wählen (optional), Rest wird sofort online für alle gewürfelt</span>
+      </span>
+      <span class="settings-row-chev">›</span>
+    </button>`;
     html += `<button class="settings-row-btn" style="margin-top:4px;" onclick="openTeamSettings()">
       <span class="settings-row-icon">⚙️</span>
       <span class="settings-row-text">
@@ -2879,7 +2944,7 @@ const GAMES = [
 ];
 const GAME_NAME = {}; const GAME_ICON = {};
 GAMES.forEach(g=>{ GAME_NAME[g.id]=g.name; GAME_ICON[g.id]=g.icon; });
-const SESSION_GAMES = GAMES.filter(g=>g.id!=='wwm').map(g=>g.id);
+const SESSION_GAMES = GAMES.map(g=>g.id);
 
 /* ============================================================ HERO ROSTERS (2026) ============================================================ */
 const OW2_HEROES = [
@@ -2956,7 +3021,7 @@ function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
   });
   return result;
 }
-const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'] };
+const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'], wwm:['team'] };
 const GAME_ROUND_PRESETS = { cs2:[6,9,12,16,24], val:[6,9,12,16,24], ow2:[2,3], mr:[2,3] };
 /* Ingame-Modi für Spiele mit echtem Rundensystem (Valorant, CS2). 'match' = ein komplettes
    Match hat viele interne Runden (bis 24) — hier soll 1 App-Runde = 1 komplettes Match sein,
@@ -3288,7 +3353,7 @@ function personalPoolFor(gameId, gameMode){
 }
 const CHALLENGE_SOURCES = {
   cs2: CS2_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
-  fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES,
+  fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES, wwm: WWM_CHALLENGES,
 };
 
 /* ============================================================ PERSONAL POOLS (Gegeneinander, competitive per player) ============================================================ */
@@ -3568,17 +3633,19 @@ function renderStartChoicePage(){
   if(!el) return;
   const sub = document.getElementById('fresh-setup-sub');
   if(sub) sub.textContent = myTeam ? `Direkt auf diesem Gerät — Team „${myTeam.name || 'Team'}" wird vorausgefüllt` : 'Direkt auf diesem Gerät starten';
-  el.innerHTML = `<button class="landing-btn" onclick="showView('blitz')">
+  el.innerHTML = `<button class="landing-btn" onclick="blitzOnlineIntent=false; showView('blitz');">
     <span class="landing-btn-icon">⚡</span>
-    <span class="landing-btn-text"><span class="landing-btn-title">Blitzrunde</span><span class="landing-btn-sub">Spiel wählen (optional), Rest ist zufällig — ohne Einstellungen</span></span>
+    <span class="landing-btn-text"><span class="landing-btn-title">Blitzrunde</span><span class="landing-btn-sub">Offline auf diesem Gerät — ohne Gruppe, ohne Einstellungen</span></span>
   </button>`;
 }
+let blitzOnlineIntent = false; // true = über die Team-Lobby aufgerufen -> startet online für die Gruppe; sonst immer lokal
 function renderBlitzPage(){
+  const onlineIntent = blitzOnlineIntent && myTeam && currentUser;
   const sub = document.getElementById('blitz-context-sub');
   if(sub){
-    sub.textContent = myTeam
+    sub.textContent = onlineIntent
       ? `Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Startet sofort online für euer Team „${myTeam.name || 'Team'}".`
-      : 'Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Läuft direkt auf diesem Gerät.';
+      : 'Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Läuft direkt auf diesem Gerät (offline/lokal), unabhängig von einer Online-Gruppe.';
   }
   const row = document.getElementById('blitz-game-picker');
   if(!row) return;
@@ -3597,9 +3664,10 @@ function renderBlitzPage(){
   });
 }
 function startBlitzRound(gameId){
-  // In einer Online-Gruppe soll die Blitzrunde für alle Mitspieler live über die Gruppe laufen,
-  // nicht nur lokal auf diesem Gerät.
-  if(myTeam && currentUser){ startOnlineBlitzRound(gameId); return; }
+  // Nur wenn die Blitzrunde explizit über die Team-Lobby aufgerufen wurde, läuft sie online für
+  // die Gruppe. Über den Menü-/Home-Button ist sie IMMER lokal auf diesem Gerät — auch wenn man
+  // zufällig gerade Mitglied einer Gruppe ist.
+  if(blitzOnlineIntent && myTeam && currentUser){ startOnlineBlitzRound(gameId); return; }
   if(myTeam && teamMembers.length){
     teamMembers.forEach(m=>{
       if(!globalPlayers.includes(m.username)) globalPlayers.push(m.username);
@@ -3626,6 +3694,7 @@ function startBlitzRound(gameId){
 }
 async function startOnlineBlitzRound(gameId){
   if(!myTeam || !currentUser || !sb) return;
+  if(myTeam.host_id !== currentUser.id){ alert('Nur der Team-Ersteller (👑) kann eine Blitzrunde für die Gruppe starten.'); showView('team'); return; }
   if(currentRound){ alert('In eurer Gruppe läuft schon eine Runde.'); showView('team'); return; }
   if(teamMembers.length < 2){ alert('Für die Blitzrunde braucht ihr mindestens 2 Mitspieler in der Gruppe.'); return; }
   if(!gameId) gameId = SESSION_GAMES[randInt(0, SESSION_GAMES.length-1)];
@@ -3638,6 +3707,7 @@ async function startOnlineBlitzRound(gameId){
   teamRoundDifficulty = 'Mittel';
   teamRoundScope = 'rounds'; teamRoundCount = 1; teamCampaignIndex = 0;
   teamSettingsOpen = false;
+  blitzOnlineIntent = false;
   showView('team');
   // Wie die lokale Blitzrunde ohne extra Einstellungsschritt starten — deshalb hier auch ohne
   // erneuten Bereit-Zwang, damit sie wirklich spontan für die ganze Gruppe losgeht.
@@ -3912,12 +3982,6 @@ function visibleSteps(){
 }
 
 function startFreshSetup(){
-  try{
-    if(!localStorage.getItem('winchallenge_seen_intro_v1')){
-      alert('Kurz erklärt: Gleich kommen 7 kurze Schritte (Spiel, Modus, Schwierigkeit, Runden, Spieleranzahl, Teilnehmer). Danach seht ihr direkt eure Challenges mit Punkten. Das war\'s auch schon — viel Spaß!');
-      localStorage.setItem('winchallenge_seen_intro_v1', '1');
-    }
-  }catch(e){}
   continueFromSession = false;
   const saved = loadSetupState();
   if(saved && saved.setupState && (saved.setupState.gameId || (saved.setupState.selectedGames && saved.setupState.selectedGames.length))){
@@ -4450,11 +4514,15 @@ function renderSessionHeroReveal(el, headHtml){
   const hero = session.heroAssignment[player];
   const pool = HERO_GAMES[session.gameId];
   const isLast = session.heroRevealIndex === session.players.length-1;
+  const chosenRole = session.roleMap && session.roleMap[player] && session.roleMap[player]!=='all' ? session.roleMap[player] : null;
+  const roleLine = chosenRole
+    ? ` · Wunschrolle: ${ROLE_META[chosenRole]?ROLE_META[chosenRole].icon:''} ${chosenRole}`
+    : (hero ? ` · Rolle: ${ROLE_META[hero[1]]?ROLE_META[hero[1]].icon:''} ${hero[1]}` : '');
   el.innerHTML = headHtml + `
     <div class="section-lead" style="padding-top:0;">
       <div class="eyebrow">Helden-Auslosung</div>
       <h2 style="font-size:1.5rem;display:flex;align-items:center;gap:8px;">${gameIconHTML(session.gameId,26)} ${GAME_NAME[session.gameId]}</h2>
-      <p style="margin:2px 0 0;color:var(--text-muted);">Wer bekommt wen?</p>
+      <p style="margin:2px 0 0;color:var(--text-muted);">Wer bekommt wen?${roleLine}</p>
     </div>
     <div class="reel-block">
       <div class="reel-player-name">${player}</div>
