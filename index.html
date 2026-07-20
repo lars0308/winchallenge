@@ -382,6 +382,25 @@
   @media (min-width:1280px){
     .content{ max-width:1320px; }
     .tile-grid{ max-width:1400px; }
+    .setup-step, .admin-block, .panel-block, .setup-nav, .challenge-list{ max-width:1080px; }
+    .leaderboard, .scoreboard-head{ max-width:1080px; }
+    .goal-bar-wrap, .rules-note, .round-prompt, .setup-info, .setup-warning, .choice-card-row,
+    .empty-hint, .player-manager, .wwm-roster{ max-width:900px; }
+  }
+  @media (min-width:1600px){
+    .content{ max-width:1560px; }
+    .tile-grid{ max-width:1600px; }
+    .setup-step, .admin-block, .panel-block, .setup-nav, .challenge-list{ max-width:1280px; }
+    .leaderboard, .scoreboard-head{ max-width:1280px; }
+  }
+  /* Challenge-Listen (Regeln/Bewertung) nutzen ab genug Breite zwei Spalten statt einer
+     langen, schmalen Liste in der Bildschirmmitte. */
+  @media (min-width:1100px){
+    .sb-challenge-list{ display:grid; grid-template-columns:repeat(2, 1fr); align-items:stretch; }
+    .sb-challenge-item{ height:100%; }
+  }
+  @media (min-width:1600px){
+    .panel-block .sb-challenge-list, .settings-card .sb-challenge-list{ grid-template-columns:repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -768,6 +787,12 @@
     <div id="step-difficulty" class="setup-step">
       <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Schwierigkeit</div></div>
       <div class="filter-row" id="setup-difficulty"></div>
+    </div>
+
+    <div id="step-role" class="setup-step">
+      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Rolle</div></div>
+      <div class="filter-row" id="setup-role"></div>
+      <div class="setup-info" id="setup-role-desc"></div>
     </div>
 
     <div id="step-heroLock" class="setup-step">
@@ -1450,6 +1475,7 @@ let teamEntryMode = null;     // null | 'create' | 'join'  -> Einstiegs-Screen (
 let teamSettingsOpen = false; // Host konfiguriert gerade eine (neue) Runden-Kampagne
 /* ---- Kampagnen-Einstellungen (host-lokal, gilt für die nächste(n) Runde(n)) ---- */
 let teamRoundScope = 'rounds';      // 'rounds' = 1 Spiel über mehrere Runden | 'games' = mehrere Spiele nacheinander
+let teamRoundRole = 'all';          // 'all' oder eine Rolle (z.B. 'Tank') — schränkt Held+Challenges auf diese Rolle ein
 let teamRoundCount = 3;             // Anzahl Runden bei scope 'rounds'
 let teamRoundSelectedGames = [];    // gewählte Spiele bei scope 'games' (beliebig viele)
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
@@ -1678,6 +1704,28 @@ function renderTeamRoundPicker(){
       diffRow.appendChild(btn);
     });
   }
+  // Rollen-Filter: nur bei Spielen mit Rollen (Overwatch, Marvel Rivals, Fortnite, Valorant, The Finals)
+  // und nur bei fester Held-Zuweisung (nicht bei mehreren verschiedenen Spielen nacheinander).
+  const roleStep = document.getElementById('team-round-role-step');
+  const gameRoles = (teamRoundScope!=='games') ? rolesForGame(teamRoundGameChoice) : null;
+  if(roleStep) roleStep.style.display = gameRoles ? 'block' : 'none';
+  if(!gameRoles) teamRoundRole = 'all';
+  else if(teamRoundRole!=='all' && !gameRoles.includes(teamRoundRole)) teamRoundRole = 'all';
+  const roleRow = document.getElementById('team-round-role-picker');
+  if(roleRow && gameRoles){
+    roleRow.innerHTML = '';
+    [{key:'all',label:'🎲 Alle Rollen'}, ...gameRoles.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))].forEach(it=>{
+      const btn = document.createElement('button');
+      btn.className = 'filter-pill'+(it.key===teamRoundRole?' active':'');
+      btn.textContent = it.label;
+      btn.addEventListener('click', ()=>{ teamRoundRole = it.key; renderTeamRoundPicker(); });
+      roleRow.appendChild(btn);
+    });
+    const roleDesc = document.getElementById('team-round-role-desc');
+    if(roleDesc) roleDesc.textContent = teamRoundRole==='all'
+      ? 'Jeder bekommt eine zufällige Rolle ausgelost.'
+      : `Alle spielen ${teamRoundRole} — Held UND persönliche Challenges passen automatisch zu dieser Rolle.`;
+  }
   syncDraftSettings();
 }
 function confirmTeamSettings(){
@@ -1701,6 +1749,17 @@ function confirmTeamSettings(){
 function openTeamSettings(){ teamSettingsOpen = true; renderTeamPage(); syncDraftSettings(); }
 function campaignTotal(){ return teamRoundScope==='games' ? teamRoundSelectedGames.length : teamRoundCount; }
 function campaignUnitLabel(){ return teamRoundScope==='match' ? '🏆 MATCH' : teamRoundScope==='games' ? '🎮 SPIEL' : '🔁 RUNDE'; }
+/* Terminologie passt sich dem gewählten Scope an: bei "Match" heißt es überall "Match" statt
+   "Runde", bei "Spiele" heißt es "Spiel". scope kommt entweder von currentRound.scope
+   (während einer laufenden Session) oder — falls nicht übergeben — von teamRoundScope (Setup). */
+function unitWord(scope, cap){
+  const s = scope || teamRoundScope;
+  const w = s==='match' ? 'Match' : s==='games' ? 'Spiel' : 'Runde';
+  return cap===false ? w.toLowerCase() : w;
+}
+function unitWordPlural(scope){ const s = scope || teamRoundScope; return s==='match' ? 'Matches' : s==='games' ? 'Spiele' : 'Runden'; }
+function unitWordNext(scope){ const s = scope || teamRoundScope; return s==='match' ? 'Nächstes Match' : s==='games' ? 'Nächstes Spiel' : 'Nächste Runde'; }
+function unitWordThis(scope){ const s = scope || teamRoundScope; return s==='match' ? 'dieses Match' : s==='games' ? 'dieses Spiel' : 'diese Runde'; }
 function campaignSummaryText(){
   const gameLabel = teamRoundScope==='games'
     ? `${teamRoundSelectedGames.length} Spiele`
@@ -1719,7 +1778,7 @@ async function startTeamRound(skipReadyCheck){
   if(!skipReadyCheck && !allMembersReady()){ alert('Noch nicht alle Mitglieder sind bereit.'); return; }
   if(!myTeam || !currentUser || !sb) return;
   const gameId = teamRoundGameChoice, mode = teamRoundModeChoice, sessionMode = teamRoundSessionModeChoice;
-  const heroPool = HERO_GAMES[gameId] || null;
+  const heroPool = heroPoolForRole(gameId, teamRoundRole);
   const memberIds = teamMembers.map(m=>m.user_id);
   let heroAssignmentById = null;
   if(heroPool){
@@ -1734,7 +1793,8 @@ async function startTeamRound(skipReadyCheck){
     const rulesPool = rulesPoolFor(gameId, teamRoundGameMode);
     const comp = sessionMode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyle ? MATCH_STYLE_COMPOSITION[teamRoundDifficulty] : DIFF_COMPOSITION[teamRoundDifficulty]);
     const chosen = pickByComposition(rulesPool, comp);
-    items = chosen.map(c=>({ round_id: round.id, user_id: null, scope:'shared', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
+    const names = teamMembers.map(m=>m.username);
+    items = chosen.map(c=>({ round_id: round.id, user_id: null, scope:'shared', text:substitutePlayerName(c.text, names), diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
   } else {
     const forcedComp = isMatchStyle ? MATCH_STYLE_COMPOSITION[teamRoundDifficulty] : null;
     const personalSet = buildPersonalChallengeSet(gameId, teamRoundDifficulty, sessionMode, memberIds, heroAssignmentById, forcedComp, personalPoolFor(gameId, teamRoundGameMode));
@@ -1773,7 +1833,7 @@ function maxJokerUses(){
   return Math.max(1, Math.ceil((currentRound.campaign_total || 1) / 3));
 }
 function jokerLabel(type){
-  return type==='hero' ? 'den Helden' : type==='team_challenge' ? 'die Team-Challenges' : 'seine Challenges';
+  return type==='hero' ? 'die Helden (für das ganze Team neu)' : type==='team_challenge' ? 'die Team-Challenges' : 'seine Challenges';
 }
 async function requestJoker(type, forSelf){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
@@ -1782,10 +1842,10 @@ async function requestJoker(type, forSelf){
   if(usedKey){
     const used = currentRound[usedKey] || [];
     const myUses = used.filter(id=>id===currentUser.id).length;
-    if(myUses >= maxJokerUses()){ alert(`Ihr habt für diese Runde schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`); return; }
+    if(myUses >= maxJokerUses()){ alert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`); return; }
   } else if(type==='team_challenge'){
     const uses = currentRound.team_challenge_joker_uses || 0;
-    if(uses >= maxJokerUses()){ alert(`Ihr habt für diese Runde schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`); return; }
+    if(uses >= maxJokerUses()){ alert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`); return; }
   }
   const pending = { type, by: currentUser.id, byName: currentUser.username };
   const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
@@ -1801,6 +1861,12 @@ async function voteJoker(val){
   renderTeamPage();
   await maybeResolveJokerVote();
 }
+function jokerVotesNeeded(){
+  // Absolute Mehrheit der Team-Mitglieder (nicht nur der abgegebenen Stimmen):
+  // bei 2 Spielern müssen beide zustimmen, bei 3 reichen 2, bei 4 reichen 3, usw.
+  const total = Math.max(teamMembers.length, 1);
+  return Math.floor(total/2) + 1;
+}
 async function maybeResolveJokerVote(){
   if(!currentRound || !currentRound.pending_joker || !sb) return;
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
@@ -1808,29 +1874,49 @@ async function maybeResolveJokerVote(){
   const votes = currentRound.joker_votes || {};
   const yes = Object.values(votes).filter(v=>v===true).length;
   const no = Object.values(votes).filter(v=>v===false).length;
-  if(yes <= no) return;
-  const { type, by } = currentRound.pending_joker;
-  if(type === 'hero') await executeHeroJoker(by);
-  else if(type === 'personal_challenge') await executePersonalChallengeJoker(by);
-  else if(type === 'team_challenge') await executeTeamChallengeJoker();
+  const total = Math.max(teamMembers.length, 1);
+  const needed = jokerVotesNeeded();
+  const impossible = no > (total - needed); // selbst wenn alle Rest-Stimmen "Dafür" wären, reicht's nicht mehr
+  if(yes < needed && !impossible) return; // Abstimmung läuft noch weiter
+  if(yes >= needed){
+    const { type, by } = currentRound.pending_joker;
+    if(type === 'hero') await executeHeroJoker(by);
+    else if(type === 'personal_challenge') await executePersonalChallengeJoker(by);
+    else if(type === 'team_challenge') await executeTeamChallengeJoker();
+  }
+  // Bei "impossible" (Mehrheit nicht mehr erreichbar) wird die Abstimmung ohne Auslosung beendet — der Joker ist weg.
   await sb.from('game_rounds').update({ pending_joker: null, joker_votes: {} }).eq('id', currentRound.id);
   currentRound.pending_joker = null; currentRound.joker_votes = {};
   await loadRoundItems();
   renderTeamPage();
 }
 async function executeHeroJoker(forUserId){
-  const pool = HERO_GAMES[currentRound.game_id];
+  // Falls beim Runden-Start ein Rollen-Filter aktiv war, bleiben alle Helden derselben Rolle
+  // zugewiesen — erkannt daran, dass alle aktuell zugewiesenen Helden dieselbe Rolle teilen.
+  const assignedRoles = currentRound.hero_assignment ? new Set(Object.values(currentRound.hero_assignment).map(h=>h[1])) : new Set();
+  const inferredRole = assignedRoles.size === 1 ? [...assignedRoles][0] : 'all';
+  const pool = heroPoolForRole(currentRound.game_id, inferredRole);
   if(!pool || !sb) return;
+  // "Held auslosen" losst für das GESAMTE Team neu aus (nicht nur für die anfragende Person) —
+  // fühlt sich wie ein frischer gemeinsamer Draw an. hero_revealed wird geleert, damit auf
+  // JEDEM Gerät die Roulette-Animation wieder von vorne losläuft statt nur den Helden stumm zu tauschen.
+  const memberIds = teamMembers.map(m=>m.user_id);
+  const prevAssignment = currentRound.hero_assignment || {};
+  const newAssignment = {};
+  memberIds.forEach(uid=>{
+    const prevHero = prevAssignment[uid];
+    let newHero, tries = 0;
+    do { newHero = pool[randInt(0, pool.length-1)]; tries++; } while(prevHero && pool.length>1 && newHero[0]===prevHero[0] && tries<20);
+    newAssignment[uid] = newHero;
+  });
   const used = (currentRound.hero_joker_used || []).slice();
-  used.push(forUserId);
-  const currentHero = currentRound.hero_assignment ? currentRound.hero_assignment[forUserId] : null;
-  let newHero, tries = 0;
-  do { newHero = pool[randInt(0, pool.length-1)]; tries++; } while(currentHero && pool.length>1 && newHero[0]===currentHero[0] && tries<20);
-  const newAssignment = Object.assign({}, currentRound.hero_assignment, { [forUserId]: newHero });
-  await sb.from('game_rounds').update({ hero_assignment: newAssignment, hero_joker_used: used }).eq('id', currentRound.id);
+  used.push(forUserId); // Das Joker-Kontingent der anfragenden Person wird belastet.
+  await sb.from('game_rounds').update({ hero_assignment: newAssignment, hero_joker_used: used, hero_revealed: [] }).eq('id', currentRound.id);
   currentRound.hero_assignment = newAssignment;
   currentRound.hero_joker_used = used;
-  if(forUserId === currentUser.id){ teamHeroRevealedFor = null; teamIdleReelCacheFor = null; }
+  currentRound.hero_revealed = [];
+  // Lokal zurücksetzen, damit die Roulette-Animation auch auf diesem Gerät (Host) neu startet.
+  teamHeroRevealedFor = null; teamIdleReelCacheFor = null;
 }
 async function executePersonalChallengeJoker(forUserId){
   if(!sb) return;
@@ -1852,7 +1938,8 @@ async function executeTeamChallengeJoker(){
   const isMatchStyleRound = !!currentRound.is_match_style;
   const comp = currentRound.session_mode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyleRound ? MATCH_STYLE_COMPOSITION[difficulty] : DIFF_COMPOSITION[difficulty]);
   const chosen = pickByComposition(rulesPool, comp);
-  const newItems = chosen.map(c=>({ round_id: currentRound.id, user_id: null, scope:'shared', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
+  const names = teamMembers.map(m=>m.username);
+  const newItems = chosen.map(c=>({ round_id: currentRound.id, user_id: null, scope:'shared', text:substitutePlayerName(c.text, names), diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
   await sb.from('round_items').insert(newItems);
   const uses = (currentRound.team_challenge_joker_uses || 0) + 1;
   await sb.from('game_rounds').update({ team_challenge_joker_uses: uses }).eq('id', currentRound.id);
@@ -1865,19 +1952,31 @@ function renderJokerVoteBanner(){
   const yes = Object.values(votes).filter(v=>v===true).length;
   const no = Object.values(votes).filter(v=>v===false).length;
   const myVote = votes[currentUser.id];
+  const needed = jokerVotesNeeded();
   return `<div class="settings-card" style="border-color:var(--turquoise);">
     <div class="setup-step-head"><span class="setup-step-icon">🃏</span><div class="setup-step-title">Joker-Abstimmung</div></div>
-    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${jokerLabel(p.type)} neu auslosen. Mehrheit entscheidet.</p>
+    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${jokerLabel(p.type)} neu auslosen. Es braucht die absolute Mehrheit: ${needed} von ${teamMembers.length} Stimmen dafür.</p>
     <div class="roll-zone" style="gap:10px;">
       <button class="sb-btn${myVote===true?' active':''}" onclick="voteJoker(true)">✅ Dafür</button>
       <button class="sb-btn${myVote===false?' active':''}" onclick="voteJoker(false)">❌ Dagegen</button>
     </div>
-    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes} · ❌ ${no}</div>
+    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes}/${needed} benötigt · ❌ ${no}</div>
   </div>`;
 }
 async function castVote(itemId, success){
   if(!currentUser || !sb) return;
-  await sb.from('round_votes').upsert({ item_id: itemId, voter_id: currentUser.id, success }, { onConflict: 'item_id,voter_id' });
+  // Optimistisch: der Klick auf den Button zählt die Stimme sofort lokal hoch/runter,
+  // statt erst auf die Server-Antwort zu warten — fühlt sich direkt an den Button gekoppelt an.
+  roundVotes[itemId] = roundVotes[itemId] || {};
+  const prev = roundVotes[itemId][currentUser.id];
+  roundVotes[itemId][currentUser.id] = success;
+  renderTeamPage();
+  try{
+    await sb.from('round_votes').upsert({ item_id: itemId, voter_id: currentUser.id, success }, { onConflict: 'item_id,voter_id' });
+  }catch(e){
+    console.error('Stimme konnte nicht gespeichert werden:', e);
+    roundVotes[itemId][currentUser.id] = prev; renderTeamPage(); return;
+  }
   await loadRoundItems();
   renderTeamPage();
 }
@@ -1944,12 +2043,13 @@ function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItem
 function renderTeamRoundHeader(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
   const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : currentRound.scope==='games' ? '🎮 SPIEL' : '🔁 RUNDE';
-  const roundCounter = isHost ? ` · Runde ${teamCampaignIndex+1}/${campaignTotal()}` : '';
+  const uw = unitWord(currentRound.scope);
+  const roundCounter = isHost ? ` · ${uw} ${teamCampaignIndex+1}/${campaignTotal()}` : '';
   const hostMenu = (isHost && currentRound.status !== 'done') ? `<div class="header-menu">
     <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
     <div class="header-menu-panel" id="round-header-menu">
-      <button onclick="extendTeamCampaign()">➕ Runde hinzufügen</button>
-      <button class="danger" onclick="endTeamRoundNow()">🛑 Runde beenden</button>
+      <button onclick="extendTeamCampaign()">➕ ${uw} hinzufügen</button>
+      <button class="danger" onclick="endTeamRoundNow()">🛑 ${uw} beenden</button>
       <button class="danger" onclick="cancelTeamRound()">❌ Abbrechen</button>
     </div>
   </div>` : '';
@@ -1990,7 +2090,7 @@ function toggleRoundMenu(ev){
 }
 async function cancelTeamRound(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
-  if(!confirm('Runde für alle sofort abbrechen? Es gibt kein Ergebnis, alle springen zurück in die Gruppe.')) return;
+  if(!confirm(`${unitWord(currentRound.scope)} für alle sofort abbrechen? Es gibt kein Ergebnis, alle springen zurück in die Gruppe.`)) return;
   unlockTeamRoundRender();
   await sb.from('game_rounds').delete().eq('id', currentRound.id);
   currentRound = null; roundItems = []; roundVotes = {};
@@ -2007,7 +2107,7 @@ function returnToLobbyFromDone(){
 }
 async function endTeamRoundNow(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id) return;
-  if(!confirm('Runde wirklich sofort beenden? Noch offene Challenges ohne Ergebnis zählen dann nicht.')) return;
+  if(!confirm(`${unitWord(currentRound.scope)} wirklich sofort beenden? Noch offene Challenges ohne Ergebnis zählen dann nicht.`)) return;
   unlockTeamRoundRender();
   await finalizeTeamRound();
 }
@@ -2042,7 +2142,13 @@ function renderTeamRoundSection(){
   const header = renderTeamRoundHeader();
 
   const myHero = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
-  const needsReveal = currentRound.status === 'active' && myHero && teamHeroRevealedFor !== currentRound.id;
+  // Server (hero_revealed) ist die alleinige Quelle der Wahrheit dafür, ob DIESES Gerät den
+  // aktuell zugewiesenen Helden schon gesehen hat. So startet die Roulette-Animation weder nach
+  // einem Reload neu (der Server weiß es noch), noch bleibt sie nach einem Team-Reroll (Joker)
+  // fälschlich übersprungen (hero_revealed wird dabei serverseitig für alle geleert).
+  const alreadyRevealedOnServer = !!(currentRound.hero_revealed && currentRound.hero_revealed.includes(currentUser.id));
+  teamHeroRevealedFor = alreadyRevealedOnServer ? currentRound.id : null;
+  const needsReveal = currentRound.status === 'active' && myHero && !alreadyRevealedOnServer;
 
   if(needsReveal){
     const pool = HERO_GAMES[currentRound.game_id];
@@ -2096,7 +2202,7 @@ function renderTeamRoundSection(){
     html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]]) : '');
     const myHeroJokerUses = (currentRound.hero_joker_used||[]).filter(id=>id===currentUser.id).length;
     if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
-      html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Held neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
+      html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Helden für alle neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
     }
     if(currentRound.mode === 'team'){
       html += `<div class="rules-note">Diese Regeln gelten für alle und sind für jeden sichtbar.</div>`;
@@ -2127,7 +2233,7 @@ function renderTeamRoundSection(){
       if(missing.length){
         html += `<div class="empty-hint" style="margin-top:8px;">Wartet noch auf: ${missing.map(m=>m.username).join(', ')}</div></div>`;
       } else {
-        html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="enterRoundVoting()">🏁 Runde beenden &amp; bewerten</button></div></div>`;
+        html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="enterRoundVoting()">🏁 ${unitWord(currentRound.scope)} beenden &amp; bewerten</button></div></div>`;
       }
     } else if(teamPersonallyDoneFor === currentRound.id){
       html += `<div class="empty-hint" style="margin-top:16px;">✅ Du bist fertig — warte auf den Team-Ersteller (👑)…</div></div>`;
@@ -2141,7 +2247,7 @@ function renderTeamRoundSection(){
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🗳️</span><div class="setup-step-title">Bewertung</div></div>`;
     if(currentRound.mode === 'team'){
       html += `<p class="setup-info" style="margin-top:0;">Jeder stimmt für jede Regel ab. Es zählt die Mehrheit.</p>`;
-      roundItems.filter(it=>it.scope==='shared').forEach(it=>{
+      sortByDifficulty(roundItems.filter(it=>it.scope==='shared')).forEach(it=>{
         const votesForItem = roundVotes[it.id] || {};
         const yes = Object.values(votesForItem).filter(v=>v===true).length;
         const no = Object.values(votesForItem).filter(v=>v===false).length;
@@ -2169,7 +2275,7 @@ function renderTeamRoundSection(){
         const username = first.profiles ? first.profiles.username : '?';
         const avatar = renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18);
         html += `<div class="player-block-label"><span style="color:var(--text)">${avatar} ${username}</span></div>`;
-        items.forEach(it=>{
+        sortByDifficulty(items).forEach(it=>{
           const votesForItem = roundVotes[it.id] || {};
           const yes = Object.values(votesForItem).filter(v=>v===true).length;
           const no = Object.values(votesForItem).filter(v=>v===false).length;
@@ -2198,7 +2304,8 @@ function renderTeamRoundSection(){
     const results = computeTeamRoundResults(currentRound, roundItems);
     const total = campaignTotal();
     const hasNext = isHost && (teamCampaignIndex + 1) < total;
-    const doneTitle = isHost ? `Runde ${teamCampaignIndex+1}/${total} abgeschlossen` : `Runde abgeschlossen`;
+    const uwDone = unitWord(currentRound.scope);
+    const doneTitle = isHost ? `${uwDone} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${uwDone} abgeschlossen`;
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
     html += heroBlock;
     html += renderLeaderboardTable(results, null, (username)=>{
@@ -2206,11 +2313,11 @@ function renderTeamRoundSection(){
       return renderAccountAvatarHTML(member ? member.avatar : null, 20);
     });
     if(hasNext){
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ Nächste Runde (${teamCampaignIndex+2}/${total})</button></div>`;
+      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${teamCampaignIndex+2}/${total})</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
     } else if(isHost){
-      html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen (${total}/${total} Runden gespielt).</p>`;
+      html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen (${total}/${total} ${unitWordPlural(currentRound.scope)} gespielt).</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
       html += `</div>`;
@@ -2226,10 +2333,11 @@ function renderTeamRoundSection(){
 }
 function renderCampaignSummaryBlock(){
   if(!teamCampaignHistory.length) return '';
-  let html = `<div class="section-divider">📖 Kampagnen-Verlauf (${teamCampaignHistory.length} Runde${teamCampaignHistory.length>1?'n':''})</div>`;
+  const uwHist = unitWord(currentRound && currentRound.scope);
+  let html = `<div class="section-divider">📖 Kampagnen-Verlauf (${teamCampaignHistory.length} ${teamCampaignHistory.length>1?unitWordPlural(currentRound && currentRound.scope):uwHist})</div>`;
   teamCampaignHistory.forEach((r,i)=>{
     html += `<details class="hero-avatar-group"${i===teamCampaignHistory.length-1?' open':''}>
-      <summary>${gameIconHTML(r.gameId,20)} Runde ${i+1}: ${GAME_NAME[r.gameId]||r.gameId} · ${r.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'}</summary>
+      <summary>${gameIconHTML(r.gameId,20)} ${uwHist} ${i+1}: ${GAME_NAME[r.gameId]||r.gameId} · ${r.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'}</summary>
       <div style="padding:0 14px 14px;">`;
     if(r.heroes.length){
       html += `<div class="player-chips" style="justify-content:flex-start; margin-top:0; margin-bottom:12px;">`;
@@ -2382,6 +2490,11 @@ function renderTeamSettingsScreen(){
     <div class="settings-card" id="team-round-difficulty-step">
       <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Schwierigkeit</div></div>
       <div class="filter-row" id="team-round-difficulty-picker"></div>
+    </div>
+    <div class="settings-card" id="team-round-role-step">
+      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Rolle</div></div>
+      <div class="filter-row" id="team-round-role-picker"></div>
+      <div class="setup-info" id="team-round-role-desc" style="margin-top:6px;margin-bottom:0;"></div>
     </div>
 
     <div class="setup-warning" id="team-settings-warning"></div>
@@ -2735,6 +2848,15 @@ const VAL_AGENTS = [
 const FINALS_CLASSES = [ ['Light','Light'], ['Medium','Medium'], ['Heavy','Heavy'] ];
 const HERO_GAMES = { ow2: OW2_HEROES, mr: MR_HEROES, fp: FP_HEROES, val: VAL_AGENTS, finals: FINALS_CLASSES };
 const ROLE_WEIGHTS = { ow2:{Tank:1,Damage:2,Support:2}, mr:{Tank:1,Damage:2,Support:2}, fp:{Attack:3,Support:2}, val:{Duelist:1,Initiator:1,Controller:1,Sentinel:1}, finals:{Light:1,Medium:1,Heavy:2} };
+function rolesForGame(gameId){ const w = ROLE_WEIGHTS[gameId]; return w ? Object.keys(w) : null; }
+/* Held-Pool ggf. auf eine einzelne Rolle einschränken (für den Rollen-Filter oder für einen
+   Joker-Reroll, der konsistent innerhalb derselben Rolle bleiben soll). */
+function heroPoolForRole(gameId, role){
+  const base = HERO_GAMES[gameId];
+  if(!base || !role || role==='all') return base;
+  const filtered = base.filter(h=>h[1]===role);
+  return filtered.length ? filtered : base;
+}
 const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'] };
 const GAME_ROUND_PRESETS = { cs2:[6,9,12,16,24], val:[6,9,12,16,24], ow2:[2,3], mr:[2,3] };
 /* Ingame-Modi für Spiele mit echtem Rundensystem (Valorant, CS2). 'match' = ein komplettes
@@ -2802,6 +2924,16 @@ const ROLE_META = {
 
 /* ============================================================ RULES POOLS (shared, team-wide) ============================================================ */
 function C(text, diff, theme, roles){ return {text, diff, theme, roles}; }
+/* Ersetzt {player} in einem Challenge-Text durch einen zufälligen echten Spielernamen (den die
+   Spieler sich selbst gegeben haben — globalPlayers/teamMembers), z. B. "Nur {player} darf in
+   der ersten Halbzeit die Ult nutzen." -> "Nur Marlon darf...". Ohne Spielerliste bleibt der
+   Platzhalter als generischer Fallback stehen. */
+function substitutePlayerName(text, players){
+  if(!text || text.indexOf('{player}') === -1) return text;
+  const name = (players && players.length) ? players[randInt(0, players.length-1)] : 'jemand aus eurer Runde';
+  return text.split('{player}').join(name);
+}
+function substitutePlayerNames(items, players){ return items.map(c=> c.text.indexOf('{player}')!==-1 ? Object.assign({}, c, { text: substitutePlayerName(c.text, players) }) : c); }
 
 const OW2_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
@@ -2818,6 +2950,8 @@ const OW2_CHALLENGES = [
   C('Gewinnt, ohne dass ein Spieler stirbt.','schwer','flawless'),
   C('Mindestens 3 Mehrfach-Eliminierungen (Multikills) im Match.','schwer','multikill'),
   C('Gewinnt eine Kontrollpunkt-Karte 100:0.','schwer','control-sweep'),
+  C('Nur {player} darf in der ersten Hälfte des Matches die Ultimate benutzen — alle anderen müssen warten.','schwer','named-player-restriction'),
+  C('{player} muss das ganze Match auf Tank/Frontline spielen, egal welcher Held ausgelost wurde.','schwer','named-player-role'),
 ];
 const MR_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
@@ -2830,6 +2964,7 @@ const MR_CHALLENGES = [
   C('Mindestens 15 Eliminierungen.','schwer','kills'),
   C('Gewinnt, ohne dass ein Spieler stirbt.','schwer','flawless'),
   C('Mindestens 3 Mehrfach-Eliminierungen (Multikills) im Match.','schwer','multikill'),
+  C('Nur {player} darf in der ersten Hälfte des Matches die Ultimate benutzen — alle anderen müssen warten.','schwer','named-player-restriction'),
 ];
 
 const CS2_CHALLENGES = [
@@ -2857,6 +2992,7 @@ const CS2_CHALLENGES = [
   C('Gewinnt drei Runden in Folge.','schwer','streak'),
   C('Gewinnt ohne einen Spieler zu verlieren.','schwer','perfect'),
   C('Entschärft die Bombe in letzter Sekunde erfolgreich.','schwer','bomb-defuse'),
+  C('Nur {player} darf im gesamten Match die AWP/das Scharfschützengewehr benutzen.','schwer','named-player-restriction'),
 ];
 
 const VAL_CHALLENGES = [
@@ -2881,6 +3017,7 @@ const VAL_CHALLENGES = [
   C('Gewinnt drei Runden in Folge.','schwer','streak'),
   C('Gewinnt ohne einen Spieler zu verlieren.','schwer','perfect'),
   C('Verteidigt den Spike erfolgreich (legt entschärft).','schwer','spike'),
+  C('Nur {player} darf im gesamten Match Ultimates benutzen — der Rest des Teams verzichtet komplett.','schwer','named-player-restriction'),
 ];
 
 const FP_CHALLENGES = [
@@ -2897,6 +3034,7 @@ const FP_CHALLENGES = [
   C('Niemand hat mehr Tode als Kills.','schwer','kd-ratio'),
   C('Mindestens ein Ace im Team.','schwer','ace'),
   C('Gewinnt trotz 0:2 Rückstand.','schwer','comeback'),
+  C('Nur {player} darf im gesamten Match looten — der Rest bekommt nur das, was {player} übrig lässt oder abgibt.','schwer','named-player-restriction'),
 ];
 
 const FG_CHALLENGES = [
@@ -3010,6 +3148,7 @@ const FINALS_CHALLENGES = [
   C('Gewinnt, ohne dass euer Cash-Out gestohlen wird.','schwer','flawless-cashout'),
   C('Gewinnt das Turnier-Finale.','schwer','tournament-win'),
   C('Schafft zwei Cash-Outs im selben Match.','schwer','double-cashout'),
+  C('Nur {player} darf den Cash-Out tragen — alle anderen dürfen ihn höchstens beschützen.','schwer','named-player-restriction'),
 ];
 
 const CS2_DEATHMATCH_CHALLENGES = [
@@ -3180,6 +3319,8 @@ const PERSONAL_SOURCES = {
   fg: FG_PERSONAL, ph: PH_PERSONAL, repo: REPO_PERSONAL, lethal: LETHAL_PERSONAL, cw: CW_PERSONAL,
 };
 
+const DIFF_ORDER = { leicht: 0, mittel: 1, schwer: 2 };
+function sortByDifficulty(arr){ return arr.slice().sort((a,b)=> (DIFF_ORDER[a.diff]??1) - (DIFF_ORDER[b.diff]??1)); }
 const DIFF_POINTS = { leicht: 10, mittel: 20, schwer: 35 };
 const DIFF_LABEL = { leicht:'Leicht', mittel:'Mittel', schwer:'Schwer' };
 const DIFF_COLOR = { leicht:'var(--turquoise)', mittel:'var(--purple)', schwer:'var(--gold)' };
@@ -3621,13 +3762,19 @@ function renderStatsPage(){
 }
 
 /* ============================================================ SESSION SETUP WIZARD ============================================================ */
-let setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
+let setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', role:'all', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
 let stepIndex = 0;
 let continueFromSession = false;
-const ALL_STEPS = ['scope','game','gameMode','gamesMulti','mode','sessionMode','difficulty','heroLock','pointGoal','rounds','count','players'];
+const ALL_STEPS = ['scope','game','gameMode','gamesMulti','mode','sessionMode','difficulty','role','heroLock','pointGoal','rounds','count','players'];
 function sessionHasHeroGames(){
   if(setupState.scope === 'rounds') return !!HERO_GAMES[setupState.gameId];
   return setupState.selectedGames.some(id=>HERO_GAMES[id]);
+}
+function sessionRoleOptions(){
+  // Rollen-Filter nur sinnvoll bei genau einem rollenbasierten Spiel (nicht bei "nach Spielen"
+  // mit mehreren unterschiedlichen Titeln gleichzeitig, da die Rollen dort nicht übereinstimmen).
+  if(setupState.scope !== 'rounds') return null;
+  return rolesForGame(setupState.gameId);
 }
 function visibleSteps(){
   const noRounds = setupState.scope==='rounds' && isNoRoundsMode(setupState.gameId, setupState.gameMode);
@@ -3635,9 +3782,10 @@ function visibleSteps(){
     if(s==='game') return setupState.scope==='rounds';
     if(s==='gameMode') return setupState.scope==='rounds' && !!GAME_MODES[setupState.gameId];
     if(s==='gamesMulti') return setupState.scope==='games';
-    if(noRounds && ['mode','sessionMode','difficulty','heroLock','pointGoal','rounds'].includes(s)) return false;
+    if(noRounds && ['mode','sessionMode','difficulty','role','heroLock','pointGoal','rounds'].includes(s)) return false;
     if(s==='rounds') return setupState.scope==='rounds';
     if(s==='difficulty') return setupState.sessionMode==='challenge';
+    if(s==='role') return !!sessionRoleOptions();
     if(s==='heroLock') return sessionHasHeroGames();
     return true;
   });
@@ -3662,7 +3810,7 @@ function startFreshSetup(){
       return;
     }
   }
-  setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
+  setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', role:'all', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
   stepIndex = 0;
   if(myTeam && teamMembers.length){
     teamMembers.forEach(m=>{
@@ -3778,6 +3926,17 @@ function renderSetupPage(){
 
   buildPillRow('setup-difficulty', ['Leicht','Mittel','Schwer'].map(d=>({key:d,label:d})), setupState.difficulty, k=>{ setupState.difficulty=k; });
 
+  const roleOptions = sessionRoleOptions();
+  if(!roleOptions) setupState.role = 'all';
+  else if(setupState.role!=='all' && !roleOptions.includes(setupState.role)) setupState.role = 'all';
+  if(roleOptions){
+    buildPillRow('setup-role', [{key:'all',label:'🎲 Alle Rollen'}, ...roleOptions.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))], setupState.role, k=>{ setupState.role=k; });
+    const roleDesc = document.getElementById('setup-role-desc');
+    if(roleDesc) roleDesc.textContent = setupState.role==='all'
+      ? 'Jeder bekommt eine zufällige Rolle ausgelost.'
+      : `Alle spielen ${setupState.role} — Held und persönliche Challenges passen automatisch dazu.`;
+  }
+
   buildPillRow('setup-herolock', [{key:'reroll',label:'🔄 Jede Runde neu'},{key:'locked',label:'🔒 Gleicher Held'}], setupState.heroLockMode, k=>{ setupState.heroLockMode=k; });
   document.getElementById('setup-herolock-desc').textContent = setupState.heroLockMode==='locked'
     ? 'Jeder behält seinen ausgelosten Helden über alle Runden hinweg (bis ihr das Spiel wechselt).'
@@ -3879,6 +4038,7 @@ function handleStartClick(){
     session.scope = setupState.scope; session.gameId = initialGameId; session.gameSequence = gameSequence; session.currentGameIndex = 0;
     session.mode = setupState.mode; session.sessionMode = setupState.sessionMode; session.difficultyKey = setupState.difficulty;
     session.heroLockMode = setupState.heroLockMode; session.gameMode = gameMode; session.matchStyle = matchStyle;
+    session.roleFilter = setupState.role || 'all';
     session.totalRounds = totalRounds; session.pointGoal = pointGoal; session.players = setupState.selectedPlayers.slice();
     session.currentRound = session.currentRound + 1; session.awaitingNextGameChoice = false;
     if(session.mode==='versus'){ session.cumulativePlayers = session.cumulativePlayers || {}; session.players.forEach(p=>{ if(!(p in session.cumulativePlayers)) session.cumulativePlayers[p]=0; }); }
@@ -3888,7 +4048,7 @@ function handleStartClick(){
     startSession({
       scope: setupState.scope, gameId: initialGameId, gameSequence,
       mode: setupState.mode, sessionMode: setupState.sessionMode, heroLockMode: setupState.heroLockMode,
-      gameMode, matchStyle,
+      gameMode, matchStyle, roleFilter: setupState.role || 'all',
       difficultyKey: setupState.difficulty, totalRounds, pointGoal, players: setupState.selectedPlayers.slice(),
     });
     showView('session');
@@ -3935,13 +4095,13 @@ function pickByComposition(pool, comp){
   ['leicht','mittel','schwer'].forEach(d=>{ const n = Math.min(comp[d], cats[d].length); result = result.concat(shuffle(pickUniqueThemes(cats[d], n, usedThemes))); });
   return result;
 }
-function generateChallengesForRound(pool, difficultyKey, sessionMode, forcedComp){
+function generateChallengesForRound(pool, difficultyKey, sessionMode, forcedComp, players){
   const comp = forcedComp || (sessionMode === 'chaos' ? CHAOS_COMPOSITION : DIFF_COMPOSITION[difficultyKey]);
   const chosen = pickByComposition(pool, comp);
   const mult = sessionMode === 'chaos' ? 2 : 1;
   return chosen.map((c,i)=>({
     id: 'c'+i+'_'+Math.random().toString(36).slice(2,7),
-    text: c.text, diff: c.diff, points: DIFF_POINTS[c.diff]*mult, state: 'pending', chaos: sessionMode==='chaos',
+    text: substitutePlayerName(c.text, players), diff: c.diff, points: DIFF_POINTS[c.diff]*mult, state: 'pending', chaos: sessionMode==='chaos',
   }));
 }
 function buildPersonalChallengeSet(gameId, difficultyKey, sessionMode, playerKeys, heroAssignment, forcedComp, overridePool){
@@ -3993,7 +4153,7 @@ if(session && session.heroRevealDone === undefined){
 }
 
 function buildRound(){
-  const heroPool = HERO_GAMES[session.gameId] || null;
+  const heroPool = heroPoolForRole(session.gameId, session.roleFilter);
   let heroesFreshlyAssigned = false;
   if(heroPool){
     const keepExisting = session.heroLockMode === 'locked' && session.heroAssignment && session._heroAssignedGameId === session.gameId;
@@ -4017,10 +4177,10 @@ function buildRound(){
   const isMatchStyle = session.matchStyle === 'match' && session.sessionMode !== 'chaos';
   const forcedComp = isMatchStyle ? MATCH_STYLE_COMPOSITION[session.difficultyKey] : null;
   if(session.mode === 'team'){
-    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, forcedComp);
+    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, forcedComp, session.players);
     session.personalChallenges = null;
   } else {
-    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, VERSUS_RULES_COMPOSITION);
+    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, VERSUS_RULES_COMPOSITION, session.players);
     session.personalChallenges = buildPersonalChallengeSet(session.gameId, session.difficultyKey, session.sessionMode, session.players, session.heroAssignment, forcedComp, personalPoolFor(session.gameId, session.gameMode));
   }
 }
@@ -4029,7 +4189,7 @@ function startSession(cfg){
   session = {
     scope: cfg.scope, gameId: cfg.gameId, gameSequence: cfg.gameSequence || null, currentGameIndex: 0,
     mode: cfg.mode, sessionMode: cfg.sessionMode, difficultyKey: cfg.difficultyKey, heroLockMode: cfg.heroLockMode || 'reroll',
-    gameMode: cfg.gameMode || null, matchStyle: cfg.matchStyle || null,
+    gameMode: cfg.gameMode || null, matchStyle: cfg.matchStyle || null, roleFilter: cfg.roleFilter || 'all',
     totalRounds: cfg.totalRounds, currentRound: 1, pointGoal: cfg.pointGoal || null, players: cfg.players,
     cumulativeTeam: cfg.mode==='team' ? 0 : undefined,
     cumulativePlayers: cfg.mode==='versus' ? Object.fromEntries(cfg.players.map(p=>[p,0])) : undefined,
@@ -4177,7 +4337,7 @@ function renderSessionHeroReveal(el, headHtml){
 }
 function renderChallengeToggleList(scope, arr){
   let html = '<div class="sb-challenge-list">';
-  arr.forEach(c=>{
+  sortByDifficulty(arr).forEach(c=>{
     const stateClass = c.state==='win' ? 'won' : c.state==='lose' ? 'lost' : '';
     const chaosClass = c.chaos ? ' chaos' : '';
     const pts = c.state==='win' ? ('+'+c.points) : c.state==='lose' ? ('−'+c.points) : (c.points+' Pkt');
@@ -4334,7 +4494,7 @@ function renderScoreboard(){
 
 function renderChallengeListPlain(arr){
   let html = '<div class="sb-challenge-list">';
-  arr.forEach(c=>{
+  sortByDifficulty(arr).forEach(c=>{
     html += `<div class="sb-challenge-item">
       <div class="sb-diff-badge" style="background:${DIFF_COLOR[c.diff]}">${DIFF_LABEL[c.diff]}</div>
       <div class="sb-challenge-text">${c.text}</div>
