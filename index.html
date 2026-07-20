@@ -416,6 +416,19 @@
   </div>
 </section>
 
+<!-- ===================== BLITZRUNDE ===================== -->
+<section id="view-blitz" class="view">
+  <div class="bg-watermark">⚡</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">⚡</span> Blitzrunde</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Ohne Einstellungen</div><h2>Spiel wählen — Rest ist zufällig</h2><p id="blitz-context-sub">Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Direkt auf diesem Gerät.</p></div>
+    <div class="filter-row" id="blitz-game-picker" style="margin-bottom:8px;"></div>
+  </div>
+</section>
+
 <!-- ===================== ACCOUNT WELCOME ===================== -->
 <section id="view-auth-welcome" class="view active">
   <div class="bg-watermark">👤</div>
@@ -3254,6 +3267,7 @@ function showView(id, skipHistory){
   if(id==='auth') renderAuthPage();
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
   if(id==='start-choice') renderStartChoicePage();
+  if(id==='blitz') renderBlitzPage();
 }
 function goBack(){
   const prev = viewHistory.pop();
@@ -3264,33 +3278,33 @@ function renderStartChoicePage(){
   if(!el) return;
   const sub = document.getElementById('fresh-setup-sub');
   if(sub) sub.textContent = myTeam ? `Direkt auf diesem Gerät — Team „${myTeam.name || 'Team'}" wird vorausgefüllt` : 'Direkt auf diesem Gerät starten';
-  let html = `<button class="landing-btn" onclick="toggleBlitzPicker()">
+  el.innerHTML = `<button class="landing-btn" onclick="showView('blitz')">
     <span class="landing-btn-icon">⚡</span>
     <span class="landing-btn-text"><span class="landing-btn-title">Blitzrunde</span><span class="landing-btn-sub">Spiel wählen (optional), Rest ist zufällig — ohne Einstellungen</span></span>
   </button>`;
-  html += `<div class="filter-row" id="blitz-game-picker" style="display:none; margin-top:-6px;"></div>`;
-  el.innerHTML = html;
 }
-function toggleBlitzPicker(){
+function renderBlitzPage(){
+  const sub = document.getElementById('blitz-context-sub');
+  if(sub){
+    sub.textContent = myTeam
+      ? `Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Startet sofort online für euer Team „${myTeam.name || 'Team'}".`
+      : 'Modus, Schwierigkeit und Spieler werden automatisch gewürfelt. Läuft direkt auf diesem Gerät.';
+  }
   const row = document.getElementById('blitz-game-picker');
   if(!row) return;
-  const willOpen = row.style.display === 'none';
-  if(willOpen){
-    row.innerHTML = '';
-    const randomBtn = document.createElement('button');
-    randomBtn.className = 'filter-pill';
-    randomBtn.textContent = '🎲 Zufälliges Spiel';
-    randomBtn.addEventListener('click', ()=>startBlitzRound(null));
-    row.appendChild(randomBtn);
-    SESSION_GAMES.forEach(id=>{
-      const btn = document.createElement('button');
-      btn.className = 'filter-pill';
-      btn.innerHTML = gameIconHTML(id,16)+' '+GAME_NAME[id];
-      btn.addEventListener('click', ()=>startBlitzRound(id));
-      row.appendChild(btn);
-    });
-  }
-  row.style.display = willOpen ? 'flex' : 'none';
+  row.innerHTML = '';
+  const randomBtn = document.createElement('button');
+  randomBtn.className = 'filter-pill';
+  randomBtn.textContent = '🎲 Zufälliges Spiel';
+  randomBtn.addEventListener('click', ()=>startBlitzRound(null));
+  row.appendChild(randomBtn);
+  SESSION_GAMES.forEach(id=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill';
+    btn.innerHTML = gameIconHTML(id,16)+' '+GAME_NAME[id];
+    btn.addEventListener('click', ()=>startBlitzRound(id));
+    row.appendChild(btn);
+  });
 }
 function startBlitzRound(gameId){
   // In einer Online-Gruppe soll die Blitzrunde für alle Mitspieler live über die Gruppe laufen,
@@ -3341,7 +3355,7 @@ async function startOnlineBlitzRound(gameId){
 }
 function handleContinue(){
   if(session){ showView('session'); return; }
-  if(myTeam){ showView('team'); return; }
+  if(myTeam && currentRound && (currentRound.status==='active' || currentRound.status==='voting' || currentRound.status==='done')){ showView('team'); return; }
 }
 
 const tileGrid = document.getElementById('tile-grid');
