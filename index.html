@@ -402,9 +402,24 @@
   @media (min-width:1600px){
     .panel-block .sb-challenge-list, .settings-card .sb-challenge-list{ grid-template-columns:repeat(2, 1fr); }
   }
+  /* Mitspieler-Profil-Modal: zeigt beim Klick auf ein Team-Mitglied dessen öffentliche Angaben
+     (Motto, Lieblingsspiel, bevorzugte Rolle/Modus, Erfahrung) aus den Benutzer-Einstellungen. */
+  .chip.member-clickable{ cursor:pointer; transition:border-color 0.2s ease, transform 0.15s ease; }
+  .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
+  .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .member-modal-backdrop.hidden{ display:none; }
+  .member-modal-card{ position:relative; width:100%; max-width:380px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
+  .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
+  .member-modal-avatar{ font-size:3.2rem; margin-bottom:8px; }
+  .member-modal-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.4rem; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .member-modal-bio{ color:var(--text-muted); font-size:0.9rem; margin-top:4px; font-style:italic; }
+  .member-modal-facts{ display:flex; flex-direction:column; gap:8px; margin-top:18px; text-align:left; }
+  .member-modal-fact{ display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; font-size:0.88rem; }
+  .member-modal-fact .fact-label{ color:var(--text-faint); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em; display:block; }
 </style>
 </head>
 <body>
+<div class="member-modal-backdrop hidden" id="member-profile-modal" onclick="if(event.target===this) closeMemberProfileModal();"></div>
 
 <!-- ===================== LANDING / HOME ===================== -->
 <section id="view-home" class="view">
@@ -790,9 +805,9 @@
     </div>
 
     <div id="step-role" class="setup-step">
-      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Rolle</div></div>
-      <div class="filter-row" id="setup-role"></div>
-      <div class="setup-info" id="setup-role-desc"></div>
+      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Rollen</div></div>
+      <p class="setup-info" style="margin-top:0;">Jede/r kann eine eigene Wunschrolle wählen — der Rest wird zufällig aufgeteilt.</p>
+      <div id="setup-role-players"></div>
     </div>
 
     <div id="step-heroLock" class="setup-step">
@@ -1424,14 +1439,28 @@ async function joinTeam(rawCode){
 }
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, profiles(username, avatar)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode)').eq('team_id', myTeam.id).order('joined_at');
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
     // Mitgliederliste auftauchen, wurden wir vom Host gekickt (oder das Team wurde aufgelöst).
     if(currentUser && !data.some(r=>r.user_id===currentUser.id)){ handleRemovedFromTeam(); return; }
-    teamMembers = data.map(r=>({ id:r.id, user_id:r.user_id, ready:r.ready, username:r.profiles ? r.profiles.username : '?', avatar:r.profiles ? r.profiles.avatar : '😎' }));
+    teamMembers = data.map(r=>({
+      id:r.id, user_id:r.user_id, ready:r.ready, round_role:r.round_role||'all',
+      username:r.profiles ? r.profiles.username : '?', avatar:r.profiles ? r.profiles.avatar : '😎',
+      bio: r.profiles ? r.profiles.bio : null, favorite_game: r.profiles ? r.profiles.favorite_game : null,
+      preferred_role: r.profiles ? r.profiles.preferred_role : null, skill_level: r.profiles ? r.profiles.skill_level : null,
+      preferred_mode: r.profiles ? r.profiles.preferred_mode : null,
+    }));
   }
   renderTeamPage();
+}
+async function setMyRoundRole(role){
+  if(!myTeam || !currentUser || !sb) return;
+  const mine = teamMembers.find(m=>m.user_id===currentUser.id);
+  if(mine) mine.round_role = role; // optimistisch, damit der Klick sofort sichtbar reagiert
+  renderTeamPage();
+  const { error } = await sb.from('team_members').update({ round_role: role }).eq('team_id', myTeam.id).eq('user_id', currentUser.id);
+  if(error){ console.error('Rolle konnte nicht gespeichert werden:', error); alert('Fehler beim Speichern der Rolle: ' + error.message + ' — führt in Supabase im SQL Editor aus: alter table team_members add column if not exists round_role text;'); }
 }
 function handleRemovedFromTeam(){
   unlockTeamRoundRender();
@@ -1475,7 +1504,6 @@ let teamEntryMode = null;     // null | 'create' | 'join'  -> Einstiegs-Screen (
 let teamSettingsOpen = false; // Host konfiguriert gerade eine (neue) Runden-Kampagne
 /* ---- Kampagnen-Einstellungen (host-lokal, gilt für die nächste(n) Runde(n)) ---- */
 let teamRoundScope = 'rounds';      // 'rounds' = 1 Spiel über mehrere Runden | 'games' = mehrere Spiele nacheinander
-let teamRoundRole = 'all';          // 'all' oder eine Rolle (z.B. 'Tank') — schränkt Held+Challenges auf diese Rolle ein
 let teamRoundCount = 3;             // Anzahl Runden bei scope 'rounds'
 let teamRoundSelectedGames = [];    // gewählte Spiele bei scope 'games' (beliebig viele)
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
@@ -1530,6 +1558,35 @@ async function refreshTeamDraftSettings(){
       if(!currentRound && !teamSettingsOpen) renderTeamPage();
     }
   }catch(e){ console.error(e); }
+}
+const PROFILE_ROLE_LABEL = { attack:'⚔️ Angriff/Damage', tank:'🛡️ Tank/Frontline', support:'➕ Support/Heiler', flex:'🔀 Flexibel/Egal' };
+const PROFILE_SKILL_LABEL = { beginner:'🌱 Anfänger', intermediate:'🎯 Fortgeschritten', pro:'🏆 Profi' };
+const PROFILE_MODE_LABEL = { team:'🤝 Team gegen Team', versus:'⚔️ Jeder gegen Jeden', chaos:'🌀 Chaos', egal:'🔀 Egal' };
+function showMemberProfile(userId){
+  const m = teamMembers.find(x=>x.user_id===userId);
+  const modal = document.getElementById('member-profile-modal');
+  if(!m || !modal) return;
+  const facts = [];
+  if(m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) facts.push(['🎲 Rolle diese Runde', `${ROLE_META[m.round_role].icon} ${m.round_role}`]);
+  if(m.favorite_game) facts.push(['🎮 Lieblingsspiel', `${gameIconHTML(m.favorite_game,16)} ${GAME_NAME[m.favorite_game]||m.favorite_game}`]);
+  if(m.preferred_role) facts.push(['🎭 Bevorzugte Rolle', PROFILE_ROLE_LABEL[m.preferred_role]||m.preferred_role]);
+  if(m.preferred_mode) facts.push(['🤝 Bevorzugter Modus', PROFILE_MODE_LABEL[m.preferred_mode]||m.preferred_mode]);
+  if(m.skill_level) facts.push(['📊 Erfahrung', PROFILE_SKILL_LABEL[m.skill_level]||m.skill_level]);
+  const factsHTML = facts.length
+    ? facts.map(([label,val])=>`<div class="member-modal-fact"><span><span class="fact-label">${label}</span>${val}</span></div>`).join('')
+    : `<div class="empty-hint" style="padding:14px;">${m.username} hat noch keine Angaben in den Benutzer-Einstellungen gemacht.</div>`;
+  modal.innerHTML = `<div class="member-modal-card" onclick="event.stopPropagation();">
+    <button class="member-modal-close" onclick="closeMemberProfileModal()" aria-label="Schließen">✕</button>
+    <div class="member-modal-avatar">${renderAccountAvatarHTML(m.avatar,52)}</div>
+    <div class="member-modal-name">${m.username}${m.user_id===myTeam.host_id?' 👑':''}</div>
+    ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
+    <div class="member-modal-facts">${factsHTML}</div>
+  </div>`;
+  modal.classList.remove('hidden');
+}
+function closeMemberProfileModal(){
+  const modal = document.getElementById('member-profile-modal');
+  if(modal){ modal.classList.add('hidden'); modal.innerHTML = ''; }
 }
 async function kickMember(userId){
   if(!myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
@@ -1704,28 +1761,6 @@ function renderTeamRoundPicker(){
       diffRow.appendChild(btn);
     });
   }
-  // Rollen-Filter: nur bei Spielen mit Rollen (Overwatch, Marvel Rivals, Fortnite, Valorant, The Finals)
-  // und nur bei fester Held-Zuweisung (nicht bei mehreren verschiedenen Spielen nacheinander).
-  const roleStep = document.getElementById('team-round-role-step');
-  const gameRoles = (teamRoundScope!=='games') ? rolesForGame(teamRoundGameChoice) : null;
-  if(roleStep) roleStep.style.display = gameRoles ? 'block' : 'none';
-  if(!gameRoles) teamRoundRole = 'all';
-  else if(teamRoundRole!=='all' && !gameRoles.includes(teamRoundRole)) teamRoundRole = 'all';
-  const roleRow = document.getElementById('team-round-role-picker');
-  if(roleRow && gameRoles){
-    roleRow.innerHTML = '';
-    [{key:'all',label:'🎲 Alle Rollen'}, ...gameRoles.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))].forEach(it=>{
-      const btn = document.createElement('button');
-      btn.className = 'filter-pill'+(it.key===teamRoundRole?' active':'');
-      btn.textContent = it.label;
-      btn.addEventListener('click', ()=>{ teamRoundRole = it.key; renderTeamRoundPicker(); });
-      roleRow.appendChild(btn);
-    });
-    const roleDesc = document.getElementById('team-round-role-desc');
-    if(roleDesc) roleDesc.textContent = teamRoundRole==='all'
-      ? 'Jeder bekommt eine zufällige Rolle ausgelost.'
-      : `Alle spielen ${teamRoundRole} — Held UND persönliche Challenges passen automatisch zu dieser Rolle.`;
-  }
   syncDraftSettings();
 }
 function confirmTeamSettings(){
@@ -1743,7 +1778,10 @@ function confirmTeamSettings(){
   teamCampaignHistory = [];
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[0];
   teamSettingsOpen = false;
-  if(sb && myTeam){ sb.from('teams').update({ draft_settings: null }).eq('id', myTeam.id).then(()=>{}); }
+  if(sb && myTeam){
+    const gid = (teamRoundScope==='rounds' || teamRoundScope==='match') ? teamRoundGameChoice : null;
+    sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
+  }
   renderTeamPage();
 }
 function openTeamSettings(){ teamSettingsOpen = true; renderTeamPage(); syncDraftSettings(); }
@@ -1778,11 +1816,14 @@ async function startTeamRound(skipReadyCheck){
   if(!skipReadyCheck && !allMembersReady()){ alert('Noch nicht alle Mitglieder sind bereit.'); return; }
   if(!myTeam || !currentUser || !sb) return;
   const gameId = teamRoundGameChoice, mode = teamRoundModeChoice, sessionMode = teamRoundSessionModeChoice;
-  const heroPool = heroPoolForRole(gameId, teamRoundRole);
+  const heroPool = HERO_GAMES[gameId] || null;
   const memberIds = teamMembers.map(m=>m.user_id);
+  const roleMap = {}; teamMembers.forEach(m=>{ if(m.round_role && m.round_role!=='all') roleMap[m.user_id] = m.round_role; });
   let heroAssignmentById = null;
   if(heroPool){
-    heroAssignmentById = sessionMode==='chaos' ? assignHeroesChaos(heroPool, memberIds) : assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
+    if(sessionMode==='chaos') heroAssignmentById = assignHeroesChaos(heroPool, memberIds);
+    else if(hasAnyRoleChoice(roleMap)) heroAssignmentById = assignHeroesByPlayerRoles(gameId, memberIds, roleMap);
+    else heroAssignmentById = assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
   }
   const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
   const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
@@ -1891,23 +1932,24 @@ async function maybeResolveJokerVote(){
   renderTeamPage();
 }
 async function executeHeroJoker(forUserId){
-  // Falls beim Runden-Start ein Rollen-Filter aktiv war, bleiben alle Helden derselben Rolle
-  // zugewiesen — erkannt daran, dass alle aktuell zugewiesenen Helden dieselbe Rolle teilen.
-  const assignedRoles = currentRound.hero_assignment ? new Set(Object.values(currentRound.hero_assignment).map(h=>h[1])) : new Set();
-  const inferredRole = assignedRoles.size === 1 ? [...assignedRoles][0] : 'all';
-  const pool = heroPoolForRole(currentRound.game_id, inferredRole);
+  const pool = HERO_GAMES[currentRound.game_id];
   if(!pool || !sb) return;
   // "Held auslosen" losst für das GESAMTE Team neu aus (nicht nur für die anfragende Person) —
-  // fühlt sich wie ein frischer gemeinsamer Draw an. hero_revealed wird geleert, damit auf
-  // JEDEM Gerät die Roulette-Animation wieder von vorne losläuft statt nur den Helden stumm zu tauschen.
+  // fühlt sich wie ein frischer gemeinsamer Draw an. Jede Person behält dabei ihre eigene bisherige
+  // Rolle (falls sie beim Start eine Wunschrolle gewählt hatte), nur der konkrete Held wechselt.
+  // hero_revealed wird geleert, damit auf JEDEM Gerät die Roulette-Animation neu losläuft.
   const memberIds = teamMembers.map(m=>m.user_id);
   const prevAssignment = currentRound.hero_assignment || {};
+  const usedHeroes = new Set();
   const newAssignment = {};
   memberIds.forEach(uid=>{
     const prevHero = prevAssignment[uid];
+    const roleForThis = prevHero ? prevHero[1] : null;
+    let choices = roleForThis ? pool.filter(h=>h[1]===roleForThis && !usedHeroes.has(h[0])) : pool.filter(h=>!usedHeroes.has(h[0]));
+    if(!choices.length) choices = roleForThis ? pool.filter(h=>h[1]===roleForThis) : pool;
     let newHero, tries = 0;
-    do { newHero = pool[randInt(0, pool.length-1)]; tries++; } while(prevHero && pool.length>1 && newHero[0]===prevHero[0] && tries<20);
-    newAssignment[uid] = newHero;
+    do { newHero = choices[randInt(0, choices.length-1)]; tries++; } while(prevHero && choices.length>1 && newHero[0]===prevHero[0] && tries<20);
+    newAssignment[uid] = newHero; usedHeroes.add(newHero[0]);
   });
   const used = (currentRound.hero_joker_used || []).slice();
   used.push(forUserId); // Das Joker-Kontingent der anfragenden Person wird belastet.
@@ -2226,7 +2268,7 @@ function renderTeamRoundSection(){
     if(others.length){
       html += `<div class="rules-note" style="margin-top:16px;">Status:</div>`;
       html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly"><span>${renderAccountAvatarHTML(m.avatar,18)}</span><span>${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
+        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${renderAccountAvatarHTML(m.avatar,18)}</span><span>${m.username}</span><span>${doneSet.has(m.user_id)?'✅':'⏳'}</span></div>`
       ).join('') + `</div>`;
     }
     if(isHost){
@@ -2491,11 +2533,6 @@ function renderTeamSettingsScreen(){
       <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Schwierigkeit</div></div>
       <div class="filter-row" id="team-round-difficulty-picker"></div>
     </div>
-    <div class="settings-card" id="team-round-role-step">
-      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Rolle</div></div>
-      <div class="filter-row" id="team-round-role-picker"></div>
-      <div class="setup-info" id="team-round-role-desc" style="margin-top:6px;margin-bottom:0;"></div>
-    </div>
 
     <div class="setup-warning" id="team-settings-warning"></div>
     <div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="confirmTeamSettings()">✅ Weiter zur Lobby &amp; Einladen</button></div>
@@ -2514,7 +2551,8 @@ function renderTeamLobbyScreen(isHost, mine){
       <div class="player-chips">`;
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
-    html += `<div class="chip readonly"><span>${renderAccountAvatarHTML(m.avatar,20)}</span><span>${m.username}${m.user_id===myTeam.host_id?' 👑':''}</span><span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
+    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')"><span>${renderAccountAvatarHTML(m.avatar,20)}</span><span>${m.username}${m.user_id===myTeam.host_id?' 👑':''}</span>${roleBadge}<span>${m.ready?'✅':'⏳'}</span>${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   if(isHost){
@@ -2528,6 +2566,19 @@ function renderTeamLobbyScreen(isHost, mine){
     html += `<div class="settings-card" style="border-color:var(--turquoise);">
       <div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Host richtet gerade ein…</div></div>
       <p class="setup-info" style="margin-top:0;">${myTeam.draft_settings.text}</p>
+    </div>`;
+  }
+  const confirmedGameId = myTeam.draft_settings && myTeam.draft_settings.confirmed ? myTeam.draft_settings.gameId : null;
+  const lobbyRoleOptions = confirmedGameId ? rolesForGame(confirmedGameId) : null;
+  if(lobbyRoleOptions){
+    html += `<div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">🎭</span><div class="setup-step-title">Meine Rolle für die nächste Runde</div></div>
+      <div class="filter-row">` +
+        [{key:'all',label:'🎲 Zufällig'}, ...lobbyRoleOptions.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))].map(it=>
+          `<button class="filter-pill${(mine&&mine.round_role||'all')===it.key?' active':''}" onclick="setMyRoundRole('${it.key}')">${it.label}</button>`
+        ).join('') +
+      `</div>
+      <p class="setup-info" style="margin-top:8px;margin-bottom:0;">Jede/r wählt die eigene Wunschrolle — Held und persönliche Challenges passen sich automatisch an.</p>
     </div>`;
   }
   html += `<div class="roll-zone"><button class="roll-btn" onclick="toggleMyReady()">${mine && mine.ready ? '⏳ Nicht mehr bereit' : '✅ Bereit'}</button></div>`;
@@ -2856,6 +2907,33 @@ function heroPoolForRole(gameId, role){
   if(!base || !role || role==='all') return base;
   const filtered = base.filter(h=>h[1]===role);
   return filtered.length ? filtered : base;
+}
+function hasAnyRoleChoice(roleMap){ return !!roleMap && Object.values(roleMap).some(r=>r && r!=='all'); }
+/* Jede/r Spieler:in kann ihre/seine eigene Wunschrolle wählen (statt dass das ganze Team dieselbe
+   Rolle bekommt). roleMap ordnet jedem Spieler-Key (user_id im Team-Modus, Spielername lokal)
+   optional eine Rolle zu; wer nichts gewählt hat, bekommt zufällig eine der verbleibenden Helden. */
+function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
+  const pool = HERO_GAMES[gameId];
+  if(!pool) return null;
+  const used = new Set();
+  const result = {};
+  const withRole = playerKeys.filter(k => roleMap && roleMap[k] && roleMap[k] !== 'all');
+  const withoutRole = playerKeys.filter(k => withRole.indexOf(k) === -1);
+  withRole.forEach(k=>{
+    const role = roleMap[k];
+    let choices = pool.filter(h=> h[1]===role && !used.has(h[0]));
+    if(!choices.length) choices = pool.filter(h=>h[1]===role); // Pool zu klein: Wiederholung erlauben
+    if(!choices.length) choices = pool; // Rolle existiert in diesem Spiel nicht -> Fallback
+    const hero = choices[randInt(0, choices.length-1)];
+    result[k] = hero; used.add(hero[0]);
+  });
+  withoutRole.forEach(k=>{
+    let choices = pool.filter(h=>!used.has(h[0]));
+    if(!choices.length) choices = pool;
+    const hero = choices[randInt(0, choices.length-1)];
+    result[k] = hero; used.add(hero[0]);
+  });
+  return result;
 }
 const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'] };
 const GAME_ROUND_PRESETS = { cs2:[6,9,12,16,24], val:[6,9,12,16,24], ow2:[2,3], mr:[2,3] };
@@ -3762,10 +3840,10 @@ function renderStatsPage(){
 }
 
 /* ============================================================ SESSION SETUP WIZARD ============================================================ */
-let setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', role:'all', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
+let setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', playerRoles:{}, heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
 let stepIndex = 0;
 let continueFromSession = false;
-const ALL_STEPS = ['scope','game','gameMode','gamesMulti','mode','sessionMode','difficulty','role','heroLock','pointGoal','rounds','count','players'];
+const ALL_STEPS = ['scope','game','gameMode','gamesMulti','mode','sessionMode','difficulty','heroLock','pointGoal','rounds','count','players','role'];
 function sessionHasHeroGames(){
   if(setupState.scope === 'rounds') return !!HERO_GAMES[setupState.gameId];
   return setupState.selectedGames.some(id=>HERO_GAMES[id]);
@@ -3810,7 +3888,7 @@ function startFreshSetup(){
       return;
     }
   }
-  setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', role:'all', heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
+  setupState = { scope:'rounds', gameId:null, gameMode:null, gamesCount:5, selectedGames:[], mode:'team', sessionMode:'challenge', difficulty:'Mittel', playerRoles:{}, heroLockMode:'reroll', pointGoalChoice:'none', customGoalValue:300, rounds:3, count:4, selectedPlayers:[] };
   stepIndex = 0;
   if(myTeam && teamMembers.length){
     teamMembers.forEach(m=>{
@@ -3927,14 +4005,34 @@ function renderSetupPage(){
   buildPillRow('setup-difficulty', ['Leicht','Mittel','Schwer'].map(d=>({key:d,label:d})), setupState.difficulty, k=>{ setupState.difficulty=k; });
 
   const roleOptions = sessionRoleOptions();
-  if(!roleOptions) setupState.role = 'all';
-  else if(setupState.role!=='all' && !roleOptions.includes(setupState.role)) setupState.role = 'all';
-  if(roleOptions){
-    buildPillRow('setup-role', [{key:'all',label:'🎲 Alle Rollen'}, ...roleOptions.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))], setupState.role, k=>{ setupState.role=k; });
-    const roleDesc = document.getElementById('setup-role-desc');
-    if(roleDesc) roleDesc.textContent = setupState.role==='all'
-      ? 'Jeder bekommt eine zufällige Rolle ausgelost.'
-      : `Alle spielen ${setupState.role} — Held und persönliche Challenges passen automatisch dazu.`;
+  const rolePlayersWrap = document.getElementById('setup-role-players');
+  if(!roleOptions){
+    setupState.playerRoles = {};
+  } else if(rolePlayersWrap){
+    rolePlayersWrap.innerHTML = '';
+    // Alte Auswahl von Spielern bereinigen, die nicht mehr Teil der Runde sind.
+    Object.keys(setupState.playerRoles).forEach(p=>{ if(!setupState.selectedPlayers.includes(p)) delete setupState.playerRoles[p]; });
+    if(!setupState.selectedPlayers.length){
+      rolePlayersWrap.innerHTML = `<div class="empty-hint">Wählt zuerst eure Teilnehmer aus (nächster Schritt), dann könnt ihr hier Rollen verteilen.</div>`;
+    }
+    setupState.selectedPlayers.forEach(p=>{
+      const row = document.createElement('div');
+      row.className = 'player-block-label';
+      row.style.cssText = 'flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:10px;';
+      row.innerHTML = `<span style="color:var(--text)">${avatarHTML(p,20)} ${p}</span>`;
+      const pillRow = document.createElement('div');
+      pillRow.className = 'filter-row';
+      pillRow.style.marginTop = '2px';
+      [{key:'all',label:'🎲 Zufällig'}, ...roleOptions.map(r=>({key:r, label:`${ROLE_META[r]?ROLE_META[r].icon:''} ${r}`}))].forEach(it=>{
+        const btn = document.createElement('button');
+        btn.className = 'filter-pill'+((setupState.playerRoles[p]||'all')===it.key?' active':'');
+        btn.textContent = it.label;
+        btn.addEventListener('click', ()=>{ setupState.playerRoles[p] = it.key; renderSetupPage(); showStep(); });
+        pillRow.appendChild(btn);
+      });
+      row.appendChild(pillRow);
+      rolePlayersWrap.appendChild(row);
+    });
   }
 
   buildPillRow('setup-herolock', [{key:'reroll',label:'🔄 Jede Runde neu'},{key:'locked',label:'🔒 Gleicher Held'}], setupState.heroLockMode, k=>{ setupState.heroLockMode=k; });
@@ -4038,7 +4136,7 @@ function handleStartClick(){
     session.scope = setupState.scope; session.gameId = initialGameId; session.gameSequence = gameSequence; session.currentGameIndex = 0;
     session.mode = setupState.mode; session.sessionMode = setupState.sessionMode; session.difficultyKey = setupState.difficulty;
     session.heroLockMode = setupState.heroLockMode; session.gameMode = gameMode; session.matchStyle = matchStyle;
-    session.roleFilter = setupState.role || 'all';
+    session.roleMap = Object.assign({}, setupState.playerRoles);
     session.totalRounds = totalRounds; session.pointGoal = pointGoal; session.players = setupState.selectedPlayers.slice();
     session.currentRound = session.currentRound + 1; session.awaitingNextGameChoice = false;
     if(session.mode==='versus'){ session.cumulativePlayers = session.cumulativePlayers || {}; session.players.forEach(p=>{ if(!(p in session.cumulativePlayers)) session.cumulativePlayers[p]=0; }); }
@@ -4048,7 +4146,7 @@ function handleStartClick(){
     startSession({
       scope: setupState.scope, gameId: initialGameId, gameSequence,
       mode: setupState.mode, sessionMode: setupState.sessionMode, heroLockMode: setupState.heroLockMode,
-      gameMode, matchStyle, roleFilter: setupState.role || 'all',
+      gameMode, matchStyle, roleMap: Object.assign({}, setupState.playerRoles),
       difficultyKey: setupState.difficulty, totalRounds, pointGoal, players: setupState.selectedPlayers.slice(),
     });
     showView('session');
@@ -4153,14 +4251,18 @@ if(session && session.heroRevealDone === undefined){
 }
 
 function buildRound(){
-  const heroPool = heroPoolForRole(session.gameId, session.roleFilter);
+  const heroPool = HERO_GAMES[session.gameId] || null;
   let heroesFreshlyAssigned = false;
   if(heroPool){
     const keepExisting = session.heroLockMode === 'locked' && session.heroAssignment && session._heroAssignedGameId === session.gameId;
     if(!keepExisting){
-      session.heroAssignment = session.sessionMode==='chaos'
-        ? assignHeroesChaos(heroPool, session.players)
-        : assignHeroesBalanced(heroPool, session.players, ROLE_WEIGHTS[session.gameId]);
+      if(session.sessionMode==='chaos'){
+        session.heroAssignment = assignHeroesChaos(heroPool, session.players);
+      } else if(hasAnyRoleChoice(session.roleMap)){
+        session.heroAssignment = assignHeroesByPlayerRoles(session.gameId, session.players, session.roleMap);
+      } else {
+        session.heroAssignment = assignHeroesBalanced(heroPool, session.players, ROLE_WEIGHTS[session.gameId]);
+      }
       session._heroAssignedGameId = session.gameId;
       heroesFreshlyAssigned = true;
     }
@@ -4189,7 +4291,7 @@ function startSession(cfg){
   session = {
     scope: cfg.scope, gameId: cfg.gameId, gameSequence: cfg.gameSequence || null, currentGameIndex: 0,
     mode: cfg.mode, sessionMode: cfg.sessionMode, difficultyKey: cfg.difficultyKey, heroLockMode: cfg.heroLockMode || 'reroll',
-    gameMode: cfg.gameMode || null, matchStyle: cfg.matchStyle || null, roleFilter: cfg.roleFilter || 'all',
+    gameMode: cfg.gameMode || null, matchStyle: cfg.matchStyle || null, roleMap: cfg.roleMap || {},
     totalRounds: cfg.totalRounds, currentRound: 1, pointGoal: cfg.pointGoal || null, players: cfg.players,
     cumulativeTeam: cfg.mode==='team' ? 0 : undefined,
     cumulativePlayers: cfg.mode==='versus' ? Object.fromEntries(cfg.players.map(p=>[p,0])) : undefined,
