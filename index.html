@@ -65,10 +65,12 @@
   .landing-btn.primary:not(.disabled):hover{ box-shadow:0 14px 34px -14px rgba(155,92,246,0.6); }
   .landing-btn.disabled{ opacity:0.45; cursor:default; }
 
-  .home-actions{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:26px auto 0; padding:0 24px; max-width:440px; position:relative; z-index:1; }
+  .home-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:26px auto 0; padding:0 24px; max-width:480px; position:relative; z-index:1; }
   .home-actions .home-action-btn{ justify-content:center; }
+  .home-actions .home-action-btn.span-2{ grid-column:span 2; }
+  .home-actions .home-action-btn.span-3{ grid-column:span 3; }
   .home-actions .home-action-btn.span-2{ grid-column:1 / -1; }
-  .home-action-btn{ display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:10px 18px; border-radius:999px; font-weight:600; font-size:0.84rem; transition:all 0.2s ease; }
+  .home-action-btn{ display:flex; align-items:center; justify-content:center; gap:6px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:11px 8px; border-radius:14px; font-weight:600; font-size:0.72rem; line-height:1.25; text-align:center; transition:all 0.2s ease; white-space:normal; }
   .home-action-btn:hover{ border-color:var(--purple); box-shadow:0 0 18px -4px var(--purple); transform:translateY(-1px); }
   .player-count-badge{ background:linear-gradient(90deg,var(--purple),var(--turquoise)); color:#08080d; font-weight:700; font-size:0.75rem; padding:2px 9px; border-radius:999px; }
 
@@ -170,6 +172,18 @@
   .sb-actions button[data-action="lose"].active .vote-count{ color:#08080d; }
   .session-empty{ text-align:center; color:var(--text-faint); padding:60px 20px; }
   .section-divider{ text-align:center; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.15em; font-weight:700; margin:26px 0 12px; }
+  .podium-wrap{ display:flex; align-items:flex-end; justify-content:center; gap:8px; margin-top:14px; }
+  .podium-col{ flex:1; display:flex; flex-direction:column; align-items:center; max-width:120px; }
+  .podium-fireworks{ font-size:1.3rem; animation:podium-sparkle-kf 1.6s ease-in-out infinite; margin-bottom:2px; }
+  @keyframes podium-sparkle-kf{ 0%,100%{ opacity:0.45; transform:scale(0.85); } 50%{ opacity:1; transform:scale(1.15); } }
+  .podium-avatar{ margin-bottom:6px; }
+  .podium-name{ font-weight:700; font-size:0.82rem; margin-bottom:8px; max-width:104px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .podium-step{ width:100%; border-radius:14px 14px 0 0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding-top:10px; box-shadow:0 -4px 20px -6px rgba(0,0,0,0.5); }
+  .podium-step-1{ background:linear-gradient(180deg,#ffe08a,#d4a72c); }
+  .podium-step-2{ background:linear-gradient(180deg,#e4e4ec,#a7a7b6); }
+  .podium-step-3{ background:linear-gradient(180deg,#eab383,#b3763f); }
+  .podium-medal{ font-size:1.6rem; }
+  .podium-score{ font-family:'Rajdhani',sans-serif; font-weight:800; color:#1a1a22; font-size:0.92rem; margin-top:2px; }
   .rules-note{ text-align:center; color:var(--text-faint); font-size:0.8rem; margin:-6px auto 18px; max-width:440px; }
 
   .round-prompt{ text-align:center; background:var(--bg-card); border:1px solid var(--gold); border-radius:22px; padding:30px 26px; max-width:460px; margin:10px auto; }
@@ -476,7 +490,7 @@
   <div class="home-actions">
     <button class="home-action-btn" onclick="showView('players')">👥 Mitspieler <span class="player-count-badge" id="home-player-count">0</span></button>
     <button class="home-action-btn" onclick="showView('dice')">🎲 Würfel & Münze</button>
-    <button class="home-action-btn span-2" onclick="showView('shop')">🛒 Shop</button>
+    <button class="home-action-btn" onclick="showView('shop')">🛒 Shop</button>
   </div>
   <div id="auth-status-bar" style="margin-top:26px;"></div>
 </section>
@@ -1395,12 +1409,12 @@ function renderAuthBar(){
   const bar = document.getElementById('auth-status-bar');
   if(currentUser){
     bar.innerHTML = `<div class="home-actions" style="margin-top:0;">
-      <button class="home-action-btn span-2" onclick="openProfilePage()">${renderAccountAvatarHTML(currentUser.avatar,20)} ${currentUser.username}</button>
+      <button class="home-action-btn${currentUser.is_admin ? '' : ' span-2'}" onclick="openProfilePage()">${renderAccountAvatarHTML(currentUser.avatar,20)} ${currentUser.username}</button>
       ${currentUser.is_admin ? `<button class="home-action-btn" onclick="showAdminPanel()">🛠️ Admin</button>` : ''}
-      <button class="home-action-btn${currentUser.is_admin ? '' : ' span-2'}" onclick="handleLogout()">🚪 Logout</button>
+      <button class="home-action-btn" onclick="handleLogout()">🚪 Logout</button>
     </div>`;
   } else {
-    bar.innerHTML = `<div class="home-actions" style="margin-top:0;"><button class="home-action-btn span-2" onclick="showView('auth-welcome')">👤 Account</button></div>`;
+    bar.innerHTML = `<div class="home-actions" style="margin-top:0;"><button class="home-action-btn span-3" onclick="showView('auth-welcome')">👤 Account</button></div>`;
   }
 }
 function goToAuthForm(mode){ authMode = mode; showView('auth'); }
@@ -1650,6 +1664,7 @@ let teamRoundCount = 3;             // Anzahl Runden bei scope 'rounds'
 let teamRoundSelectedGames = [];    // gewählte Spiele bei scope 'games' (beliebig viele)
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
 let teamCampaignHistory = [];       // Host-lokal: Zusammenfassung jeder abgeschlossenen Runde dieser Kampagne (für die Endübersicht)
+let teamCampaignSyncedFor = null;   // Round-ID, für die die Endübersicht zuletzt an den Server (teams.campaign_summary) geschickt wurde
 function stopTeamPolling(){ if(teamPollInterval){ clearInterval(teamPollInterval); teamPollInterval = null; } }
 function startTeamPolling(){
   stopTeamPolling();
@@ -1691,12 +1706,19 @@ function syncDraftSettings(){
     catch(e){ console.error(e); }
   }, 500);
 }
+async function syncCampaignSummary(){
+  if(!myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
+  try{
+    await sb.from('teams').update({ campaign_summary: { history: teamCampaignHistory, roundId: currentRound ? currentRound.id : null, at: Date.now() } }).eq('id', myTeam.id);
+  }catch(e){ console.error(e); }
+}
 async function refreshTeamDraftSettings(){
   if(!myTeam || !sb) return;
   try{
-    const { data } = await sb.from('teams').select('draft_settings').eq('id', myTeam.id).maybeSingle();
+    const { data } = await sb.from('teams').select('draft_settings, campaign_summary').eq('id', myTeam.id).maybeSingle();
     if(data){
       myTeam.draft_settings = data.draft_settings;
+      myTeam.campaign_summary = data.campaign_summary;
       if(!currentRound && !teamSettingsOpen) renderTeamPage();
     }
   }catch(e){ console.error(e); }
@@ -2302,6 +2324,8 @@ async function finalizeTeamRound(){
     gameId: currentRound.game_id, mode: currentRound.mode,
     results: computeTeamRoundResults(currentRound, roundItems),
     heroes: heroesThisRound,
+    won: roundItems.filter(it=>it.result==='success').length,
+    lost: roundItems.filter(it=>it.result==='fail').length,
   });
   const myItems = roundItems.filter(it=> currentRound.mode==='team' ? true : it.user_id === currentUser.id);
   if(myItems.length){
@@ -2594,6 +2618,8 @@ function renderTeamRoundSection(){
     const results = computeTeamRoundResults(currentRound, roundItems);
     const total = campaignTotal();
     const hasNext = isHost && (teamCampaignIndex + 1) < total;
+    const syncedSummary = myTeam.campaign_summary && myTeam.campaign_summary.roundId === currentRound.id ? myTeam.campaign_summary : null;
+    const campaignDoneForMember = !isHost && !!syncedSummary;
     const uwDone = unitWord(currentRound.scope);
     const doneTitle = isHost ? `${uwDone} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${uwDone} abgeschlossen`;
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon confetti-burst" id="team-done-confetti">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
@@ -2607,11 +2633,19 @@ function renderTeamRoundSection(){
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
     } else if(isHost){
+      if(teamCampaignSyncedFor !== currentRound.id){ teamCampaignSyncedFor = currentRound.id; syncCampaignSummary(); }
       html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen (${total}/${total} ${unitWordPlural(currentRound.scope)} gespielt).</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
       html += `</div>`;
-      html += renderCampaignSummaryBlock();
+      html += renderCampaignFinalSummary(teamCampaignHistory);
+      html += renderCampaignSummaryBlock(teamCampaignHistory);
+    } else if(campaignDoneForMember){
+      html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen — wartet auf den Team-Ersteller (👑) für eine neue Runde.</p>`;
+      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
+      html += `</div>`;
+      html += renderCampaignFinalSummary(syncedSummary.history);
+      html += renderCampaignSummaryBlock(syncedSummary.history);
     } else {
       html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die nächste Runde startet…</div>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
@@ -2625,12 +2659,60 @@ function renderTeamRoundSection(){
   }
   return '';
 }
-function renderCampaignSummaryBlock(){
-  if(!teamCampaignHistory.length) return '';
+function renderCampaignFinalSummary(history){
+  history = history || teamCampaignHistory;
+  if(!history.length) return '';
+  const mode = history[0].mode;
+  if(mode === 'team'){
+    let totalPts = 0, totalWon = 0, totalLost = 0;
+    history.forEach(r=>{
+      totalPts += (r.results[0] ? r.results[0].score : 0);
+      totalWon += (r.won||0); totalLost += (r.lost||0);
+    });
+    return `<div class="settings-card" style="margin-top:16px;border-color:var(--gold);text-align:center;">
+      <div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">🏆</span><div class="setup-step-title">Gesamt-Ergebnis als Team</div></div>
+      <div style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:2.3rem;color:var(--gold);margin:6px 0;">${totalPts} Punkte</div>
+      <div class="score-sub">✅ ${totalWon} Challenges geschafft · ❌ ${totalLost} nicht geschafft</div>
+    </div>`;
+  }
+  const totals = {};
+  history.forEach(r=>{ r.results.forEach(x=>{ totals[x.name] = (totals[x.name]||0) + x.score; }); });
+  const ranked = Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  return renderPodium(ranked);
+}
+function renderPodium(ranked){
+  if(!ranked.length) return '';
+  const top3 = ranked.slice(0,3);
+  const visualOrder = [1,0,2]; // 2. Platz · 1. Platz · 3. Platz — klassische Treppchen-Anordnung
+  const heights = ['92px','126px','66px'];
+  const medals = ['🥈','🥇','🥉'];
+  let html = `<div class="settings-card" style="margin-top:16px;text-align:center;">
+    <div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">🏆</span><div class="setup-step-title">Siegertreppchen</div></div>
+    <div class="podium-wrap">`;
+  visualOrder.forEach(idx=>{
+    const p = top3[idx];
+    if(!p){ html += `<div class="podium-col"></div>`; return; }
+    const member = teamMembers.find(m=>m.username===p.name);
+    html += `<div class="podium-col">
+      <div class="podium-fireworks">🎆</div>
+      <div class="podium-avatar">${renderAccountAvatarHTML(member?member.avatar:null,36)}</div>
+      <div class="podium-name">${p.name}</div>
+      <div class="podium-step podium-step-${idx+1}" style="height:${heights[idx]};">
+        <span class="podium-medal">${medals[idx]}</span>
+        <span class="podium-score">${p.score} Pkt</span>
+      </div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  return html;
+}
+function renderCampaignSummaryBlock(history){
+  history = history || teamCampaignHistory;
+  if(!history.length) return '';
   const uwHist = unitWord(currentRound && currentRound.scope);
-  let html = `<div class="section-divider">📖 Kampagnen-Verlauf (${teamCampaignHistory.length} ${teamCampaignHistory.length>1?unitWordPlural(currentRound && currentRound.scope):uwHist})</div>`;
-  teamCampaignHistory.forEach((r,i)=>{
-    html += `<details class="hero-avatar-group"${i===teamCampaignHistory.length-1?' open':''}>
+  let html = `<div class="section-divider">📖 Kampagnen-Verlauf (${history.length} ${history.length>1?unitWordPlural(currentRound && currentRound.scope):uwHist})</div>`;
+  history.forEach((r,i)=>{
+    html += `<details class="hero-avatar-group"${i===history.length-1?' open':''}>
       <summary>${gameIconHTML(r.gameId,20)} ${uwHist} ${i+1}: ${GAME_NAME[r.gameId]||r.gameId} · ${r.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'}</summary>
       <div style="padding:0 14px 14px;">`;
     if(r.heroes.length){
