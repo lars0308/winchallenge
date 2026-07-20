@@ -1667,6 +1667,12 @@ async function loadProfile(userId){
     const { data, error } = await sb.from('profiles').select('*').eq('id', userId).single();
     if(!error && data) currentUser = data;
     if(currentUser && !currentUser.friend_code) await ensureFriendCode();
+    if(currentUser){
+      remoteCosmeticsCache[currentUser.username] = {
+        badge: currentUser.equipped_badge, hat: currentUser.equipped_hat,
+        banner: currentUser.equipped_banner, glow: currentUser.equipped_glow,
+      };
+    }
   }catch(e){ console.error(e); }
 }
 async function ensureFriendCode(){
@@ -1812,7 +1818,17 @@ function findHeroImageCI(heroName){
   const key = Object.keys(heroImageCache).find(k=>k.toLowerCase()===lower);
   return key ? heroImageCache[key] : null;
 }
+let remoteCosmeticsCache = {}; // username -> {badge, hat, banner, glow} (IDs) — vom Server synchronisiert, damit andere Spieler es auch sehen
 function cosmeticsFor(name){
+  const remote = remoteCosmeticsCache[name];
+  if(remote){
+    return {
+      hat: SHOP_HATS.find(h=>h.id===remote.hat) || null,
+      badge: SHOP_BADGES.find(b=>b.id===remote.badge) || null,
+      banner: SHOP_BANNERS.find(b=>b.id===remote.banner) || null,
+      glow: SHOP_GLOWS.find(g=>g.id===remote.glow) || null,
+    };
+  }
   const s = statsStore[name];
   if(!s) return { hat:null, badge:null, banner:null, glow:null };
   return {
@@ -2011,7 +2027,7 @@ async function joinTeam(rawCode){
 }
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow)').eq('team_id', myTeam.id).order('joined_at');
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
     // Mitgliederliste auftauchen, wurden wir vom Host gekickt (oder das Team wurde aufgelöst).
@@ -2023,6 +2039,15 @@ async function refreshTeamMembers(){
       preferred_role: r.profiles ? r.profiles.preferred_role : null, skill_level: r.profiles ? r.profiles.skill_level : null,
       preferred_mode: r.profiles ? r.profiles.preferred_mode : null,
     }));
+    // Kosmetik (Banner/Abzeichen/Mütze/Leuchtname) für alle Mitglieder in den geteilten Cache legen,
+    // damit jeder auf seinem eigenen Gerät die echten Vorlieben der anderen sieht, nicht nur seine eigenen lokalen Daten.
+    data.forEach(r=>{
+      if(!r.profiles) return;
+      remoteCosmeticsCache[r.profiles.username] = {
+        badge: r.profiles.equipped_badge, hat: r.profiles.equipped_hat,
+        banner: r.profiles.equipped_banner, glow: r.profiles.equipped_glow,
+      };
+    });
   }
   renderTeamPage();
 }
@@ -4971,6 +4996,7 @@ function buyShopItem(kind, id){
   else if(kind==='glow') s.equippedGlow = id;
   else s.equippedBanner = id;
   saveStats();
+  syncMyCosmeticsToProfile();
   renderShopPage();
 }
 function buySabotageItem(id){
@@ -4996,7 +5022,26 @@ function equipShopItem(kind, id){
   const key = kind==='badge' ? 'equippedBadge' : kind==='hat' ? 'equippedHat' : kind==='glow' ? 'equippedGlow' : 'equippedBanner';
   s[key] = (s[key] === id) ? null : id; // nochmal draufklicken zieht es wieder aus
   saveStats();
+  syncMyCosmeticsToProfile();
   renderShopPage();
+}
+async function syncMyCosmeticsToProfile(){
+  if(!currentUser || !sb) return;
+  const name = currentUser.username;
+  if(shopSelectedPlayer !== name) return; // nur den eigenen Account synchronisieren, nie fremde lokale Namen
+  const s = statsStore[name];
+  if(!s) return;
+  const payload = {
+    equipped_badge: s.equippedBadge || null,
+    equipped_hat: s.equippedHat || null,
+    equipped_banner: s.equippedBanner || null,
+    equipped_glow: s.equippedGlow || null,
+  };
+  try{
+    await sb.from('profiles').update(payload).eq('id', currentUser.id);
+    Object.assign(currentUser, payload);
+    remoteCosmeticsCache[name] = { badge: payload.equipped_badge, hat: payload.equipped_hat, banner: payload.equipped_banner, glow: payload.equipped_glow };
+  }catch(e){ console.error('Kosmetik-Sync Fehler:', e); }
 }
 
 /* ============================================================ SESSION SETUP WIZARD ============================================================ */
