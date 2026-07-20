@@ -455,6 +455,7 @@
   <div class="home-actions">
     <button class="home-action-btn" onclick="showView('players')">👥 Mitspieler <span class="player-count-badge" id="home-player-count">0</span></button>
     <button class="home-action-btn" onclick="showView('dice')">🎲 Würfel & Münze</button>
+    <button class="home-action-btn" onclick="showView('shop')">🛒 Shop</button>
   </div>
   <div id="auth-status-bar" style="margin-top:26px;"></div>
 </section>
@@ -473,15 +474,37 @@
         <span class="landing-btn-icon">🌐</span>
         <span class="landing-btn-text"><span class="landing-btn-title">Online mit Freunden</span><span class="landing-btn-sub">Team-Lobby mit Live-Bereit-Status</span></span>
       </button>
-      <button class="landing-btn" onclick="startFreshSetup()">
-        <span class="landing-btn-icon">🎮</span>
-        <span class="landing-btn-text"><span class="landing-btn-title">Einfach so spielen</span><span class="landing-btn-sub" id="fresh-setup-sub">Direkt auf diesem Gerät starten</span></span>
+      <button class="landing-btn" onclick="showView('local-choice')">
+        <span class="landing-btn-icon">🖥️</span>
+        <span class="landing-btn-text"><span class="landing-btn-title">Lokal</span><span class="landing-btn-sub">Auf diesem Gerät, ohne Online-Gruppe</span></span>
       </button>
       <div id="start-choice-team-session"></div>
     </div>
     <div class="home-actions">
       <button class="home-action-btn" onclick="showStatsPage()">📊 Statistiken</button>
       <button class="home-action-btn" onclick="showView('browse')">🕹️ Free Play (ohne Punkte)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LOKAL (Auswahl) ===================== -->
+<section id="view-local-choice" class="view">
+  <div class="bg-watermark">🖥️</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">🖥️</span> Lokal spielen</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Auf diesem Gerät</div><h2>Wie soll's losgehen?</h2><p id="local-choice-sub">Direkt auf diesem Gerät, ohne Online-Gruppe.</p></div>
+    <div class="landing-actions" style="margin-top:10px;">
+      <button class="landing-btn" onclick="startFreshSetup()">
+        <span class="landing-btn-icon">🎮</span>
+        <span class="landing-btn-text"><span class="landing-btn-title">Einfach so spielen</span><span class="landing-btn-sub">Mit allen Einstellungen selbst festlegen</span></span>
+      </button>
+      <button class="landing-btn" onclick="blitzOnlineIntent=false; showView('blitz');">
+        <span class="landing-btn-icon">⚡</span>
+        <span class="landing-btn-text"><span class="landing-btn-title">Blitzrunde</span><span class="landing-btn-sub">Spiel wählen (optional), Rest ist zufällig — ohne Einstellungen</span></span>
+      </button>
     </div>
   </div>
 </section>
@@ -649,12 +672,28 @@
   <div class="content">
     <div class="section-lead"><div class="eyebrow">Dauerhaft</div><h2>Gesamtrangliste</h2><p>Wird nach jeder beendeten Runde automatisch aktualisiert.</p></div>
     <div id="stats-content"></div>
+    <div class="roll-zone" style="margin-top:16px;"><button class="roll-btn" onclick="showView('shop')">🛒 Punkte-Shop</button></div>
     <div class="panel-block" style="margin-top:24px;">
       <div class="setup-step-head"><span class="setup-step-icon">⚙️</span><div class="setup-step-title">Einstellungen</div></div>
       <p class="setup-info" style="margin-top:0;">Zum Testen: setzt lokale Daten auf diesem Gerät zurück. Betrifft nur dieses Gerät, nicht euer Online-Konto.</p>
       <div class="roll-zone" style="margin-bottom:10px;"><button class="sb-btn danger" onclick="resetStatsOnly()">🗑️ Nur Statistiken zurücksetzen</button></div>
       <div class="roll-zone" style="margin-bottom:0;"><button class="sb-btn danger" onclick="resetAllLocalData()">🧨 Alles zurücksetzen (Statistiken, Mitspieler, Avatare)</button></div>
     </div>
+  </div>
+</section>
+
+<!-- ===================== SHOP ===================== -->
+<section id="view-shop" class="view">
+  <div class="bg-watermark">🛒</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">🛒</span> Punkte-Shop</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Mit gesammelten Punkten</div><h2>Abzeichen &amp; Banner kaufen</h2><p>Ausgegebene Punkte zählen nicht von eurem Punktestand ab — nur vom Shop-Guthaben.</p></div>
+    <div class="filter-row" id="shop-player-picker" style="margin-bottom:8px;"></div>
+    <div class="setup-info" id="shop-balance" style="margin-top:0;margin-bottom:18px;"></div>
+    <div id="shop-content"></div>
   </div>
 </section>
 
@@ -737,7 +776,7 @@
 <section id="view-avatar-picker" class="view">
   <div class="bg-watermark">🎨</div>
   <div class="topbar">
-    <button class="back-btn" onclick="showView('players')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
     <div class="page-title"><span class="ico"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.4-.3-.4-.5-.9-.5-1.4 0-1.1.9-2 2-2h2.3A4.2 4.2 0 0 0 21 12a9 9 0 0 0-9-9z"/><circle cx="7.5" cy="10.8" r="1.15" fill="currentColor" stroke="none"/><circle cx="10.3" cy="7" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.2" cy="8" r="1.15" fill="currentColor" stroke="none"/></svg></span> Avatar wählen</div>
   </div>
   <div class="content">
@@ -1526,7 +1565,7 @@ function handleRemovedFromTeam(){
 let currentRound = null, roundItems = [], roundVotes = {}, teamRoundGameChoice = null, teamRoundModeChoice = 'versus', teamRoundSessionModeChoice = 'challenge';
 let teamRoundDifficulty = 'Mittel';
 let teamRoundGameMode = null;
-let teamHeroRevealedFor = null; // Round-ID, für die diese Geräte den Helden-Roulette-Reveal schon gezeigt hat
+let teamHeroRevealedFor = null; // Spiegel des Server-Status (hero_revealed) für die lokale Idle-Cache-Logik
 let teamRoundRenderLocked = false; // true während das Roulette gerade dreht — verhindert, dass Polling/Realtime die Animation mitten drin abbricht
 let teamIdleReelCacheFor = null, teamIdleReelCacheHTML = ''; // Cache der Warte-Reel-Inhalte pro Runde, damit Polling sie nicht ständig neu mischelt
 let teamRoundLockTimer = null;
@@ -1904,7 +1943,7 @@ async function startTeamRound(skipReadyCheck){
     const personalSet = buildPersonalChallengeSet(gameId, teamRoundDifficulty, sessionMode, memberIds, heroAssignmentById, forcedComp, personalPoolFor(gameId, teamRoundGameMode));
     memberIds.forEach(uid=>{
       (personalSet[uid]||[]).forEach(c=>{
-        items.push({ round_id: round.id, user_id: uid, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] });
+        items.push({ round_id: round.id, user_id: uid, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_PERSONAL_DIFF_POINTS[c.diff] });
       });
     });
   }
@@ -1942,7 +1981,10 @@ function jokerLabel(type){
 }
 async function requestJoker(type, forSelf){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ alert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde geht kein Joker.'); return; }
   if(currentRound.pending_joker){ alert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
+  const rerollCost = 3;
+  if(shopBalance(currentUser.username) < rerollCost){ alert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`); return; }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
   if(usedKey){
     const used = currentRound[usedKey] || [];
@@ -1956,7 +1998,74 @@ async function requestJoker(type, forSelf){
   const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
   if(error){ alert('Fehler: ' + error.message); return; }
   currentRound.pending_joker = pending; currentRound.joker_votes = {};
+  const payer = statsStore[currentUser.username];
+  if(payer){ payer.spent = (payer.spent||0) + rerollCost; saveStats(); }
   renderTeamPage();
+}
+function renderSabotagePanel(){
+  if(!currentUser || !currentRound) return '';
+  const s = statsStore[currentUser.username];
+  const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
+  const available = SHOP_SABOTAGE.filter(item => (owned[item.id]||0) > 0);
+  const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
+  if(!available.length || !others.length) return '';
+  let html = `<div class="settings-card" style="margin-top:12px;border-color:var(--lose);"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteil einsetzen</div></div>`;
+  available.forEach(item=>{
+    html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} (${owned[item.id]}x) — Ziel wählen:</p><div class="filter-row" style="margin-bottom:8px;">`;
+    others.forEach(m=>{
+      html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${m.user_id}')">${m.username}</button>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+async function useSabotageItem(itemId, targetUserId){
+  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  const s = statsStore[currentUser.username];
+  const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage[itemId]) || 0;
+  if(owned < 1) return;
+  const item = SHOP_SABOTAGE.find(i=>i.id===itemId);
+  const target = teamMembers.find(m=>m.user_id===targetUserId);
+  if(!item || !target) return;
+  if(!confirm(`"${item.label}" gegen ${target.username} einsetzen? Wird dabei aus eurem Bestand verbraucht.`)) return;
+  try{
+    if(itemId==='lock_joker'){
+      const list = new Set(currentRound.sabotaged_no_joker || []);
+      list.add(targetUserId);
+      await sb.from('game_rounds').update({ sabotaged_no_joker: Array.from(list) }).eq('id', currentRound.id);
+      currentRound.sabotaged_no_joker = Array.from(list);
+    } else if(itemId==='hero_steal'){
+      const mine = currentRound.hero_assignment[currentUser.id];
+      const theirs = currentRound.hero_assignment[targetUserId];
+      const newAssignment = Object.assign({}, currentRound.hero_assignment, { [currentUser.id]: theirs, [targetUserId]: mine });
+      await sb.from('game_rounds').update({ hero_assignment: newAssignment }).eq('id', currentRound.id);
+      currentRound.hero_assignment = newAssignment;
+    } else if(itemId==='force_reroll'){
+      const pool = HERO_GAMES[currentRound.game_id];
+      const prevHero = currentRound.hero_assignment[targetUserId];
+      let newHero, tries=0;
+      do{ newHero = pool[randInt(0,pool.length-1)]; tries++; }while(prevHero && pool.length>1 && newHero[0]===prevHero[0] && tries<20);
+      const newAssignment = Object.assign({}, currentRound.hero_assignment, { [targetUserId]: newHero });
+      const revealedList = (currentRound.hero_revealed||[]).filter(id=>id!==targetUserId);
+      await sb.from('game_rounds').update({ hero_assignment: newAssignment, hero_revealed: revealedList }).eq('id', currentRound.id);
+      currentRound.hero_assignment = newAssignment;
+      currentRound.hero_revealed = revealedList;
+    } else if(itemId==='extra_hard'){
+      const pool = personalPoolFor(currentRound.game_id, currentRound.game_mode);
+      const hardOnes = pool.filter(c=>c.diff==='schwer');
+      if(hardOnes.length){
+        const pick = hardOnes[randInt(0,hardOnes.length-1)];
+        await sb.from('round_items').insert({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'schwer', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['schwer'] });
+      }
+    }
+    s.shopOwned.sabotage[itemId] = owned - 1;
+    saveStats();
+    await loadRoundItems();
+    renderTeamPage();
+  }catch(e){
+    alert('Fehler beim Einsetzen: ' + e.message);
+  }
 }
 async function voteJoker(val){
   if(!currentRound || !currentUser || !sb || !currentRound.pending_joker) return;
@@ -2029,7 +2138,7 @@ async function executePersonalChallengeJoker(forUserId){
   await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', forUserId).eq('scope','personal');
   const difficulty = currentRound.difficulty || 'Mittel';
   const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [forUserId], currentRound.hero_assignment, null, personalPoolFor(currentRound.game_id, currentRound.game_mode));
-  const newItems = (singleSet[forUserId]||[]).map(c=>({ round_id: currentRound.id, user_id: forUserId, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_DIFF_POINTS[c.diff] }));
+  const newItems = (singleSet[forUserId]||[]).map(c=>({ round_id: currentRound.id, user_id: forUserId, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_PERSONAL_DIFF_POINTS[c.diff] }));
   await sb.from('round_items').insert(newItems);
   const used = (currentRound.challenge_joker_used || []).slice();
   used.push(forUserId);
@@ -2315,6 +2424,7 @@ function renderTeamRoundSection(){
     if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
       html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Helden für alle neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
     }
+    html += renderSabotagePanel();
     const doneSet = new Set(currentRound.personally_done || []);
     const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
     const missing = others.filter(m=>!doneSet.has(m.user_id));
@@ -2634,6 +2744,14 @@ function renderTeamLobbyScreen(isHost, mine){
   });
   html += `</div>`;
   if(isHost){
+    html += `<button class="settings-row-btn" style="margin-top:12px;" onclick="blitzOnlineIntent=true; showView('blitz');">
+      <span class="settings-row-icon">⚡</span>
+      <span class="settings-row-text">
+        <span class="settings-row-title">Blitzrunde</span>
+        <span class="settings-row-sub">Spiel wählen (optional), Rest wird sofort online für alle gewürfelt</span>
+      </span>
+      <span class="settings-row-chev">›</span>
+    </button>`;
     html += `<div class="player-input-row" style="max-width:320px;margin:16px auto 0;">
       <input type="text" id="team-rename-input" placeholder="Neuer Team-Name" maxlength="24" value="${myTeam.name||''}">
       <button onclick="renameTeam()">✏️ Speichern</button>
@@ -2662,14 +2780,6 @@ function renderTeamLobbyScreen(isHost, mine){
   html += `<div class="roll-zone"><button class="roll-btn" onclick="toggleMyReady()">${mine && mine.ready ? '⏳ Nicht mehr bereit' : '✅ Bereit'}</button></div>`;
 
   if(isHost){
-    html += `<button class="settings-row-btn" style="margin-top:4px;" onclick="blitzOnlineIntent=true; showView('blitz');">
-      <span class="settings-row-icon">⚡</span>
-      <span class="settings-row-text">
-        <span class="settings-row-title">Blitzrunde</span>
-        <span class="settings-row-sub">Spiel wählen (optional), Rest wird sofort online für alle gewürfelt</span>
-      </span>
-      <span class="settings-row-chev">›</span>
-    </button>`;
     html += `<button class="settings-row-btn" style="margin-top:4px;" onclick="openTeamSettings()">
       <span class="settings-row-icon">⚙️</span>
       <span class="settings-row-text">
@@ -3322,6 +3432,7 @@ const CS2_DEATHMATCH_CHALLENGES = [
 ];
 const CS2_DEATHMATCH_PERSONAL = [
   C('Wenigste Tode im Match.','leicht','deaths-race'),
+  C('Erster Kill des Matches.','leicht','first-kill-race'),
   C('Meiste Kills im Match.','mittel','kills-race'),
   C('Meiste Headshots im Match.','mittel','headshots-race'),
   C('Höchste Killstreak im Match.','schwer','streak-race'),
@@ -3334,6 +3445,7 @@ const VAL_DEATHMATCH_CHALLENGES = [
 ];
 const VAL_DEATHMATCH_PERSONAL = [
   C('Wenigste Tode im Match.','leicht','deaths-race'),
+  C('Erster Kill des Matches.','leicht','first-kill-race'),
   C('Meiste Kills im Match.','mittel','kills-race'),
   C('Meiste Headshots im Match.','mittel','headshots-race'),
   C('Höchste Killstreak im Match.','schwer','streak-race'),
@@ -3447,6 +3559,7 @@ const PH_PERSONAL = [
 ];
 const REPO_PERSONAL = [
   C('Wenigste Regelverstöße/Fehler persönlich.','leicht','mistake-race'),
+  C('Erstes gefundenes Objekt der Runde.','leicht','first-find-race'),
   C('Bringt die meisten Gegenstände zurück.','mittel','items-race'),
   C('Sammelt die meisten Credits persönlich.','mittel','credits-race'),
   C('Erkundet den größten Teil der Karte persönlich.','mittel','exploration-race'),
@@ -3455,6 +3568,7 @@ const REPO_PERSONAL = [
 ];
 const LETHAL_PERSONAL = [
   C('Meiste Zeit außerhalb des Ships verbracht (Mut-Faktor).','leicht','explore-race'),
+  C('Erstes gefundenes Schrott-Objekt der Runde.','leicht','first-find-race'),
   C('Bringt den meisten Schrott persönlich zurück.','mittel','items-race'),
   C('Meiste Zeit am Funkgerät als Ship-Lotse.','mittel','pilot-race'),
   C('Findet das teuerste Einzelobjekt.','schwer','value-race'),
@@ -3462,6 +3576,7 @@ const LETHAL_PERSONAL = [
 ];
 const CW_PERSONAL = [
   C('Meiste Kamera-Zeit / Screentime.','leicht','screentime-race'),
+  C('Erster Jump-Scare-Moment eingefangen.','leicht','first-scare-race'),
   C('Bestes Einzel-Filmmaterial (Gruppenvotum).','mittel','best-clip-race'),
   C('Meiste Likes für den eigenen Filmpart (Gruppenvotum).','mittel','likes-race'),
   C('Nächster Kontakt mit einer Kreatur.','schwer','close-encounter-race'),
@@ -3486,6 +3601,7 @@ const PERSONAL_SOURCES = {
 const DIFF_ORDER = { leicht: 0, mittel: 1, schwer: 2 };
 function sortByDifficulty(arr){ return arr.slice().sort((a,b)=> (DIFF_ORDER[a.diff]??1) - (DIFF_ORDER[b.diff]??1)); }
 const DIFF_POINTS = { leicht: 10, mittel: 20, schwer: 35 };
+const PERSONAL_DIFF_POINTS = { leicht: 11, mittel: 21, schwer: 37 }; // Namenbasierte (persönliche) Challenges bringen mehr Punkte: leicht/mittel +1, schwer +2
 const DIFF_LABEL = { leicht:'Leicht', mittel:'Mittel', schwer:'Schwer' };
 const DIFF_COLOR = { leicht:'var(--turquoise)', mittel:'var(--purple)', schwer:'var(--gold)' };
 const DIFF_COMPOSITION = {
@@ -3504,6 +3620,7 @@ const MATCH_STYLE_COMPOSITION = {
 };
 /* Team-Runde: einfache, gestaffelte Punktzahl statt der großen lokalen DIFF_POINTS-Werte. */
 const TEAM_ROUND_DIFF_POINTS = { leicht:1, mittel:3, schwer:5 };
+const TEAM_ROUND_PERSONAL_DIFF_POINTS = { leicht:2, mittel:4, schwer:7 }; // Namenbasierte Challenges: leicht/mittel +1, schwer +2
 
 /* ============================================================ HELPERS ============================================================ */
 /* Kurze, einmalige Konfetti-Animation an einer Ankerstelle (z. B. ums Trophäen-Icon) — für
@@ -3623,20 +3740,24 @@ function showView(id, skipHistory){
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
   if(id==='start-choice') renderStartChoicePage();
   if(id==='blitz') renderBlitzPage();
+  if(id==='shop') renderShopPage();
+  if(id==='local-choice') renderLocalChoicePage();
 }
 function goBack(){
-  const prev = viewHistory.pop();
-  showView(prev || 'home', true);
+  try{
+    const prev = viewHistory.pop();
+    showView(prev || 'home', true);
+  }catch(e){
+    console.error('goBack Fehler:', e);
+    showHome();
+  }
 }
 function renderStartChoicePage(){
-  const el = document.getElementById('start-choice-team-session');
-  if(!el) return;
-  const sub = document.getElementById('fresh-setup-sub');
-  if(sub) sub.textContent = myTeam ? `Direkt auf diesem Gerät — Team „${myTeam.name || 'Team'}" wird vorausgefüllt` : 'Direkt auf diesem Gerät starten';
-  el.innerHTML = `<button class="landing-btn" onclick="blitzOnlineIntent=false; showView('blitz');">
-    <span class="landing-btn-icon">⚡</span>
-    <span class="landing-btn-text"><span class="landing-btn-title">Blitzrunde</span><span class="landing-btn-sub">Offline auf diesem Gerät — ohne Gruppe, ohne Einstellungen</span></span>
-  </button>`;
+  // Der Blitzrunde-/"Einfach so spielen"-Kram ist in die eigene "Lokal"-Seite umgezogen (view-local-choice).
+}
+function renderLocalChoicePage(){
+  const sub = document.getElementById('local-choice-sub');
+  if(sub) sub.textContent = myTeam ? `Direkt auf diesem Gerät — Team „${myTeam.name || 'Team'}" wird bei „Einfach so spielen" vorausgefüllt.` : 'Direkt auf diesem Gerät, ohne Online-Gruppe.';
 }
 let blitzOnlineIntent = false; // true = über die Team-Lobby aufgerufen -> startet online für die Gruppe; sonst immer lokal
 function renderBlitzPage(){
@@ -3935,8 +4056,10 @@ function renderStatsPage(){
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
     const fav = favoriteGame(s);
     const badges = ACHIEVEMENTS_DEF.filter(a=>a.test(s));
-    html += `<div class="stat-card">
-      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${avatarHTML(name,26)}</span><div class="stat-name">${name}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
+    const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
+    const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
+    html += `<div class="stat-card"${banner ? ` style="background:${banner.grad};"` : ''}>
+      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${avatarHTML(name,26)}</span><div class="stat-name">${shopBadge?shopBadge.icon+' ':''}${name}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
         <div class="stat-mini"><div class="stat-mini-val">${s.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
         <div class="stat-mini"><div class="stat-mini-val">${s.roundWins}</div><div class="stat-mini-label">Siege</div></div>
@@ -3949,6 +4072,149 @@ function renderStatsPage(){
     </div>`;
   });
   el.innerHTML = html;
+}
+
+/* ============================================================ PUNKTE-SHOP ============================================================ */
+const SHOP_BADGES = [
+  {id:'star', icon:'⭐', label:'Star', cost:50},
+  {id:'fire', icon:'🔥', label:'On Fire', cost:75},
+  {id:'ninja', icon:'🥷', label:'Ninja', cost:90},
+  {id:'crown', icon:'👑', label:'König', cost:100},
+  {id:'skull', icon:'💀', label:'Gefürchtet', cost:120},
+  {id:'diamond', icon:'💎', label:'Diamant', cost:200},
+];
+const SHOP_HATS = [
+  {id:'cap', icon:'🧢', label:'Cap', cost:40},
+  {id:'party', icon:'🎉', label:'Partyhut', cost:40},
+  {id:'tophat', icon:'🎩', label:'Zylinder', cost:80},
+  {id:'graduate', icon:'🎓', label:'Doktorhut', cost:80},
+  {id:'crownhat', icon:'👑', label:'Krone', cost:150},
+  {id:'halo', icon:'😇', label:'Heiligenschein', cost:150},
+];
+const SHOP_BANNERS = [
+  {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(90deg,#ff7e5f,#feb47b)', cost:60},
+  {id:'ocean', label:'Ozean', grad:'linear-gradient(90deg,#2193b0,#6dd5ed)', cost:60},
+  {id:'toxic', label:'Toxic', grad:'linear-gradient(90deg,#0f9b0f,#00f260)', cost:80},
+  {id:'midnight', label:'Mitternacht', grad:'linear-gradient(90deg,#000428,#004e92)', cost:80},
+  {id:'purple', label:'Neon-Lila', grad:'linear-gradient(90deg,#a044ff,#6a3093)', cost:100},
+  {id:'gold', label:'Gold', grad:'linear-gradient(90deg,#f7971e,#ffd200)', cost:150},
+];
+// Sabotage/Vorteils-Material: einmalig einsetzbar (wird beim Benutzen verbraucht), pro Item bis zu
+// 10 Stück auf Lager, bewusst teuer. Nur online, nur während der Helden-Auslosungsphase einsetzbar.
+const SHOP_SABOTAGE = [
+  {id:'lock_joker', icon:'🙅', label:'Joker-Sperre', desc:'Zielspieler kann diese Runde keinen Joker (Held/Challenges) mehr anfragen.', cost:180},
+  {id:'hero_steal', icon:'🔀', label:'Helden-Klau', desc:'Tauscht sofort deinen Helden mit dem Zielspieler.', cost:250},
+  {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort eine zusätzliche schwere Challenge dazu.', cost:220},
+  {id:'force_reroll', icon:'🎲', label:'Zwangs-Reroll', desc:'Der Held des Zielspielers wird sofort neu ausgelost — ohne Abstimmung.', cost:200},
+];
+let shopSelectedPlayer = null;
+function shopBalance(name){
+  const s = statsStore[name];
+  if(!s) return 0;
+  return Math.max(0, (s.totalPoints||0) - (s.spent||0));
+}
+function renderShopPage(){
+  const names = Object.keys(statsStore);
+  const pickerRow = document.getElementById('shop-player-picker');
+  if(!names.length){
+    pickerRow.innerHTML = '';
+    document.getElementById('shop-balance').textContent = '';
+    document.getElementById('shop-content').innerHTML = '<div class="empty-hint">Noch keine Statistiken — spielt erst eine Runde, um Punkte zu sammeln.</div>';
+    return;
+  }
+  if(!shopSelectedPlayer || !names.includes(shopSelectedPlayer)) shopSelectedPlayer = names[0];
+  pickerRow.innerHTML = '';
+  names.forEach(n=>{
+    const btn = document.createElement('button');
+    btn.className = 'filter-pill'+(n===shopSelectedPlayer?' active':'');
+    btn.innerHTML = avatarHTML(n,16)+' '+n;
+    btn.addEventListener('click', ()=>{ shopSelectedPlayer = n; renderShopPage(); });
+    pickerRow.appendChild(btn);
+  });
+  document.getElementById('shop-balance').textContent = `💰 Guthaben von ${shopSelectedPlayer}: ${shopBalance(shopSelectedPlayer)} Punkte`;
+  const s = statsStore[shopSelectedPlayer];
+  const owned = (s && s.shopOwned) || {badges:[], banners:[], hats:[], sabotage:{}};
+  let html = '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎖️</span><div class="setup-step-title">Abzeichen (neben dem Namen)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
+  SHOP_BADGES.forEach(b=>{
+    const isOwned = owned.badges.includes(b.id);
+    const isEquipped = s && s.equippedBadge===b.id;
+    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}">
+      <span>${b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
+    </div>`;
+  });
+  html += '</div></div>';
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🧢</span><div class="setup-step-title">Mützen (Avatar-Aufsatz)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
+  SHOP_HATS.forEach(b=>{
+    const isOwned = owned.hats && owned.hats.includes(b.id);
+    const isEquipped = s && s.equippedHat===b.id;
+    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('hat','${b.id}')`:`buyShopItem('hat','${b.id}')`}">
+      <span>${b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
+    </div>`;
+  });
+  html += '</div></div>';
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎨</span><div class="setup-step-title">Banner-Farbe (Statistik-Karte)</div></div><div class="filter-row">';
+  SHOP_BANNERS.forEach(b=>{
+    const isOwned = owned.banners.includes(b.id);
+    const isEquipped = s && s.equippedBanner===b.id;
+    html += `<button class="filter-pill${isEquipped?' active':''}" style="background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
+  });
+  html += '</div></div>';
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
+  SHOP_SABOTAGE.forEach(b=>{
+    const ownedCount = (owned.sabotage && owned.sabotage[b.id]) || 0;
+    html += `<div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="buySabotageItem('${b.id}')">
+      <span class="settings-row-icon">${b.icon}</span>
+      <span class="settings-row-text"><span class="settings-row-title">${b.label} ${ownedCount?`<span style="color:var(--turquoise);">(${ownedCount}x im Besitz)</span>`:''}</span><span class="settings-row-sub">${b.desc}</span></span>
+      <span class="settings-row-chev">${b.cost} Pkt</span>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('shop-content').innerHTML = html;
+}
+function buyShopItem(kind, id){
+  const name = shopSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const catalog = kind==='badge' ? SHOP_BADGES : kind==='hat' ? SHOP_HATS : SHOP_BANNERS;
+  const item = catalog.find(i=>i.id===id);
+  if(!item) return;
+  if(shopBalance(name) < item.cost){ alert('Nicht genug Punkte dafür.'); return; }
+  const s = statsStore[name];
+  s.spent = (s.spent||0) + item.cost;
+  s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], sabotage:{}};
+  if(!s.shopOwned.hats) s.shopOwned.hats = [];
+  if(!s.shopOwned.sabotage) s.shopOwned.sabotage = {};
+  const listKey = kind==='badge'?'badges':kind==='hat'?'hats':'banners';
+  s.shopOwned[listKey].push(id);
+  if(kind==='badge') s.equippedBadge = id;
+  else if(kind==='hat') s.equippedHat = id;
+  else s.equippedBanner = id;
+  saveStats();
+  renderShopPage();
+}
+function buySabotageItem(id){
+  const name = shopSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const item = SHOP_SABOTAGE.find(i=>i.id===id);
+  if(!item) return;
+  const s = statsStore[name];
+  s.shopOwned = s.shopOwned || {badges:[], banners:[], hats:[], sabotage:{}};
+  if(!s.shopOwned.sabotage) s.shopOwned.sabotage = {};
+  const owned = s.shopOwned.sabotage[id] || 0;
+  if(owned >= 10){ alert('Maximal 10 Stück von diesem Item auf Lager.'); return; }
+  if(shopBalance(name) < item.cost){ alert('Nicht genug Punkte dafür.'); return; }
+  s.spent = (s.spent||0) + item.cost;
+  s.shopOwned.sabotage[id] = owned + 1;
+  saveStats();
+  renderShopPage();
+}
+function equipShopItem(kind, id){
+  const name = shopSelectedPlayer;
+  if(!name || !statsStore[name]) return;
+  const s = statsStore[name];
+  const key = kind==='badge' ? 'equippedBadge' : kind==='hat' ? 'equippedHat' : 'equippedBanner';
+  s[key] = (s[key] === id) ? null : id; // nochmal draufklicken zieht es wieder aus
+  saveStats();
+  renderShopPage();
 }
 
 /* ============================================================ SESSION SETUP WIZARD ============================================================ */
@@ -4260,20 +4526,55 @@ function handleStartClick(){
 }
 
 /* ============================================================ HERO ASSIGNMENT ============================================================ */
+const LS_ROLE_HISTORY = 'winchallenge_role_history_v1';
+function loadRoleHistory(){ try{ const raw = localStorage.getItem(LS_ROLE_HISTORY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+function saveRoleHistory(){ try{ localStorage.setItem(LS_ROLE_HISTORY, JSON.stringify(roleHistory)); }catch(e){} }
+let roleHistory = loadRoleHistory(); // { spielerKey: [rolle, rolle, rolle] } — die letzten 3 zugewiesenen Rollen
+function recordRoleForPlayer(playerKey, role){
+  const hist = roleHistory[playerKey] || [];
+  hist.push(role);
+  while(hist.length > 3) hist.shift();
+  roleHistory[playerKey] = hist;
+  saveRoleHistory();
+}
+function isRoleStreaked(playerKey, role){
+  const hist = roleHistory[playerKey] || [];
+  return hist.length >= 3 && hist.every(r=>r===role);
+}
+function dedupRoleStreaks(slots, players){
+  // Verhindert, dass jemand eine 4. Runde in Folge dieselbe Rolle bekommt — tauscht ggf. mit
+  // einem anderen Spieler, für den der Tausch keinen neuen Streak erzeugt.
+  for(let i=0;i<players.length;i++){
+    if(isRoleStreaked(players[i], slots[i])){
+      for(let j=0;j<players.length;j++){
+        if(j===i || slots[j]===slots[i]) continue;
+        if(!isRoleStreaked(players[i], slots[j]) && !isRoleStreaked(players[j], slots[i])){
+          const tmp = slots[i]; slots[i] = slots[j]; slots[j] = tmp;
+          break;
+        }
+      }
+    }
+  }
+  return slots;
+}
 function assignHeroesBalanced(heroPool, players, weights){
   const roles = {};
   heroPool.forEach(([name,role])=>{ (roles[role] = roles[role]||[]).push(name); });
-  const roleNames = Object.keys(roles).filter(r=>weights[r] !== undefined);
+  // shuffle() hier ist wichtig: bei gleichen Gewichten (z. B. Valorant) sind die Nachkomma-Reste
+  // bei kleinen Gruppen oft alle identisch — ein stabiler Sort würde dann IMMER dieselbe Rolle
+  // (die erste im Objekt) bevorzugen. Durch das Mischen vor dem Sortieren wird der Tie-Break fair.
+  const roleNames = shuffle(Object.keys(roles).filter(r=>weights[r] !== undefined));
   const totalWeight = roleNames.reduce((s,r)=>s+weights[r],0);
   const raw = roleNames.map(r=>({ r, exact: weights[r]/totalWeight*players.length }));
   const counts = {}; let assigned = 0;
   raw.forEach(x=>{ counts[x.r] = Math.floor(x.exact); assigned += counts[x.r]; });
-  const remainders = raw.map(x=>({ r:x.r, frac:x.exact-counts[x.r] })).sort((a,b)=>b.frac-a.frac);
+  const remainders = shuffle(raw.map(x=>({ r:x.r, frac:x.exact-counts[x.r] }))).sort((a,b)=>b.frac-a.frac);
   let i = 0;
   while(assigned < players.length){ counts[remainders[i % remainders.length].r]++; assigned++; i++; }
   let slots = [];
   roleNames.forEach(r=>{ for(let k=0;k<counts[r];k++) slots.push(r); });
   slots = shuffle(slots);
+  slots = dedupRoleStreaks(slots, players);
   const usedPerRole = {}; const assignment = {};
   players.forEach((p,idx)=>{
     const role = slots[idx] || roleNames[0];
@@ -4282,12 +4583,18 @@ function assignHeroesBalanced(heroPool, players, weights){
     const heroName = rolePool.find(h=>!usedPerRole[role].has(h)) || rolePool[0] || (heroPool[0] ? heroPool[0][0] : '?');
     usedPerRole[role].add(heroName);
     assignment[p] = [heroName, role];
+    recordRoleForPlayer(p, role);
   });
   return assignment;
 }
 function assignHeroesChaos(heroPool, players){
   const assignment = {};
-  players.forEach(p=>{ const [name, role] = heroPool[randInt(0, heroPool.length-1)]; assignment[p] = [name, role]; });
+  players.forEach(p=>{
+    let pick, tries = 0;
+    do { pick = heroPool[randInt(0, heroPool.length-1)]; tries++; } while(isRoleStreaked(p, pick[1]) && tries<20);
+    assignment[p] = pick;
+    recordRoleForPlayer(p, pick[1]);
+  });
   return assignment;
 }
 
@@ -4331,7 +4638,7 @@ function buildPersonalChallengeSet(gameId, difficultyKey, sessionMode, playerKey
     });
     result[key] = picked.map((c,i)=>({
       id: 'c'+i+'_'+Math.random().toString(36).slice(2,7),
-      text: c.text, diff: c.diff, points: DIFF_POINTS[c.diff]*mult, state: 'pending', chaos: sessionMode==='chaos',
+      text: c.text, diff: c.diff, points: PERSONAL_DIFF_POINTS[c.diff]*mult, state: 'pending', chaos: sessionMode==='chaos',
     }));
   });
   return result;
@@ -4553,6 +4860,8 @@ function renderChallengeToggleList(scope, arr){
     const stateClass = c.state==='win' ? 'won' : c.state==='lose' ? 'lost' : '';
     const chaosClass = c.chaos ? ' chaos' : '';
     const pts = c.state==='win' ? ('+'+c.points) : c.state==='lose' ? ('−'+c.points) : (c.points+' Pkt');
+    const buyoutCost = Math.round(c.points * 1.5);
+    const canBuyout = scope !== 'team' && c.state === 'pending' && shopBalance(scope) >= buyoutCost;
     html += `<div class="sb-challenge-item ${stateClass}${chaosClass}">
       <div class="sb-diff-badge" style="background:${DIFF_COLOR[c.diff]}">${DIFF_LABEL[c.diff]}</div>
       <div class="sb-challenge-text">${c.text}</div>
@@ -4560,6 +4869,7 @@ function renderChallengeToggleList(scope, arr){
       <div class="sb-actions">
         <button data-scope="${scope}" data-cid="${c.id}" data-action="win" class="${c.state==='win'?'active':''}">✅</button>
         <button data-scope="${scope}" data-cid="${c.id}" data-action="lose" class="${c.state==='lose'?'active':''}">❌</button>
+        ${canBuyout ? `<button data-buyout-scope="${scope}" data-buyout-cid="${c.id}" data-buyout-cost="${buyoutCost}" title="Für ${buyoutCost} Punkte freikaufen">🪙</button>` : ''}
       </div></div>`;
   });
   html += '</div>'; return html;
@@ -4738,7 +5048,17 @@ function toggleChallenge(scope, cid, action){
   item.state = item.state === action ? 'pending' : action;
   saveSession(); renderScoreboard();
 }
+function buyoutChallenge(playerName, cid, cost){
+  if(shopBalance(playerName) < cost) return;
+  if(!confirm(`${cost} Punkte ausgeben, um diese Challenge automatisch als erledigt zu markieren?`)) return;
+  const s = statsStore[playerName]; if(!s) return;
+  s.spent = (s.spent||0) + cost;
+  saveStats();
+  toggleChallenge(playerName, cid, 'win');
+}
 document.getElementById('session-scoreboard').addEventListener('click', e=>{
+  const buyBtn = e.target.closest('button[data-buyout-cid]');
+  if(buyBtn){ buyoutChallenge(buyBtn.dataset.buyoutScope, buyBtn.dataset.buyoutCid, parseInt(buyBtn.dataset.buyoutCost, 10)); return; }
   const btn = e.target.closest('button[data-cid]'); if(!btn) return;
   toggleChallenge(btn.dataset.scope, btn.dataset.cid, btn.dataset.action);
 });
