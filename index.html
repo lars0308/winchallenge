@@ -3515,12 +3515,16 @@ async function requestJoker(type, forSelf){
     if(uses >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`, '🃏'); return; }
   }
   const pending = { type, by: currentUser.id, byName: currentUser.username };
-  const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: {} }).eq('id', currentRound.id);
+  // Wer die Abstimmung anstößt, will ja offensichtlich "Dafür" — zählt automatisch als Ja-Stimme,
+  // statt dass die Person sich danach nochmal selbst per Klick zustimmen muss.
+  const initialVotes = { [currentUser.id]: true };
+  const { error } = await sb.from('game_rounds').update({ pending_joker: pending, joker_votes: initialVotes }).eq('id', currentRound.id);
   if(error){ showAlert('Fehler: ' + error.message); return; }
-  currentRound.pending_joker = pending; currentRound.joker_votes = {};
+  currentRound.pending_joker = pending; currentRound.joker_votes = initialVotes;
   const payer = statsStore[currentUser.username];
   if(payer){ payer.spent = (payer.spent||0) + rerollCost; saveStats(); }
   renderTeamPage();
+  await maybeResolveJokerVote();
 }
 const LS_LOADOUT = 'winchallenge_sabotage_loadout_v1';
 let sabotageLoadout = (function(){ try{ return JSON.parse(localStorage.getItem(LS_LOADOUT)||'{}'); }catch(e){ return {}; } })();
@@ -3551,7 +3555,17 @@ function renderLoadoutPicker(){
   const ownedItems = SHOP_SABOTAGE.filter(item => (owned[item.id]||0) > 0);
   // Nicht mehr besessene Items aus einem alten Loadout entfernen.
   Object.keys(sabotageLoadout).forEach(id=>{ if(!(owned[id]>0)) delete sabotageLoadout[id]; });
-  if(!ownedItems.length) return '';
+  if(!ownedItems.length){
+    return `<div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteile für die nächste Runde</div></div>
+      <p class="setup-info" style="margin-top:0;">Noch keine Vorteile im Besitz — kauft sie im Punkte-Shop mit Punkten, die ihr durchs Spielen verdient. Sobald ihr etwas besitzt, könnt ihr es hier vor dem Rundenstart auswählen.</p>
+      <button class="settings-row-btn" onclick="showView('shop')" style="margin-top:2px;">
+        <span class="settings-row-icon">🛒</span>
+        <span class="settings-row-text"><span class="settings-row-title">Zum Punkte-Shop</span><span class="settings-row-sub">Guthaben: ${shopBalance(currentUser.username)} Punkte</span></span>
+        <span class="settings-row-chev">›</span>
+      </button>
+    </div>`;
+  }
   let html = `<div class="settings-card">
     <div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteile für die nächste Runde</div></div>
     <p class="setup-info" style="margin-top:0;">Wählt hier VOR dem Start, welche Vorteile ihr mitnehmt (max. ${LOADOUT_MAX_TOTAL}, je 1x pro Item). Während der Runde gekaufte Items zählen erst ab der nächsten Runde.</p>
@@ -5176,11 +5190,20 @@ const OW2_CHALLENGES = [
   C('Jeder muss mindestens einmal das Objective berühren.','leicht','objective'),
   C('Jeder muss mindestens einmal seine Ultimate treffen.','leicht','ultimate'),
   C('Erzielt eine Elimination durch Umgebungsschaden (z. B. Abgrund, Fallschaden).','leicht','environmental-kill'),
+  C('Jeder muss mindestens einen Assist erzielen.','leicht','assist'),
+  C('Nur Pings erlaubt — keine Sprachansagen per Voice-Chat.','leicht','comms'),
+  C('Gewinnt die allererste Teamfight des Matches.','leicht','early-fight'),
+  C('Jeder muss mindestens eine gegnerische Ultimate mit einer eigenen Fähigkeit unterbrechen (z. B. Stun, Hack, Schild).','leicht','ability-counter'),
   C('Kein Heldentausch.','mittel','hero-lock'),
   C('Nur eine Ultimate pro Match.','mittel','ultimate'),
   C('Jeder muss innerhalb der ersten Minute eine Elimination holen.','mittel','fast-start'),
   C('Schiebt den Payload/die Punkte am Stück durch, ohne dass er zurückrutscht.','mittel','objective'),
   C('Gewinnt eine Karte erst in der Overtime.','mittel','overtime'),
+  C('Keiner darf denselben Helden wie in der vorherigen Runde spielen.','mittel','hero-variety'),
+  C('Gewinnt eine Runde auf einer Push-Karte, ohne dass der Robot zurückgedrängt wird.','mittel','push-objective'),
+  C('Erobert mindestens 3 Flashpoints in einem Match auf einer Flashpoint-Karte.','mittel','flashpoint'),
+  C('Gewinnt eine Kontrollpunkt-Karte, ohne eine der drei Runden zu verlieren.','mittel','control-clean-sweep'),
+  C('Verteidigt einen Punkt erfolgreich bis in die Overtime.','mittel','overtime-defense'),
   C('Maximal 5 Tode.','schwer','deaths'),
   C('Mindestens 15 Eliminierungen.','schwer','kills'),
   C('Gewinnt, ohne dass ein Spieler stirbt.','schwer','flawless'),
@@ -5188,6 +5211,11 @@ const OW2_CHALLENGES = [
   C('Gewinnt eine Kontrollpunkt-Karte 100:0.','schwer','control-sweep'),
   C('Nur {player} darf in der ersten Hälfte des Matches die Ultimate benutzen — alle anderen müssen warten.','schwer','named-player-restriction'),
   C('{player} muss das ganze Match auf Tank/Frontline spielen, egal welcher Held ausgelost wurde.','schwer','named-player-role'),
+  C('Gewinnt eine Push-Karte mit vollständigem Push bis zum gegnerischen Ziel.','schwer','push-full'),
+  C('Gewinnt ein Match auf einer Clash-Karte.','schwer','clash-win'),
+  C('Erobert alle 5 Punkte einer Flashpoint-Karte, ohne einen einzigen zu verlieren.','schwer','flashpoint-sweep'),
+  C('Maximal 1 Tod pro Spieler im gesamten Match.','schwer','deaths-strict'),
+  C('Mindestens 20 Eliminierungen als gesamtes Team.','schwer','kills-high'),
 ];
 const MR_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
