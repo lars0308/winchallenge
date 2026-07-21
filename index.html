@@ -180,6 +180,10 @@
   .sb-challenge-item.won .sb-points{ color:var(--win); }
   .sb-challenge-item.lost .sb-points{ color:var(--lose); }
   .confetti-burst{ position:relative; display:inline-flex; }
+  /* Sanfter Übergang beim Reinrendern einer neuen Runde — v.a. spürbar, wenn bei gesperrtem
+     Helden die Roulette-Auslosung übersprungen wird und direkt die neuen Challenges erscheinen. */
+  .round-fade-in{ animation:round-fade-in-kf 0.4s ease-out; }
+  @keyframes round-fade-in-kf{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
   .confetti-piece{ position:absolute; top:50%; left:50%; font-size:2.1rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 2.4s ease-out forwards; }
   @keyframes confetti-pop-kf{
     0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
@@ -552,7 +556,8 @@
   @keyframes spruch-shimmer-kf{ 0%{background-position:0% 50%;} 100%{background-position:250% 50%;} }
   .emblem-special-group{ border:1px solid rgba(248,113,113,0.35); border-radius:14px; padding:10px; margin-bottom:12px; background:radial-gradient(circle at 30% 20%, rgba(248,113,113,0.1), transparent 70%); }
   .emblem-special-label{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.95rem; color:#f87171; letter-spacing:0.03em; margin-bottom:8px; }
-  .emblem-special-item{ position:relative; box-shadow:0 0 0 2px #f87171, 0 0 18px -2px rgba(248,113,113,0.85); animation:emblem-pulse-kf 1.8s ease-in-out infinite; }
+  .emblem-special-item{ position:relative; box-shadow:0 0 0 1px rgba(248,113,113,0.45); }
+  .avatar-grid-item.emblem-special-item.selected{ box-shadow:0 0 0 2px #f87171, 0 0 18px -2px rgba(248,113,113,0.85); animation:emblem-pulse-kf 1.8s ease-in-out infinite; border-color:#f87171; }
   @keyframes emblem-pulse-kf{ 0%,100%{ box-shadow:0 0 0 2px #f87171, 0 0 10px -2px rgba(248,113,113,0.7); } 50%{ box-shadow:0 0 0 2px #ff9b9b, 0 0 26px 2px rgba(248,113,113,0.95); } }
   .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; z-index:2; }
   .stat-avatar{ font-size:1.6rem; }
@@ -1853,6 +1858,15 @@ const ICON_SVG = {
   shield: `<path d="M12 2l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V5l7-3z" fill="currentColor"/>`,
 };
 function avatarFor(name){
+  // Für den eigenen eingeloggten Account ist currentUser.avatar die einzige verlässliche Quelle
+  // (aus Supabase synchronisiert). avatarMap ist nur ein lokaler Cache — der nach dem automatischen
+  // Vergeben des Blutmond-Emblems (100% Achievements) veraltet bleiben konnte und dadurch z.B. im
+  // Shop weiterhin das Emblem zeigte, obwohl inzwischen ein anderer Avatar gewählt wurde.
+  if(currentUser && name===currentUser.username){
+    const cur = currentUser.avatar || '😎';
+    if(avatarMap[name] !== cur){ avatarMap[name] = cur; saveAvatars(); }
+    return cur;
+  }
   if(!avatarMap[name]){
     const def = ICON_AVATARS[Math.abs(hashHue(name)) % ICON_AVATARS.length];
     avatarMap[name] = 'icon:'+def.id;
@@ -3101,7 +3115,12 @@ async function startTeamRound(skipReadyCheck){
   // Nur merken, wenn der Held für diese Kampagne überhaupt fest bleiben soll.
   teamRoundHeroAssignment = (heroPool && heroLockActive) ? heroAssignmentById : null;
   const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
-  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
+  // Wurde der Held gesperrt und für diese Runde unverändert aus der Kampagne übernommen
+  // (canReuseLockedHeroes), soll NICHT nochmal die Roulette-Auslosung laufen — alle Mitglieder
+  // gelten dann von Anfang an als "haben ihren Helden schon gesehen", und es geht direkt und
+  // nahtlos mit den neuen Challenges weiter.
+  const heroRevealedAtStart = canReuseLockedHeroes ? memberIds : null;
+  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById, hero_revealed: heroRevealedAtStart }).select().single();
   if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
 
   let items = [];
@@ -3763,7 +3782,7 @@ function renderTeamRoundSection(){
   if(currentRound.status === 'active'){
     if(teamRoundCuedFor !== currentRound.id){ teamRoundCuedFor = currentRound.id; playStartCue(); }
     const maxJokers = maxJokerUses();
-    let html = header + `<div class="panel-block" style="margin-top:20px;">
+    let html = header + `<div class="panel-block round-fade-in" style="margin-top:20px;">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
     html += renderJokerVoteBanner();
     // Loadout ("Vorteil einsetzen") steht bewusst ÜBER dem Helden-Bild/-Namen — für jeden Spieler,
@@ -3931,7 +3950,10 @@ function renderTeamRoundSection(){
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
     }
-    if(teamCelebratedFor !== currentRound.id){
+    // Konfetti/Feuerwerk (bzw. UFO) soll nur beim Abschluss der GESAMTEN Kampagne kommen (alle
+    // Runden/Matches gespielt), nicht zwischen einzelnen Runden — "hasNext" heißt: es gibt noch
+    // eine weitere Runde, also ist die Kampagne noch nicht fertig.
+    if(!hasNext && teamCelebratedFor !== currentRound.id){
       teamCelebratedFor = currentRound.id;
       // Nur im Jeder-gegen-Jeden-Modus gibt es einen echten Top-Spieler (im Team-Modus ist das
       // Ergebnis geteilt) — nur dann kann das UFO-Flyby statt des normalen Feuerwerks greifen.
@@ -6938,7 +6960,7 @@ function renderScoreboard(){
     if(session.scope === 'games'){
       const nextId = session.gameSequence[session.currentGameIndex+1];
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! <span class="confetti-burst" id="local-round-confetti">🎉</span></h3>
+        <h3>Runde ${session.currentRound} beendet! <span>🎉</span></h3>
         ${roundScoreSummary()}
         <p>Weiter geht's mit ${gameIconHTML(nextId,18)} ${GAME_NAME[nextId]} (Spiel ${session.currentGameIndex+2} von ${session.gameSequence.length}).</p>
         <div class="round-prompt-actions"><button class="round-prompt-btn primary" onclick="advanceGameSequence()">▶️ Weiter</button></div>
@@ -6946,7 +6968,7 @@ function renderScoreboard(){
     } else {
       const otherGames = SESSION_GAMES.filter(id=> id!==session.gameId && allowedModesFor(id).includes(session.mode));
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! <span class="confetti-burst" id="local-round-confetti">🎉</span></h3>
+        <h3>Runde ${session.currentRound} beendet! <span>🎉</span></h3>
         ${roundScoreSummary()}
         <p>Noch ${session.totalRounds - session.currentRound} Runde${(session.totalRounds - session.currentRound)>1?'n':''} übrig. Weiterspielen mit demselben Spiel oder ein anderes wählen?</p>
         <div class="round-prompt-actions">
@@ -6959,8 +6981,8 @@ function renderScoreboard(){
       </div>`;
     }
     el.innerHTML = html; animateMiniGoalBars(el);
-    const roundKey = 'round_'+session.currentRound;
-    if(localCelebratedKey !== roundKey){ localCelebratedKey = roundKey; setTimeout(()=>spawnConfetti('local-round-confetti', currentRoundTopPlayerName()), 0); }
+    // Kein Konfetti/Feuerwerk zwischen einzelnen Runden — das soll es nur beim wirklichen
+    // Abschluss der gesamten Session geben (siehe "local-done-confetti" oben bei session.finished).
     return;
   }
 
