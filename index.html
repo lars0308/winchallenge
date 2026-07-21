@@ -357,15 +357,37 @@
     animation: mystery-stars-kf 7s linear infinite, mystery-twinkle-kf 1.8s ease-in-out infinite;
   }
   .mystery-banner-fx::after{
-    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
-    background:linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.55) 50%, transparent 60%);
-    background-size:250% 250%;
-    animation: mystery-sweep-kf 3.2s ease-in-out infinite;
+    content:'⚡'; position:absolute; z-index:1; pointer-events:none;
+    font-size:2.6rem; top:6px; right:14px; opacity:0;
+    filter:drop-shadow(0 0 8px #fff176) drop-shadow(0 0 16px #b388ff);
+    animation: mystery-lightning-kf 3.4s ease-in-out infinite;
   }
   @keyframes mystery-stars-kf{ from{ background-position:0 0; } to{ background-position:-260px -30px; } }
   @keyframes mystery-twinkle-kf{ 0%,100%{ opacity:0.55; } 50%{ opacity:1; } }
-  @keyframes mystery-sweep-kf{ 0%{ background-position:200% 0%; } 100%{ background-position:-50% 0%; } }
+  @keyframes mystery-lightning-kf{ 0%,84%,100%{ opacity:0; transform:scale(0.9); } 86%{ opacity:1; transform:scale(1.05); } 88%{ opacity:0.2; } 90%{ opacity:1; transform:scale(1); } 93%{ opacity:0; } }
+  .flame-banner-fx{ position:relative; overflow:hidden; animation: flame-flicker-kf 0.7s ease-in-out infinite alternate, shimmer-banner-kf 5.5s ease infinite; }
+  .flame-banner-fx::before{
+    content:''; position:absolute; inset:-14px; pointer-events:none; z-index:1;
+    background-image:
+      radial-gradient(55px 85px at 18% 112%, rgba(255,210,90,0.6), transparent 62%),
+      radial-gradient(48px 78px at 52% 116%, rgba(255,110,30,0.55), transparent 62%),
+      radial-gradient(42px 72px at 84% 108%, rgba(255,200,80,0.55), transparent 62%);
+    animation: flame-lick-kf 1.05s ease-in-out infinite alternate;
+  }
+  @keyframes flame-flicker-kf{ 0%{ filter:brightness(1) saturate(1); } 25%{ filter:brightness(1.16) saturate(1.12); } 50%{ filter:brightness(0.9) saturate(0.94); } 75%{ filter:brightness(1.1) saturate(1.05); } 100%{ filter:brightness(0.97) saturate(1); } }
+  @keyframes flame-lick-kf{ 0%{ transform:translateY(5px) scaleY(0.88); } 100%{ transform:translateY(-7px) scaleY(1.08); } }
+  .toxic-banner-fx{ position:relative; overflow:hidden; }
+  .toxic-banner-fx::before{
+    content:''; position:absolute; inset:-30px; pointer-events:none; z-index:1; filter:blur(9px);
+    background-image:
+      radial-gradient(75px 46px at 20% 40%, rgba(90,255,90,0.48), transparent 70%),
+      radial-gradient(95px 55px at 72% 58%, rgba(150,255,100,0.42), transparent 70%),
+      radial-gradient(65px 42px at 45% 82%, rgba(60,220,90,0.42), transparent 70%);
+    animation: toxic-drift-kf 5.5s ease-in-out infinite alternate;
+  }
+  @keyframes toxic-drift-kf{ 0%{ transform:translate(-12px,2px); } 100%{ transform:translate(12px,-6px); } }
   .banner-badge-stamp{ position:absolute; top:10px; left:10px; z-index:3; background:rgba(0,0,0,0.4); backdrop-filter:blur(3px); border:1px solid rgba(255,255,255,0.25); border-radius:999px; padding:4px 10px; font-size:0.7rem; font-weight:800; letter-spacing:0.04em; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.6); white-space:nowrap; }
+  .tier-status-line{ font-size:0.72rem; font-weight:700; color:var(--turquoise-bright); letter-spacing:0.03em; margin-top:1px; }
   @keyframes shimmer-banner-kf{ 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
   .stat-card-head{ display:flex; align-items:center; gap:12px; margin-bottom:12px; position:relative; z-index:2; }
   .stat-avatar{ font-size:1.6rem; }
@@ -483,8 +505,9 @@
   .custom-alert-box::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); }
   @keyframes alert-pop-kf{ from{ opacity:0; transform:scale(0.88) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
   .custom-alert-icon{ display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg, rgba(168,120,255,0.18), rgba(90,225,220,0.18)); font-size:2rem; margin-bottom:16px; }
-  .custom-alert-box p{ color:var(--text); font-size:0.98rem; line-height:1.5; margin:0 0 22px; }
-  .custom-alert-box .roll-btn{ padding:12px 0; }
+  .custom-alert-box p{ color:var(--text); font-size:0.98rem; line-height:1.5; margin:0 0 22px; white-space:pre-line; }
+  .custom-alert-box .roll-btn{ width:100%; padding:14px 0; justify-content:center; }
+  .custom-alert-box .filter-row .roll-btn, .custom-alert-box .filter-row .sb-btn{ width:100%; padding:12px 0; justify-content:center; box-sizing:border-box; }
   .member-modal-backdrop.hidden{ display:none; }
   .member-modal-card{ position:relative; width:100%; max-width:380px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
@@ -882,6 +905,11 @@
         <span class="settings-row-icon">🔔</span>
         <span class="settings-row-text"><span class="settings-row-title">Ton &amp; Vibration</span><span class="settings-row-sub">Kurzer Ton/Vibration, wenn eine Runde startet</span></span>
         <span class="settings-row-chev" id="pref-toggle-soundVibration"></span>
+      </div>
+      <div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="togglePref('showTierStatus')">
+        <span class="settings-row-icon">🏅</span>
+        <span class="settings-row-text"><span class="settings-row-title">Achievement-Status anzeigen</span><span class="settings-row-sub">Zeigt "Neuling", "Profi" usw. automatisch unter Namen an</span></span>
+        <span class="settings-row-chev" id="pref-toggle-showTierStatus"></span>
       </div>
     </div>
     <div class="settings-card">
@@ -1510,7 +1538,7 @@ function togglePref(key){
   renderUserSettingsPage();
 }
 function renderUserSettingsPage(){
-  ['confirmDialogs','animations','soundVibration'].forEach(key=>{
+  ['confirmDialogs','animations','soundVibration','showTierStatus'].forEach(key=>{
     const el = document.getElementById('pref-toggle-'+key);
     if(el) el.textContent = userPrefs[key] ? '✅ An' : '⬜ Aus';
   });
@@ -1537,7 +1565,7 @@ function submitCustomChallenge(){
 const LS_PREFS = 'winchallenge_prefs_v1';
 function savePrefs(){ try{ localStorage.setItem(LS_PREFS, JSON.stringify(userPrefs)); }catch(e){} }
 function loadPrefs(){
-  const defaults = { confirmDialogs:true, animations:true, soundVibration:true, defaultTab:'home' };
+  const defaults = { confirmDialogs:true, animations:true, soundVibration:true, defaultTab:'home', showTierStatus:true };
   try{ const raw = localStorage.getItem(LS_PREFS); if(raw) return Object.assign(defaults, JSON.parse(raw)); }catch(e){}
   return defaults;
 }
@@ -1895,7 +1923,11 @@ function badgeIconHTML(badge){
 }
 function bannerClassFor(banner){
   if(!banner || !banner.animated) return '';
-  return ' stat-card-animated-banner' + (banner.mystery ? ' mystery-banner-fx' : '');
+  let cls = ' stat-card-animated-banner';
+  if(banner.mystery) cls += ' mystery-banner-fx';
+  else if(banner.id==='flame') cls += ' flame-banner-fx';
+  else if(banner.id==='toxic') cls += ' toxic-banner-fx';
+  return cls;
 }
 function bannerBadgeStampHTML(banner, badge){
   if(!banner || !badge) return '';
@@ -2243,6 +2275,7 @@ function showMemberProfile(userId){
     <button class="member-modal-close" onclick="closeMemberProfileModal()" aria-label="Schließen">✕</button>
     <div class="member-modal-avatar">${withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,52), 52)}</div>
     <div class="member-modal-name">${badgeIconHTML(memberBadge)}${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}</div>
+    ${tierStatusLineHTML(m.username)}
     ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
     <div class="member-modal-facts">${factsHTML}</div>
   </div>`;
@@ -2881,22 +2914,30 @@ async function finalizeTeamRound(){
     won: roundItems.filter(it=>it.result==='success').length,
     lost: roundItems.filter(it=>it.result==='fail').length,
   });
-  const myItems = roundItems.filter(it=> currentRound.mode==='team' ? true : it.user_id === currentUser.id);
-  if(myItems.length){
-    const s = getPlayerStats(currentUser.username);
-    let earned = 0, won = 0, lost = 0;
-    myItems.forEach(it=>{
-      if(it.result === 'success'){ earned += it.points; won++; }
-      else if(it.result === 'fail'){ lost++; }
-    });
-    s.totalPoints += earned; s.roundsPlayed += 1; s.challengesWon += won; s.challengesLost += lost;
-    if(earned > 0 && won >= lost) s.roundWins += 1;
-    s.gamesPlayed[currentRound.game_id] = (s.gamesPlayed[currentRound.game_id]||0)+1;
-    if(earned > s.bestRoundScore) s.bestRoundScore = earned;
-    saveStats();
-    notifyNewAchievements(checkAchievements(currentUser.username));
-  }
+  recordMyLocalStatsForRound();
   renderTeamPage();
+}
+// Trägt die eigenen (lokalen) Punkte/Statistiken für die aktuelle Runde ein — läuft auf JEDEM
+// Gerät für die jeweils eigene Person, nicht nur beim Host, sonst bekämen Mitglieder nie Punkte gutgeschrieben.
+let teamStatsRecordedFor = null; // Round-ID, für die die eigenen Stats schon eingetragen wurden
+function recordMyLocalStatsForRound(){
+  if(!currentRound || !currentUser) return;
+  if(teamStatsRecordedFor === currentRound.id) return;
+  const myItems = roundItems.filter(it=> currentRound.mode==='team' ? true : it.user_id === currentUser.id);
+  if(!myItems.length) return;
+  teamStatsRecordedFor = currentRound.id;
+  const s = getPlayerStats(currentUser.username);
+  let earned = 0, won = 0, lost = 0;
+  myItems.forEach(it=>{
+    if(it.result === 'success'){ earned += it.points; won++; }
+    else if(it.result === 'fail'){ lost++; }
+  });
+  s.totalPoints += earned; s.roundsPlayed += 1; s.challengesWon += won; s.challengesLost += lost;
+  if(earned > 0 && won >= lost) s.roundWins += 1;
+  s.gamesPlayed[currentRound.game_id] = (s.gamesPlayed[currentRound.game_id]||0)+1;
+  if(earned > s.bestRoundScore) s.bestRoundScore = earned;
+  saveStats();
+  notifyNewAchievements(checkAchievements(currentUser.username));
 }
 function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItems = []; roundVotes = {}; renderTeamPage(); }
 function renderTeamRoundHeader(){
@@ -3199,6 +3240,7 @@ function renderTeamRoundSection(){
   }
 
   if(currentRound.status === 'done'){
+    recordMyLocalStatsForRound();
     const results = computeTeamRoundResults(currentRound, roundItems);
     const total = campaignTotal();
     const hasNext = isHost && (teamCampaignIndex + 1) < total;
@@ -4908,6 +4950,25 @@ function renderAchievementsPage(){
   });
   contentEl.innerHTML = html;
 }
+const RANK_TIERS = [
+  {min:20, label:'Ultimativer Winner', icon:'🌠'},
+  {min:19, label:'Profi', icon:'🎖️'},
+  {min:15, label:'Erfahrener', icon:'⭐'},
+  {min:10, label:'Anfänger', icon:'🔰'},
+  {min:5, label:'Neuling', icon:'🌱'},
+];
+function tierStatusFor(name){
+  if(!userPrefs.showTierStatus) return null;
+  const s = statsStore[name];
+  if(!s) return null;
+  const count = (s.achievementsClaimed||[]).length;
+  return RANK_TIERS.find(t=>count>=t.min) || null;
+}
+function tierStatusLineHTML(name){
+  const t = tierStatusFor(name);
+  if(!t) return '';
+  return `<div class="tier-status-line">${t.icon} ${t.label}</div>`;
+}
 function checkAchievements(name){
   const s = statsStore[name];
   if(!s) return [];
@@ -5001,7 +5062,7 @@ function renderStatsPage(){
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
     html += `<div class="stat-card${bannerClassFor(banner)}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}"` : ''}>
       ${bannerBadgeStampHTML(banner, shopBadge)}
-      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
+      <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}${tierStatusLineHTML(name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
         <div class="stat-mini"><div class="stat-mini-val">${s.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
         <div class="stat-mini"><div class="stat-mini-val">${s.roundWins}</div><div class="stat-mini-label">Siege</div></div>
