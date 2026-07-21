@@ -1752,9 +1752,22 @@ async function reconcileFriendships(){
     ]);
     if(e1 || e2 || !mine || !mine.length) return;
     const reciprocated = new Set((theirs||[]).map(r=>r.user_id));
-    const stale = mine.filter(r=>!reciprocated.has(r.friend_id));
-    for(const r of stale){
-      await sb.from('friendships').delete().eq('user_id', currentUser.id).eq('friend_id', r.friend_id);
+    const candidates = mine.map(r=>r.friend_id).filter(fid=>!reciprocated.has(fid));
+    if(!candidates.length) return;
+    // Nicht sofort löschen: eine einseitige Freundschaft ist nicht automatisch "entfernt" — direkt
+    // nach dem Annehmen einer Anfrage legt erstmal nur die annehmende Seite ihre Zeile an, die
+    // andere Seite holt das erst beim nächsten Öffnen der Freunde-Seite nach (siehe
+    // materializeAcceptedOutgoingFriendRequests). Solange dafür noch eine friend_requests-Zeile
+    // zwischen den beiden existiert (egal welcher Status), ist das nur dieser Übergangszustand und
+    // keine echte Entfernung — sonst würde man dem anderen die frisch angenommene Freundschaft
+    // gleich wieder wegräumen, bevor er selbst nachziehen konnte.
+    const orExpr = candidates.map(fid=>`and(from_user.eq.${currentUser.id},to_user.eq.${fid}),and(from_user.eq.${fid},to_user.eq.${currentUser.id})`).join(',');
+    const { data: inFlight } = await sb.from('friend_requests').select('from_user,to_user').or(orExpr);
+    const inFlightIds = new Set();
+    (inFlight||[]).forEach(r=>{ inFlightIds.add(r.from_user===currentUser.id ? r.to_user : r.from_user); });
+    const stale = candidates.filter(fid=>!inFlightIds.has(fid));
+    for(const fid of stale){
+      await sb.from('friendships').delete().eq('user_id', currentUser.id).eq('friend_id', fid);
     }
   }catch(e){ console.error(e); }
 }
