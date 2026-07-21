@@ -340,6 +340,18 @@
   .player-name{ font-size:2rem; font-weight:700; font-family:'Rajdhani',sans-serif; margin-top:8px; }
 
   .stat-card{ position:relative; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; max-width:640px; margin-left:auto; margin-right:auto; }
+  .team-overview-card{ position:relative; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; margin-bottom:12px; cursor:pointer; transition:border-color 0.15s ease, transform 0.15s ease; }
+  .team-overview-card:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
+  .team-overview-card.is-favorite{ border-color:#ffd76a; }
+  .team-overview-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .team-overview-name{ font-family:'Rajdhani',sans-serif; font-weight:800; font-size:1.5rem; color:var(--text); line-height:1.15; }
+  .team-overview-actions{ display:flex; gap:6px; flex:none; }
+  .team-overview-actions button{ width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); font-size:0.9rem; display:flex; align-items:center; justify-content:center; }
+  .team-overview-actions button.fav-active{ background:rgba(255,215,106,0.18); border-color:#ffd76a; color:#ffd76a; }
+  .team-overview-members{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .team-overview-footer{ margin-top:12px; padding-top:10px; border-top:1px solid var(--border-soft); display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:0.85rem; }
+  .team-overview-footer .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--win); display:inline-block; box-shadow:0 0 6px var(--win); animation:live-dot-pulse-kf 1.6s ease-in-out infinite; }
+  @keyframes live-dot-pulse-kf{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
   .stat-card-animated-banner{ animation: shimmer-banner-kf 5.5s ease infinite; }
   .mystery-banner-fx{ position:relative; overflow:hidden; }
   .mystery-banner-fx::before{
@@ -608,7 +620,7 @@
   <div class="content">
     <div class="section-lead"><div class="eyebrow">Wie wollt ihr spielen?</div><h2>Modus wählen</h2><p>Online mit einer Live-Lobby für Freunde, oder direkt loslegen auf diesem Gerät.</p></div>
     <div class="landing-actions" style="margin-top:10px;">
-      <button class="landing-btn primary" onclick="showView('team')">
+      <button class="landing-btn primary" onclick="showView('teams-list')">
         <span class="landing-btn-icon">🌐</span>
         <span class="landing-btn-text"><span class="landing-btn-title">Online mit Freunden</span><span class="landing-btn-sub">Team-Lobby mit Live-Bereit-Status</span></span>
       </button>
@@ -777,6 +789,34 @@
 </section>
 
 <!-- ===================== TEAM / LOBBY ===================== -->
+<section id="view-teams-list" class="view">
+  <div class="bg-watermark">🏘️</div>
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+    <div class="page-title"><span class="ico">🏘️</span> Meine Teams</div>
+  </div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Live-Lobbys</div><h2>Meine Teams</h2><p>Ihr könnt Mitglied in mehreren Teams gleichzeitig sein — wählt eins aus, oder erstellt/tretet einem neuen bei.</p></div>
+    <div id="teams-list-existing"></div>
+    <div class="section-divider">🆕 Neues Team</div>
+    <div class="panel-block">
+      <div class="setup-step-head"><span class="setup-step-icon">🆕</span><div class="setup-step-title">Team erstellen</div></div>
+      <div class="player-input-row" style="max-width:320px;margin:0 auto 16px;">
+        <input type="text" id="teams-list-create-name" placeholder="Team-Name (optional)" maxlength="24">
+      </div>
+      <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="createTeamFromList()">🚀 Team erstellen</button></div>
+    </div>
+    <div class="panel-block" style="margin-top:14px;">
+      <div class="setup-step-head"><span class="setup-step-icon">🔑</span><div class="setup-step-title">Team beitreten</div></div>
+      <div class="player-input-row" style="max-width:300px;margin:0 auto;">
+        <input type="text" id="teams-list-join-code" placeholder="Code eingeben" maxlength="6" style="text-transform:uppercase;">
+        <button onclick="joinTeamFromList(document.getElementById('teams-list-join-code').value)">Beitreten</button>
+      </div>
+      <div class="setup-warning" id="teams-list-join-error"></div>
+    </div>
+  </div>
+</section>
+
 <section id="view-team" class="view">
   <div class="bg-watermark">👥</div>
   <div class="topbar">
@@ -1775,12 +1815,16 @@ async function ensureFriendCode(){
 async function restoreMyTeam(){
   if(!currentUser || !sb) return;
   try{
-    const { data, error } = await sb.from('team_members').select('team_id, teams(*)').eq('user_id', currentUser.id).limit(1).maybeSingle();
-    if(!error && data && data.teams){
-      myTeam = data.teams;
-      restoreTeamCampaignState(myTeam.id);
-      await subscribeTeam(myTeam.id);
-      await refreshTeamMembers();
+    const { data, error } = await sb.from('team_members').select('team_id, teams(*)').eq('user_id', currentUser.id);
+    if(!error && data && data.length){
+      myTeams = data.filter(r=>r.teams).map(r=>r.teams);
+      if(myTeams.length){
+        // Aktives Team für z.B. eine laufende Runde weiterhin automatisch vorwählen (das zuletzt erstellte/beigetretene).
+        myTeam = myTeams[myTeams.length-1];
+        restoreTeamCampaignState(myTeam.id);
+        await subscribeTeam(myTeam.id);
+        await refreshTeamMembers();
+      }
     }
   }catch(e){ console.error(e); }
   updateContinueButton();
@@ -2088,7 +2132,8 @@ async function saveProfile(){
 }
 
 /* ============================================================ TEAM / LOBBY ============================================================ */
-let myTeam = null; // {id, code, name, host_id}
+let myTeam = null; // {id, code, name, host_id} — das gerade aktive/geöffnete Team
+let myTeams = [];  // alle Teams, in denen dieser Account Mitglied ist (Mehrfachmitgliedschaft möglich)
 let teamMembers = [];
 let teamChannel = null;
 
@@ -2096,6 +2141,10 @@ function genTeamCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = ''; for(let i=0;i<6;i++) code += chars[randInt(0,chars.length-1)];
   return code;
+}
+function rememberMyTeam(team){
+  myTeams = myTeams.filter(t=>t.id !== team.id);
+  myTeams.push(team);
 }
 async function createTeam(){
   if(!currentUser || !sb) return;
@@ -2105,11 +2154,19 @@ async function createTeam(){
   const { data, error } = await sb.from('teams').insert({ code, host_id: currentUser.id, name }).select().single();
   if(error){ showAlert('Fehler beim Team erstellen: ' + error.message); return; }
   myTeam = data;
+  rememberMyTeam(data);
   teamEntryMode = null; teamSettingsOpen = true; // Host landet direkt auf der eigenen Einstellungs-Seite
   await sb.from('team_members').insert({ team_id: data.id, user_id: currentUser.id, ready: false });
   subscribeTeam(data.id);
   await refreshTeamMembers();
   updateContinueButton();
+}
+async function createTeamFromList(){
+  const nameInput = document.getElementById('teams-list-create-name');
+  const hidden = document.getElementById('team-create-name');
+  if(hidden && nameInput) hidden.value = nameInput.value;
+  await createTeam();
+  showView('team');
 }
 async function joinTeam(rawCode){
   if(!currentUser || !sb) return;
@@ -2120,11 +2177,139 @@ async function joinTeam(rawCode){
   const { data: team, error } = await sb.from('teams').select('*').eq('code', code).single();
   if(error || !team){ errEl.textContent = 'Team-Code nicht gefunden.'; return; }
   myTeam = team;
+  rememberMyTeam(team);
   teamEntryMode = null; teamSettingsOpen = false; // Beitretende landen direkt in der Lobby, nicht in den Einstellungen
   await sb.from('team_members').upsert({ team_id: team.id, user_id: currentUser.id, ready: false }, { onConflict: 'team_id,user_id' });
   subscribeTeam(team.id);
   await refreshTeamMembers();
   updateContinueButton();
+}
+async function joinTeamFromList(rawCode){
+  const errEl = document.getElementById('teams-list-join-error');
+  if(errEl) errEl.textContent = '';
+  const code = (rawCode||'').trim().toUpperCase();
+  if(!code){ if(errEl) errEl.textContent = 'Bitte einen Code eingeben.'; return; }
+  const { data: team, error } = await sb.from('teams').select('*').eq('code', code).single();
+  if(error || !team){ if(errEl) errEl.textContent = 'Team-Code nicht gefunden.'; return; }
+  if(myTeams.some(t=>t.id===team.id)){ await openTeamFromList(team.id); return; }
+  await joinTeam(code);
+  showView('team');
+}
+async function openTeamFromList(teamId){
+  const team = myTeams.find(t=>t.id===teamId);
+  if(!team) return;
+  myTeam = team;
+  teamEntryMode = null;
+  restoreTeamCampaignState(myTeam.id);
+  await subscribeTeam(myTeam.id);
+  await refreshTeamMembers();
+  showView('team');
+}
+function copyTeamCode(code){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(()=>showAlert('Code kopiert: '+code, '📋')).catch(()=>showAlert('Euer Code: '+code, '🔑'));
+  } else {
+    showAlert('Euer Code: '+code, '🔑');
+  }
+}
+const LS_FAVORITE_TEAMS = 'winchallenge_favorite_teams_v1';
+function loadFavoriteTeams(){ try{ return new Set(JSON.parse(localStorage.getItem(LS_FAVORITE_TEAMS)||'[]')); }catch(e){ return new Set(); } }
+function saveFavoriteTeams(set){ try{ localStorage.setItem(LS_FAVORITE_TEAMS, JSON.stringify([...set])); }catch(e){} }
+let favoriteTeamIds = loadFavoriteTeams();
+function toggleFavoriteTeam(teamId){
+  if(favoriteTeamIds.has(teamId)) favoriteTeamIds.delete(teamId); else favoriteTeamIds.add(teamId);
+  saveFavoriteTeams(favoriteTeamIds);
+  renderTeamsListPage();
+}
+async function leaveTeamById(teamId){
+  if(!currentUser || !sb) return;
+  if(!(await confirmAction('Dieses Team wirklich verlassen?'))) return;
+  await sb.from('team_members').delete().eq('team_id', teamId).eq('user_id', currentUser.id);
+  myTeams = myTeams.filter(t=>t.id !== teamId);
+  favoriteTeamIds.delete(teamId); saveFavoriteTeams(favoriteTeamIds);
+  if(myTeam && myTeam.id === teamId){
+    if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
+    stopTeamPolling();
+    myTeam = myTeams.length ? myTeams[myTeams.length-1] : null;
+    if(myTeam){ restoreTeamCampaignState(myTeam.id); await subscribeTeam(myTeam.id); await refreshTeamMembers(); }
+  }
+  updateContinueButton();
+  renderTeamsListPage();
+}
+/* Holt für ALLE Teams des Accounts auf einmal: Mitglieder (inkl. Kosmetik, damit Banner/Leuchtnamen
+   für JEDEN sichtbar sind, nicht nur für den Besitzer) sowie das letzte/aktuell laufende Spiel. */
+async function loadTeamsOverviewData(teamIds){
+  const result = { members:{}, lastRound:{} };
+  if(!sb || !teamIds.length) return result;
+  const { data: memberRows } = await sb.from('team_members')
+    .select('team_id, user_id, ready, profiles(username, avatar, equipped_badge, equipped_hat, equipped_banner, equipped_glow)')
+    .in('team_id', teamIds);
+  (memberRows||[]).forEach(r=>{
+    if(!r.profiles) return;
+    if(!result.members[r.team_id]) result.members[r.team_id] = [];
+    result.members[r.team_id].push({ user_id:r.user_id, ready:r.ready, username:r.profiles.username, avatar:r.profiles.avatar });
+    remoteCosmeticsCache[r.profiles.username] = { badge:r.profiles.equipped_badge, hat:r.profiles.equipped_hat, banner:r.profiles.equipped_banner, glow:r.profiles.equipped_glow };
+  });
+  const { data: roundRows } = await sb.from('game_rounds')
+    .select('team_id, game_id, status, created_at')
+    .in('team_id', teamIds)
+    .order('created_at', { ascending:false });
+  (roundRows||[]).forEach(r=>{ if(!result.lastRound[r.team_id]) result.lastRound[r.team_id] = r; });
+  return result;
+}
+async function renderTeamsListPage(){
+  const el = document.getElementById('teams-list-existing');
+  if(!el) return;
+  if(!myTeams.length){
+    el.innerHTML = '<div class="empty-hint">Noch in keinem Team — erstellt eins oder tretet per Code bei.</div>';
+    return;
+  }
+  const teamIds = myTeams.map(t=>t.id);
+  const overview = await loadTeamsOverviewData(teamIds);
+  // Wenn der Nutzer inzwischen weggenavigiert ist, während die Anfrage lief, nicht mehr reinrendern.
+  if(!document.getElementById('view-teams-list').classList.contains('active')) return;
+  const sorted = myTeams.slice().sort((a,b)=>{
+    const fa = favoriteTeamIds.has(a.id) ? 1 : 0, fb = favoriteTeamIds.has(b.id) ? 1 : 0;
+    return fb - fa;
+  });
+  let html = '';
+  sorted.forEach(t=>{
+    const isHost = t.host_id === currentUser.id;
+    const isFav = favoriteTeamIds.has(t.id);
+    const members = overview.members[t.id] || [];
+    const lastRound = overview.lastRound[t.id];
+    let gameLine = '<span style="color:var(--text-faint);">Noch keine Runde gespielt</span>';
+    if(lastRound){
+      const isLive = lastRound.status === 'active' || lastRound.status === 'voting';
+      gameLine = `${gameIconHTML(lastRound.game_id,16)} ${GAME_NAME[lastRound.game_id]||lastRound.game_id} ${isLive ? '<span class="live-dot"></span> läuft gerade' : '· zuletzt gespielt'}`;
+    }
+    html += `<div class="team-overview-card${isFav?' is-favorite':''}" onclick="openTeamFromList('${t.id}')">
+      <div class="team-overview-head">
+        <div class="team-overview-name">${isHost?'👑 ':''}${t.name || 'Team'}</div>
+        <div class="team-overview-actions">
+          <button class="${isFav?'fav-active':''}" onclick="event.stopPropagation(); toggleFavoriteTeam('${t.id}')" title="Favorisieren">${isFav?'⭐':'☆'}</button>
+          <button onclick="event.stopPropagation(); leaveTeamById('${t.id}')" title="Team verlassen">🚪</button>
+        </div>
+      </div>
+      <div class="team-overview-members">${members.map(m=>
+        playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18), (m.user_id===t.host_id?' 👑':''))
+      ).join('') || '<span class="empty-hint" style="padding:6px 0;">Lädt…</span>'}</div>
+      <div class="team-overview-footer">
+        <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${gameLine}</span>
+        <span style="margin-left:auto;font-family:'Rajdhani',sans-serif;font-weight:800;letter-spacing:0.1em;color:var(--turquoise-bright);">${t.code}</span>
+        <button class="header-menu-btn" style="width:26px;height:26px;font-size:0.72rem;" onclick="event.stopPropagation(); copyTeamCode('${t.code}')" title="Code kopieren">📋</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+let teamsListPollTimer = null;
+function startTeamsListPolling(){
+  stopTeamsListPolling();
+  teamsListPollTimer = setInterval(()=>{ renderTeamsListPage(); }, 4000);
+}
+function stopTeamsListPolling(){
+  if(teamsListPollTimer){ clearInterval(teamsListPollTimer); teamsListPollTimer = null; }
 }
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
@@ -3415,9 +3600,21 @@ async function leaveTeam(){
   await sb.from('team_members').delete().eq('team_id', myTeam.id).eq('user_id', currentUser.id);
   if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
-  myTeam = null; teamMembers = [];
+  const leftId = myTeam.id;
+  myTeams = myTeams.filter(t=>t.id !== leftId);
+  teamMembers = [];
   teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = [];
-  renderTeamPage();
+  if(myTeams.length){
+    // Noch in anderen Teams Mitglied — direkt eins davon als aktiv setzen, statt komplett rauszufliegen.
+    myTeam = myTeams[myTeams.length-1];
+    restoreTeamCampaignState(myTeam.id);
+    await subscribeTeam(myTeam.id);
+    await refreshTeamMembers();
+    renderTeamPage();
+  } else {
+    myTeam = null;
+    showView('teams-list');
+  }
   updateContinueButton();
 }
 async function renameTeam(){
@@ -3539,10 +3736,11 @@ function renderTeamLobbyScreen(isHost, mine){
     html += `<div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}${isHost ? ` <button class="header-menu-btn" style="width:28px;height:28px;font-size:0.8rem;vertical-align:middle;" onclick="teamRenameEditing=true; renderTeamPage();" title="Team umbenennen">✏️</button>` : ''}</div>`;
   }
   html += `
-        <div class="scoreboard-meta" style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:0.14em;color:var(--turquoise-bright);">${myTeam.code}</div>
+        <div class="scoreboard-meta" style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:0.14em;color:var(--turquoise-bright);display:flex;align-items:center;gap:8px;">${myTeam.code} <button class="header-menu-btn" style="width:26px;height:26px;font-size:0.75rem;" onclick="copyTeamCode('${myTeam.code}')" title="Code kopieren">📋</button></div>
       </div>
     </div>
-    <div class="roll-zone" style="margin-bottom:14px;"><button class="sb-btn" onclick="openFriendInviteModal()">🤝 Freund direkt einladen</button></div>
+    <div class="roll-zone" style="margin-bottom:6px;"><button class="sb-btn" onclick="openFriendInviteModal()">🤝 Freund direkt einladen</button></div>
+    <div style="text-align:center;margin-bottom:14px;"><button class="empty-hint-link" style="display:inline-block;" onclick="showView('teams-list')">🏘️ Meine Teams (${myTeams.length})</button></div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div>
       <div class="player-chips">`;
@@ -3623,9 +3821,8 @@ function renderTeamPage(){
     return;
   }
   if(!myTeam){
-    setTeamPageChrome('👥','Team','Live-Lobby','Freunde einladen','Team erstellen oder per Code beitreten. Der Bereit-Status wird live bei allen synchronisiert.');
-    if(leaveBtn) leaveBtn.style.display = 'none';
-    el.innerHTML = renderTeamEntryScreen();
+    if(myTeams.length){ openTeamFromList(myTeams[myTeams.length-1].id); return; }
+    showView('teams-list', true);
     return;
   }
 
@@ -4662,6 +4859,7 @@ function showView(id, skipHistory){
   window.scrollTo({top:0, behavior:'smooth'});
   if(id==='auth') renderAuthPage();
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
+  if(id==='teams-list'){ renderTeamsListPage(); startTeamsListPolling(); } else { stopTeamsListPolling(); }
   if(id==='start-choice') renderStartChoicePage();
   if(id==='blitz') renderBlitzPage();
   if(id==='shop') renderShopPage();
@@ -5051,9 +5249,24 @@ function notifyNewAchievements(newlyEarned){
   showAlert(`🏅 Neues Achievement freigeschaltet!\n${lines}`, '🏅');
 }
 function showStatsPage(){ showView('stats'); renderStatsPage(); }
+async function clearMyCloudCosmetics(){
+  // Der Reset hat bisher nur den lokalen statsStore geleert. Das Aussehen (Banner, Abzeichen,
+  // Mütze, Leuchtname) wird aber zusätzlich im Supabase-Profil gespiegelt (equipped_*), damit
+  // andere Team-Mitglieder es sehen können — und wurde dort NICHT mit zurückgesetzt. cosmeticsFor()
+  // bevorzugt diesen Cloud-Wert (remoteCosmeticsCache), weshalb Banner & Co. trotz "Reset" noch
+  // angezeigt wurden. Deshalb hier zusätzlich die Cloud-Seite leeren.
+  if(!currentUser) return;
+  delete remoteCosmeticsCache[currentUser.username];
+  if(!sb) return;
+  try{
+    await sb.from('profiles').update({ equipped_badge:null, equipped_hat:null, equipped_banner:null, equipped_glow:null }).eq('id', currentUser.id);
+    Object.assign(currentUser, { equipped_badge:null, equipped_hat:null, equipped_banner:null, equipped_glow:null });
+  }catch(e){ console.error('Cloud-Kosmetik konnte nicht zurückgesetzt werden:', e); }
+}
 async function resetStatsOnly(){
   if(!(await confirmAction('Statistiken (Punkte, Siege, Erfolge) wirklich zurücksetzen? Das kann nicht rückgängig gemacht werden.'))) return;
   statsStore = {}; saveStats(); renderStatsPage();
+  await clearMyCloudCosmetics();
 }
 async function resetAllLocalData(){
   if(!(await confirmAction('WIRKLICH ALLES zurücksetzen? Statistiken, lokale Mitspieler und Avatare auf diesem Gerät gehen verloren. Euer Online-Account/Team bleibt bestehen.'))) return;
@@ -5061,6 +5274,7 @@ async function resetAllLocalData(){
   globalPlayers = []; savePlayers();
   avatarMap = {}; saveAvatars();
   session = null; saveSession();
+  await clearMyCloudCosmetics();
   renderGlobalPlayerChips(); renderStatsPage(); updateContinueButton();
   showAlert('Erledigt — lokale Daten wurden zurückgesetzt.');
 }
@@ -5119,7 +5333,6 @@ const SHOP_HATS = [
 const SHOP_BANNERS = [
   {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(120deg,#ff7e5f,#feb47b,#ff7e5f)', cost:60, animated:true},
   {id:'ocean', label:'Ozean', grad:'linear-gradient(120deg,#2193b0,#6dd5ed,#2193b0)', cost:60, animated:true},
-  {id:'toxic', label:'Toxic', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:80, animated:true},
   {id:'midnight', label:'Mitternacht', grad:'linear-gradient(120deg,#000428,#004e92,#000428)', cost:80, animated:true},
   {id:'purple', label:'Neon-Lila', grad:'linear-gradient(120deg,#a044ff,#6a3093,#a044ff)', cost:100, animated:true},
   {id:'gold', label:'Gold', grad:'linear-gradient(120deg,#f7971e,#ffd200,#f7971e)', cost:150, animated:true},
