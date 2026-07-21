@@ -730,11 +730,9 @@
     <div class="header-menu-panel" id="home-menu-panel">
       <button onclick="showView('players')">👥 Mitspieler <span class="player-count-badge" id="home-player-count">0</span></button>
       <button onclick="showView('dice')">🎲 Würfel &amp; Münze</button>
-      <button onclick="showView('shop')">🛒 Shop</button>
       <button onclick="showStatsPage()">📊 Statistiken</button>
       <button onclick="showView('achievements')">🏅 Achievements</button>
       <button onclick="showView('custom-challenges')">📝 Eigene Challenges</button>
-      <button onclick="showView('friends')">🤝 Freunde</button>
       <button onclick="showView('user-settings')">⚙️ Einstellungen</button>
       <div id="home-menu-account"></div>
     </div>
@@ -937,6 +935,7 @@
   <div class="topbar">
     <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
     <div class="page-title"><span class="ico">🏘️</span> Meine Teams</div>
+    <button class="team-leave-link" onclick="showView('friends')" style="margin-left:auto;color:var(--turquoise-bright);">🤝 Freunde</button>
   </div>
   <div class="content">
     <div class="filter-row" id="teams-list-tabs" style="margin-bottom:16px;"></div>
@@ -1032,6 +1031,7 @@
     <div class="section-lead"><div class="eyebrow">Meilensteine</div><h2>Achievements</h2><p>Jedes gibt einmalig Bonus-Punkte für den Shop, sobald ihr es erreicht.</p></div>
     <div class="filter-row" id="achievements-player-picker" style="margin-bottom:8px;"></div>
     <div id="achievements-content"></div>
+    <div class="roll-zone" style="margin-top:16px;"><button class="roll-btn" onclick="showView('shop')">🛒 Punkte-Shop</button></div>
   </div>
 </section>
 
@@ -1069,22 +1069,34 @@
     <div class="page-title"><span class="ico">🤝</span> Freunde</div>
   </div>
   <div class="content">
-    <div class="section-lead"><div class="eyebrow">Live-Liste</div><h2>Freunde</h2><p>Freunde per Freundescode hinzufügen — dann könnt ihr euch gegenseitig direkt in eine Team-Lobby einladen, ohne den Code abzutippen.</p></div>
+    <div class="section-lead"><div class="eyebrow">Live-Liste</div><h2>Freunde</h2><p>Per Namen suchen oder Freundescode hinzufügen — die Anfrage muss vom anderen erst bestätigt werden. Danach könnt ihr euch gegenseitig direkt in eine Team-Lobby einladen.</p></div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">🪪</span><div class="setup-step-title">Dein Freundescode</div></div>
       <div class="team-code-display" id="friend-my-code" style="font-size:1.8rem;">—</div>
     </div>
     <div class="settings-card">
-      <div class="setup-step-head"><span class="setup-step-icon">➕</span><div class="setup-step-title">Freund hinzufügen</div></div>
+      <div class="setup-step-head"><span class="setup-step-icon">🔍</span><div class="setup-step-title">Per Namen suchen</div></div>
+      <div class="player-input-row" style="max-width:none;">
+        <input type="text" id="friend-search-input" placeholder="Anzeigename eingeben" maxlength="20">
+        <button onclick="searchFriendsByName()">Suchen</button>
+      </div>
+      <div class="setup-warning" id="friend-search-warning"></div>
+      <div id="friend-search-results" style="margin-top:8px;"></div>
+    </div>
+    <div class="settings-card">
+      <div class="setup-step-head"><span class="setup-step-icon">➕</span><div class="setup-step-title">Per Freundescode hinzufügen</div></div>
       <div class="player-input-row" style="max-width:none;">
         <input type="text" id="friend-code-input" placeholder="Freundescode eingeben" maxlength="8" style="text-transform:uppercase;">
         <button onclick="addFriendByCode()">Hinzufügen</button>
       </div>
       <div class="setup-warning" id="friend-add-warning"></div>
     </div>
+    <div class="section-divider" id="friend-requests-divider" style="display:none;">🤝 Freundschaftsanfragen</div>
+    <div id="friend-requests-incoming"></div>
+    <div id="friend-requests-outgoing"></div>
     <div class="setup-info" id="friend-invite-hint" style="display:none;">Ihr seid in einer Team-Lobby — tippt auf einen Freund, um ihn direkt einzuladen.</div>
     <div id="friends-list"></div>
-    <div class="section-divider" id="friend-invites-divider" style="display:none;">📩 Einladungen</div>
+    <div class="section-divider" id="friend-invites-divider" style="display:none;">📩 Team-Einladungen</div>
     <div id="friend-invites-list"></div>
   </div>
 </section>
@@ -1673,53 +1685,176 @@ async function renderFriendsPage(){
   document.getElementById('friend-my-code').textContent = currentUser.friend_code || '…';
   document.getElementById('friend-invite-hint').style.display = myTeam ? 'block' : 'none';
   document.getElementById('friend-add-warning').textContent = '';
+  document.getElementById('friend-search-warning').textContent = '';
+  document.getElementById('friend-search-results').innerHTML = '';
   const listEl = document.getElementById('friends-list');
   listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
   try{
     const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar, last_active)').eq('user_id', currentUser.id);
     if(error) throw error;
     if(!data || !data.length){
-      listEl.innerHTML = '<div class="empty-hint">Noch keine Freunde — Code eines Freundes oben eingeben.</div>';
+      listEl.innerHTML = '<div class="empty-hint">Noch keine Freunde — sucht oben nach Namen oder gebt einen Freundescode ein.</div>';
     } else {
       let html = '<div class="section-divider">👥 Deine Freunde</div>';
+      const memberIds = myTeam ? new Set(teamMembers.map(m=>m.user_id)) : new Set();
       data.forEach(f=>{
         const p = f.profiles;
         if(!p) return;
-        html += `<div class="chip readonly${myTeam?' member-clickable':''}" style="width:100%;box-sizing:border-box;justify-content:space-between;" ${myTeam?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
+        // Freunde, die schon in der aktuellen Gruppe sind, lassen sich nicht nochmal einladen —
+        // vorher wurde der Klick trotzdem an inviteFriendToTeam() weitergereicht und ist dort ins
+        // Leere gelaufen ("geht nicht" bei Freunden aus derselben Gruppe).
+        const alreadyIn = myTeam && memberIds.has(p.id);
+        const canInvite = myTeam && !alreadyIn;
+        html += `<div class="chip readonly${canInvite?' member-clickable':''}" style="width:100%;box-sizing:border-box;justify-content:space-between;" ${canInvite?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
           <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username} ${onlineDotHTML(p.last_active, true)}</span>
-          ${myTeam?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':''}
+          ${canInvite?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':(alreadyIn?'<span style="color:var(--text-faint);">schon dabei</span>':'')}
         </div>`;
       });
       listEl.innerHTML = html;
     }
   }catch(e){ listEl.innerHTML = '<div class="empty-hint">Freundesliste konnte nicht geladen werden.</div>'; console.error(e); }
+  await materializeAcceptedOutgoingFriendRequests();
+  await renderFriendRequests();
   await renderPendingInvites();
+}
+// ===== Freundschaftsanfragen (statt direktem Hinzufügen) =====
+// Wichtig: Row-Level-Security lässt jeden Nutzer immer nur SEINE EIGENE Zeile in "friendships"
+// anlegen (auth.uid() = user_id) — man kann also nicht beide Richtungen auf einmal in einem
+// Rutsch eintragen. Genau daran scheiterte "Freund per Code hinzufügen" bisher lautlos: der
+// zweite upsert für die Gegenseite wurde von der Datenbank stillschweigend verworfen, ohne dass
+// das im UI auffiel. Jetzt läuft es über eine eigene Tabelle "friend_requests" (from_user,
+// to_user, status) — Anfrage stellen, Gegenseite nimmt an oder lehnt ab, und beide Seiten legen
+// danach JEWEILS NUR IHRE EIGENE friendships-Zeile an (siehe materializeAcceptedOutgoingFriendRequests).
+// ERFORDERT Supabase-Tabelle+Policies, siehe SQL-Hinweis im Chat.
+async function sendFriendRequest(targetId, targetUsername){
+  if(!currentUser || !sb) return { ok:false, msg:'Nicht eingeloggt.' };
+  if(targetId === currentUser.id) return { ok:false, msg:'Das bist du selbst.' };
+  try{
+    const { data: already } = await sb.from('friendships').select('user_id').eq('user_id', currentUser.id).eq('friend_id', targetId).maybeSingle();
+    if(already) return { ok:false, msg: `${targetUsername} ist schon dein Freund.` };
+    const { data: existing } = await sb.from('friend_requests').select('id, from_user, to_user, status')
+      .or(`and(from_user.eq.${currentUser.id},to_user.eq.${targetId}),and(from_user.eq.${targetId},to_user.eq.${currentUser.id})`).maybeSingle();
+    if(existing && existing.status === 'pending'){
+      if(existing.from_user === targetId){
+        // Die andere Seite hat euch schon angefragt — direkt annehmen statt doppelt anzufragen.
+        await acceptFriendRequest(existing.id, targetId, true);
+        return { ok:true, msg: `${targetUsername} ist jetzt dein Freund (ihr hattet euch gegenseitig angefragt).` };
+      }
+      return { ok:false, msg: `Anfrage an ${targetUsername} läuft schon.` };
+    }
+    const { error } = await sb.from('friend_requests').insert({ from_user: currentUser.id, to_user: targetId, status:'pending' });
+    if(error) throw error;
+    return { ok:true, msg: `Freundschaftsanfrage an ${targetUsername} gesendet.` };
+  }catch(e){ return { ok:false, msg: 'Fehler: ' + e.message }; }
 }
 async function addFriendByCode(){
   const input = document.getElementById('friend-code-input');
   const warn = document.getElementById('friend-add-warning');
-  warn.textContent = '';
+  warn.style.color = 'var(--lose)'; warn.textContent = '';
   const code = input.value.trim().toUpperCase();
   if(!code){ warn.textContent = 'Bitte einen Freundescode eingeben.'; return; }
   if(!currentUser || !sb) return;
   try{
     const { data, error } = await sb.from('profiles').select('id, username').eq('friend_code', code).maybeSingle();
     if(error || !data){ warn.textContent = 'Kein Account mit diesem Code gefunden.'; return; }
-    if(data.id === currentUser.id){ warn.textContent = 'Das ist dein eigener Code.'; return; }
-    await sb.from('friendships').upsert([
-      { user_id: currentUser.id, friend_id: data.id },
-      { user_id: data.id, friend_id: currentUser.id },
-    ], { onConflict: 'user_id,friend_id' });
+    const result = await sendFriendRequest(data.id, data.username);
+    if(!result.ok){ warn.textContent = result.msg; return; }
     input.value = '';
-    renderFriendsPage();
+    warn.style.color = 'var(--win)'; warn.textContent = result.msg;
+    await renderFriendRequests();
   }catch(e){ warn.textContent = 'Fehler: ' + e.message; }
+}
+async function searchFriendsByName(){
+  const input = document.getElementById('friend-search-input');
+  const warn = document.getElementById('friend-search-warning');
+  const resultsEl = document.getElementById('friend-search-results');
+  warn.textContent = ''; resultsEl.innerHTML = '';
+  const q = input.value.trim();
+  if(!q){ warn.textContent = 'Bitte einen Namen eingeben.'; return; }
+  if(!currentUser || !sb) return;
+  resultsEl.innerHTML = '<div class="empty-hint">Sucht…</div>';
+  try{
+    const { data, error } = await sb.from('profiles').select('id, username, avatar').ilike('username', `%${q}%`).neq('id', currentUser.id).limit(10);
+    if(error) throw error;
+    if(!data || !data.length){ resultsEl.innerHTML = '<div class="empty-hint">Niemand mit diesem Namen gefunden.</div>'; return; }
+    resultsEl.innerHTML = data.map(p=>`<div class="chip readonly" style="width:100%;box-sizing:border-box;justify-content:space-between;">
+      <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
+      <button class="header-menu-btn" style="width:auto;border-radius:14px;padding:0 10px;font-size:0.72rem;" onclick="sendFriendRequestFromSearch('${p.id}','${p.username}')">➕ Anfragen</button>
+    </div>`).join('');
+  }catch(e){ resultsEl.innerHTML = '<div class="empty-hint">Suche fehlgeschlagen.</div>'; console.error(e); }
+}
+async function sendFriendRequestFromSearch(targetId, targetUsername){
+  const result = await sendFriendRequest(targetId, targetUsername);
+  showAlert(result.msg, result.ok ? '🤝' : '⚠️');
+  if(result.ok){
+    document.getElementById('friend-search-results').innerHTML = '';
+    document.getElementById('friend-search-input').value = '';
+    await renderFriendRequests();
+  }
 }
 async function inviteFriendToTeam(friendUserId, friendUsername){
   if(!myTeam || !currentUser || !sb) return;
+  if(teamMembers.some(m=>m.user_id===friendUserId)){ showAlert(`${friendUsername} ist schon in eurer Gruppe.`, 'ℹ️'); return; }
   try{
-    await sb.from('team_invites').insert({ team_id: myTeam.id, from_user: currentUser.id, to_user: friendUserId, status: 'pending' });
+    const { error } = await sb.from('team_invites').insert({ team_id: myTeam.id, from_user: currentUser.id, to_user: friendUserId, status: 'pending' });
+    if(error) throw error;
     showAlert(`Einladung an ${friendUsername} verschickt.`, '📨');
   }catch(e){ showAlert('Einladung konnte nicht verschickt werden: ' + e.message, '⚠️'); }
+}
+// Eingehende UND ausgehende Freundschaftsanfragen — getrennt von Team-Einladungen weiter unten.
+async function renderFriendRequests(){
+  const divider = document.getElementById('friend-requests-divider');
+  const inEl = document.getElementById('friend-requests-incoming');
+  const outEl = document.getElementById('friend-requests-outgoing');
+  if(!currentUser || !sb){ divider.style.display='none'; inEl.innerHTML=''; outEl.innerHTML=''; return; }
+  try{
+    const [{ data: incoming, error: e1 }, { data: outgoing, error: e2 }] = await Promise.all([
+      sb.from('friend_requests').select('id, from_user, profiles!friend_requests_from_user_fkey(username, avatar)').eq('to_user', currentUser.id).eq('status','pending'),
+      sb.from('friend_requests').select('id, to_user, profiles!friend_requests_to_user_fkey(username, avatar)').eq('from_user', currentUser.id).eq('status','pending'),
+    ]);
+    if(e1) throw e1; if(e2) throw e2;
+    const hasAny = (incoming && incoming.length) || (outgoing && outgoing.length);
+    divider.style.display = hasAny ? 'block' : 'none';
+    inEl.innerHTML = (incoming||[]).map(r=>`<div class="settings-row-btn" style="margin-bottom:8px;">
+      <span class="settings-row-icon">🤝</span>
+      <span class="settings-row-text"><span class="settings-row-title">${r.profiles?r.profiles.username:'?'} möchte befreundet sein</span></span>
+      <button class="sb-btn" style="padding:8px 12px;" onclick="acceptFriendRequest('${r.id}','${r.from_user}')">✅</button>
+      <button class="sb-btn danger" style="padding:8px 12px;" onclick="declineFriendRequest('${r.id}')">❌</button>
+    </div>`).join('');
+    outEl.innerHTML = (outgoing||[]).map(r=>`<div class="settings-row-btn" style="margin-bottom:8px;opacity:0.75;">
+      <span class="settings-row-icon">⏳</span>
+      <span class="settings-row-text"><span class="settings-row-title">Anfrage an ${r.profiles?r.profiles.username:'?'}</span><span class="settings-row-sub">Wartet auf Bestätigung</span></span>
+      <button class="sb-btn danger" style="padding:8px 12px;" onclick="declineFriendRequest('${r.id}')">Zurückziehen</button>
+    </div>`).join('');
+  }catch(e){ console.error(e); }
+}
+async function acceptFriendRequest(requestId, fromUserId, skipRerender){
+  if(!currentUser || !sb) return;
+  try{
+    await sb.from('friend_requests').update({ status:'accepted' }).eq('id', requestId);
+    // Nur die eigene Zeile anlegen — die Gegenseite legt ihre eigene beim nächsten Öffnen der
+    // Freunde-Seite an (materializeAcceptedOutgoingFriendRequests), RLS verbietet Fremdzeilen.
+    await sb.from('friendships').upsert({ user_id: currentUser.id, friend_id: fromUserId }, { onConflict:'user_id,friend_id' });
+  }catch(e){ console.error(e); }
+  if(!skipRerender) await renderFriendsPage();
+}
+async function declineFriendRequest(requestId){
+  if(!sb) return;
+  try{ await sb.from('friend_requests').delete().eq('id', requestId); }catch(e){ console.error(e); }
+  await renderFriendRequests();
+}
+// Wer eine Anfrage GESCHICKT hat, sieht hier (beim Öffnen der Freunde-Seite), ob sie inzwischen
+// angenommen wurde, und legt dann selbst seine eigene friendships-Zeile an (siehe Kommentar oben).
+async function materializeAcceptedOutgoingFriendRequests(){
+  if(!currentUser || !sb) return;
+  try{
+    const { data, error } = await sb.from('friend_requests').select('id, to_user').eq('from_user', currentUser.id).eq('status','accepted');
+    if(error || !data || !data.length) return;
+    for(const r of data){
+      await sb.from('friendships').upsert({ user_id: currentUser.id, friend_id: r.to_user }, { onConflict:'user_id,friend_id' });
+      await sb.from('friend_requests').delete().eq('id', r.id);
+    }
+  }catch(e){ console.error(e); }
 }
 async function renderPendingInvites(){
   const divider = document.getElementById('friend-invites-divider');
@@ -1735,7 +1870,8 @@ async function renderPendingInvites(){
       html += `<div class="settings-row-btn" style="margin-bottom:8px;">
         <span class="settings-row-icon">📨</span>
         <span class="settings-row-text"><span class="settings-row-title">${inv.profiles?inv.profiles.username:'?'} lädt dich ein</span><span class="settings-row-sub">${inv.teams?inv.teams.name||'Team':'Team'}</span></span>
-        <button class="sb-btn" style="padding:8px 12px;" onclick="acceptTeamInvite('${inv.id}','${inv.teams?inv.teams.code:''}')">✅ Beitreten</button>
+        <button class="sb-btn" style="padding:8px 12px;" onclick="acceptTeamInvite('${inv.id}','${inv.teams?inv.teams.code:''}')">✅</button>
+        <button class="sb-btn danger" style="padding:8px 12px;" onclick="declineTeamInvite('${inv.id}')">❌</button>
       </div>`;
     });
     listEl.innerHTML = html;
@@ -1746,6 +1882,11 @@ async function acceptTeamInvite(inviteId, teamCode){
   await sb.from('team_invites').update({ status: 'accepted' }).eq('id', inviteId);
   await joinTeam(teamCode);
   showView('team');
+}
+async function declineTeamInvite(inviteId){
+  if(!sb) return;
+  try{ await sb.from('team_invites').update({ status: 'declined' }).eq('id', inviteId); }catch(e){ console.error(e); }
+  await renderPendingInvites();
 }
 function togglePref(key){
   userPrefs[key] = !userPrefs[key];
@@ -2126,7 +2267,8 @@ async function handleLogout(){
   if(teamChannel && sb){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
   renderAuthBar();
-  showHome();
+  viewHistory = [];
+  goToAuthForm('login');
 }
 function renderAuthBar(){
   const bar = document.getElementById('home-menu-account');
@@ -2632,13 +2774,27 @@ function startTeamsListPolling(){
 function stopTeamsListPolling(){
   if(teamsListPollTimer){ clearInterval(teamsListPollTimer); teamsListPollTimer = null; }
 }
+let lastTeamMembersSignature = null;
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
   const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active)').eq('team_id', myTeam.id).order('joined_at');
+  let changed = true;
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
     // Mitgliederliste auftauchen, wurden wir vom Host gekickt (oder das Team wurde aufgelöst).
     if(currentUser && !data.some(r=>r.user_id===currentUser.id)){ handleRemovedFromTeam(); return; }
+    // Signatur bewusst OHNE last_active: der 45s-Online-Heartbeat jedes Mitglieds hätte sonst bei
+    // JEDEM Polling-Tick (alle 3s) einen kompletten Neuaufbau der Seite erzwungen, obwohl sich
+    // sonst nichts geändert hat — das war die Hauptursache fürs ständige Aufflackern beim Warten
+    // auf Mitspieler (z. B. während der Helden-Auslosung). Der Online-Punkt zieht beim nächsten
+    // ohnehin fälligen Re-Render nach.
+    const signature = JSON.stringify(data.map(r=>[r.id, r.ready, r.round_role, r.profiles && [
+      r.profiles.username, r.profiles.avatar, r.profiles.bio, r.profiles.favorite_game, r.profiles.preferred_role,
+      r.profiles.skill_level, r.profiles.preferred_mode, r.profiles.equipped_badge, r.profiles.equipped_hat,
+      r.profiles.equipped_banner, r.profiles.equipped_glow, r.profiles.equipped_frame,
+    ]]));
+    changed = signature !== lastTeamMembersSignature;
+    lastTeamMembersSignature = signature;
     teamMembers = data.map(r=>({
       id:r.id, user_id:r.user_id, ready:r.ready, round_role:r.round_role||'all',
       username:r.profiles ? r.profiles.username : '?', avatar:r.profiles ? r.profiles.avatar : '😎',
@@ -2657,7 +2813,7 @@ async function refreshTeamMembers(){
       };
     });
   }
-  renderTeamPage();
+  if(changed) renderTeamPage();
 }
 async function setMyRoundRole(role){
   if(!myTeam || !currentUser || !sb) return;
@@ -2841,6 +2997,7 @@ async function kickMember(userId){
   await sb.from('team_members').delete().eq('team_id', myTeam.id).eq('user_id', userId);
   await refreshTeamMembers();
 }
+let lastCheckedRoundSignature = null;
 async function checkActiveRound(){
   if(!myTeam || !sb) return;
   const { data, error } = await sb.from('game_rounds').select('*').eq('team_id', myTeam.id).order('created_at', { ascending:false }).limit(1).maybeSingle();
@@ -2850,8 +3007,20 @@ async function checkActiveRound(){
   // Reload oder erneutem Öffnen) soll eine längst abgeschlossene alte Runde aber NICHT wieder als
   // Ergebnis-Screen auftauchen — sonst landet man bei jedem Öffnen im letzten Endstand statt in der Lobby.
   const wasTrackingThisRound = !!(currentRound && data && currentRound.id === data.id);
-  if(!error && data && (data.status === 'active' || data.status === 'voting' || (data.status === 'done' && wasTrackingThisRound))){
-    currentRound = data;
+  const nextRound = (!error && data && (data.status === 'active' || data.status === 'voting' || (data.status === 'done' && wasTrackingThisRound))) ? data : null;
+  // Signatur der Felder, die die Anzeige für DIESES Gerät tatsächlich beeinflussen. Vorher wurde bei
+  // JEDEM Polling-Tick (3s) und JEDER Realtime-Änderung (z. B. wenn ein Mitspieler seinen Helden
+  // dreht) die komplette Seite neu aufgebaut — auch wenn sich für einen selbst (der z. B. noch auf
+  // dem Warten-Bildschirm steht) gar nichts sichtbar geändert hatte. Das war das Flackern beim
+  // Warten auf Mitspieler während der Helden-Auslosung.
+  const signature = nextRound ? JSON.stringify([
+    nextRound.id, nextRound.status, nextRound.hero_revealed, nextRound.hero_assignment,
+    nextRound.personally_done, nextRound.pending_joker, nextRound.hero_joker_used, nextRound.spied_pairs,
+  ]) : null;
+  const changed = signature !== lastCheckedRoundSignature;
+  lastCheckedRoundSignature = signature;
+  if(nextRound){
+    currentRound = nextRound;
     // Diese Felder beschreiben die laufende Kampagne vollständig — bei einem Reload mitten in
     // einer Runde (oder einem frischen Tab) waren teamRoundGameChoice & Co. sonst leer, wodurch
     // "Nächstes Match" mit "Bitte zuerst ein Spiel auswählen" abstürzte. Jetzt vom Server aufgefrischt.
@@ -2862,13 +3031,12 @@ async function checkActiveRound(){
     teamRoundDifficulty = currentRound.difficulty || teamRoundDifficulty;
     teamRoundScope = currentRound.scope || teamRoundScope;
     if(typeof currentRound.campaign_total === 'number' && teamRoundScope !== 'games') teamRoundCount = currentRound.campaign_total;
-    await loadRoundItems();
+    if(changed) await loadRoundItems();
   } else {
     currentRound = null; roundItems = []; roundVotes = {};
   }
-  renderTeamPage();
+  if(changed){ renderTeamPage(); if(currentRound) await maybeResolveJokerVote(); }
   updateContinueButton();
-  if(currentRound) await maybeResolveJokerVote();
 }
 async function loadRoundItems(){
   if(!currentRound || !sb) return;
