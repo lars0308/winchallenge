@@ -2388,7 +2388,9 @@ function playerCosmeticCardHTML(username, avatarBit, suffix){
   const c = cosmeticsFor(username);
   const bannerStyle = c.banner ? bannerStyleFor(c.banner) : '';
   const bannerClass = bannerClassFor(c.banner);
-  const frameStyle = frameStyleFor(c.frame);
+  // Frame-Ring (box-shadow) nur zeigen, wenn KEIN Banner aktiv ist — beides zusammen ergab einen
+  // zusätzlichen, hässlichen Rand um die eh schon bunte Banner-Karte (siehe Bugreport im Chat).
+  const frameStyle = c.banner ? '' : frameStyleFor(c.frame);
   return `<span class="player-cosmetic-card${bannerClass}${c.banner?' has-banner':''}" style="${bannerStyle}${frameStyle}">${bannerImgTagHTML(c.banner)}<span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}${suffix||''}</span></span>`;
 }
 function glowNameHTML(name, displayText){
@@ -4415,7 +4417,11 @@ function renderTeamLobbyScreen(isHost, mine){
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
     const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
-    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${onlineDotHTML(m.last_active)}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    // Chip-Wrapper hat selbst einen Rand — bei Bannern kam dadurch ein zweiter, unsauberer Ring
+    // um den eigenen Banner-Rahmen zustande. Bei aktivem Banner blenden wir den Chip-Rand aus,
+    // der Banner selbst übernimmt dann die einzige sichtbare Umrandung.
+    const memberHasBanner = !!cosmeticsFor(m.username).banner;
+    html += `<div class="chip readonly member-clickable"${memberHasBanner?' style="border-color:transparent;background:transparent;padding:0;"':''} onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${onlineDotHTML(m.last_active)}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   html += `</div>`;
@@ -6115,7 +6121,7 @@ function renderStatsPage(){
     const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
     const statFrame = SHOP_FRAMES.find(f=>f.id===s.equippedFrame);
-    html += `<div class="stat-card${bannerClassFor(banner)}" style="${banner ? bannerStyleFor(banner) : ''}${frameStyleFor(statFrame)}">
+    html += `<div class="stat-card${bannerClassFor(banner)}" style="${banner ? bannerStyleFor(banner) : ''}${banner ? '' : frameStyleFor(statFrame)}">
       ${bannerImgTagHTML(banner)}
       ${bannerBadgeStampHTML(banner, shopBadge)}
       <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}${tierStatusLineHTML(name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
@@ -6270,7 +6276,7 @@ function renderShopPage(){
   const previewBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
   const previewBanner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
   const previewFrame = SHOP_FRAMES.find(f=>f.id===s.equippedFrame);
-  let html = `<div class="stat-card${bannerClassFor(previewBanner)}" style="${previewBanner ? bannerStyleFor(previewBanner) : ''}${frameStyleFor(previewFrame)}">
+  let html = `<div class="stat-card${bannerClassFor(previewBanner)}" style="${previewBanner ? bannerStyleFor(previewBanner) : ''}${previewBanner ? '' : frameStyleFor(previewFrame)}">
     ${bannerImgTagHTML(previewBanner)}
     ${bannerBadgeStampHTML(previewBanner, previewBadge)}
     <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
