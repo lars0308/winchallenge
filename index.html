@@ -3490,7 +3490,7 @@ async function startTeamRound(skipReadyCheck){
   } else if(heroPool){
     if(sessionMode==='chaos') heroAssignmentById = assignHeroesChaos(heroPool, memberIds);
     else if(hasAnyRoleChoice(roleMap)) heroAssignmentById = assignHeroesByPlayerRoles(gameId, memberIds, roleMap);
-    else heroAssignmentById = assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
+    else heroAssignmentById = assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId], gameId);
   }
   // Nur merken, wenn der Held für diese Kampagne überhaupt fest bleiben soll.
   teamRoundHeroAssignment = (heroPool && heroLockActive) ? heroAssignmentById : null;
@@ -3834,8 +3834,8 @@ async function executeHeroJoker(forUserId){
     const roleForThis = prevHero ? prevHero[1] : null;
     let choices = roleForThis ? pool.filter(h=>h[1]===roleForThis && !usedHeroes.has(h[0])) : pool.filter(h=>!usedHeroes.has(h[0]));
     if(!choices.length) choices = roleForThis ? pool.filter(h=>h[1]===roleForThis) : pool;
-    let newHero, tries = 0;
-    do { newHero = choices[randInt(0, choices.length-1)]; tries++; } while(prevHero && choices.length>1 && newHero[0]===prevHero[0] && tries<20);
+    if(prevHero && choices.length>1){ const withoutPrev = choices.filter(h=>h[0]!==prevHero[0]); if(withoutPrev.length) choices = withoutPrev; }
+    const newHero = pickHeroAvoidingRecent(choices, uid, currentRound.game_id);
     newAssignment[uid] = newHero; usedHeroes.add(newHero[0]);
   });
   const used = (currentRound.hero_joker_used || []).slice();
@@ -5163,13 +5163,13 @@ function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
     let choices = pool.filter(h=> h[1]===role && !used.has(h[0]));
     if(!choices.length) choices = pool.filter(h=>h[1]===role); // Pool zu klein: Wiederholung erlauben
     if(!choices.length) choices = pool; // Rolle existiert in diesem Spiel nicht -> Fallback
-    const hero = choices[randInt(0, choices.length-1)];
+    const hero = pickHeroAvoidingRecent(choices, k, gameId);
     result[k] = hero; used.add(hero[0]);
   });
   withoutRole.forEach(k=>{
     let choices = pool.filter(h=>!used.has(h[0]));
     if(!choices.length) choices = pool;
-    const hero = choices[randInt(0, choices.length-1)];
+    const hero = pickHeroAvoidingRecent(choices, k, gameId);
     result[k] = hero; used.add(hero[0]);
   });
   return result;
@@ -7126,6 +7126,38 @@ const LS_ROLE_HISTORY = 'winchallenge_role_history_v1';
 function loadRoleHistory(){ try{ const raw = localStorage.getItem(LS_ROLE_HISTORY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
 function saveRoleHistory(){ try{ localStorage.setItem(LS_ROLE_HISTORY, JSON.stringify(roleHistory)); }catch(e){} }
 let roleHistory = loadRoleHistory(); // { spielerKey: [rolle, rolle, rolle] } — die letzten 3 zugewiesenen Rollen
+// Gleiches Prinzip fürs konkrete Held/Agent-Auslosen: pro Spieler+Spiel merken wir uns die zuletzt
+// zugewiesenen Helden und schließen sie eine Weile aus dem Pool aus — echte Rotation "ohne
+// Zurücklegen" statt komplett unabhängiger Zufallsziehung, damit sich gefühlt alle Helden
+// gleichmäßiger abwechseln, statt dass ein und derselbe zufällig mehrfach hintereinander kommt
+// (oder ein anderer sehr lange gar nicht).
+const LS_HERO_HISTORY = 'winchallenge_hero_history_v1';
+function loadHeroHistory(){ try{ const raw = localStorage.getItem(LS_HERO_HISTORY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+function saveHeroHistory(){ try{ localStorage.setItem(LS_HERO_HISTORY, JSON.stringify(heroHistory)); }catch(e){} }
+let heroHistory = loadHeroHistory(); // { 'spielerKey:gameId': [heldname, heldname, ...] }
+function recordHeroForPlayer(playerKey, gameId, heroName){
+  const key = playerKey+':'+gameId;
+  const hist = heroHistory[key] || [];
+  hist.push(heroName);
+  while(hist.length > 6) hist.shift(); // deckt auch kleinere Rollen-Pools ab, ohne sie je leerzuräumen
+  heroHistory[key] = hist;
+  saveHeroHistory();
+}
+function recentHeroesFor(playerKey, gameId){
+  return new Set(heroHistory[playerKey+':'+gameId] || []);
+}
+// Wählt aus choices einen Helden, bevorzugt einen, der für diese/n Spieler:in in diesem Spiel nicht
+// erst kürzlich dran war. Ist choices nach dem Ausschluss leer (Rollen-Pool zu klein), wird die
+// Historie für diesen einen Pick ignoriert, statt einen leeren Pool zu riskieren.
+function pickHeroAvoidingRecent(choices, playerKey, gameId){
+  if(!choices.length) return null;
+  const recent = recentHeroesFor(playerKey, gameId);
+  let filtered = choices.filter(h=>!recent.has(h[0]));
+  if(!filtered.length) filtered = choices;
+  const hero = filtered[randInt(0, filtered.length-1)];
+  recordHeroForPlayer(playerKey, gameId, hero[0]);
+  return hero;
+}
 function recordRoleForPlayer(playerKey, role){
   const hist = roleHistory[playerKey] || [];
   hist.push(role);
@@ -7153,7 +7185,7 @@ function dedupRoleStreaks(slots, players){
   }
   return slots;
 }
-function assignHeroesBalanced(heroPool, players, weights){
+function assignHeroesBalanced(heroPool, players, weights, gameId){
   const roles = {};
   heroPool.forEach(([name,role])=>{ (roles[role] = roles[role]||[]).push(name); });
   // shuffle() hier ist wichtig: bei gleichen Gewichten (z. B. Valorant) sind die Nachkomma-Reste
@@ -7176,8 +7208,13 @@ function assignHeroesBalanced(heroPool, players, weights){
     const role = slots[idx] || roleNames[0];
     usedPerRole[role] = usedPerRole[role] || new Set();
     const rolePool = shuffle(roles[role] || []);
-    const heroName = rolePool.find(h=>!usedPerRole[role].has(h)) || rolePool[0] || (heroPool[0] ? heroPool[0][0] : '?');
+    const notUsedThisRound = rolePool.filter(h=>!usedPerRole[role].has(h));
+    const recent = recentHeroesFor(p, gameId);
+    const notRecent = notUsedThisRound.filter(h=>!recent.has(h));
+    const candidates = notRecent.length ? notRecent : (notUsedThisRound.length ? notUsedThisRound : rolePool);
+    const heroName = candidates[0] || (heroPool[0] ? heroPool[0][0] : '?');
     usedPerRole[role].add(heroName);
+    recordHeroForPlayer(p, gameId, heroName);
     assignment[p] = [heroName, role];
     recordRoleForPlayer(p, role);
   });
@@ -7275,7 +7312,7 @@ function buildRound(){
       } else if(hasAnyRoleChoice(session.roleMap)){
         session.heroAssignment = assignHeroesByPlayerRoles(session.gameId, session.players, session.roleMap);
       } else {
-        session.heroAssignment = assignHeroesBalanced(heroPool, session.players, ROLE_WEIGHTS[session.gameId]);
+        session.heroAssignment = assignHeroesBalanced(heroPool, session.players, ROLE_WEIGHTS[session.gameId], session.gameId);
       }
       session._heroAssignedGameId = session.gameId;
       heroesFreshlyAssigned = true;
