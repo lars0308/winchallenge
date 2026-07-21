@@ -2784,7 +2784,12 @@ async function refreshTeamMembers(){
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
     // Mitgliederliste auftauchen, wurden wir vom Host gekickt (oder das Team wurde aufgelöst).
-    if(currentUser && !data.some(r=>r.user_id===currentUser.id)){ handleRemovedFromTeam(); return; }
+    // Wichtig: nur als "gekickt" werten, wenn die Liste TATSÄCHLICH andere Mitglieder enthält,
+    // uns selbst aber nicht. Eine komplett leere Liste kann auch einfach eine kurzzeitige,
+    // noch nicht vollständig authentifizierte Zwischenantwort sein (z. B. direkt nach dem
+    // Wiederöffnen des Browsers, bevor die Supabase-Session zurück ist) — das wurde vorher
+    // fälschlich als Rauswurf interpretiert, obwohl in der Datenbank nichts gelöscht wurde.
+    if(currentUser && data.length > 0 && !data.some(r=>r.user_id===currentUser.id)){ handleRemovedFromTeam(); return; }
     // Signatur bewusst OHNE last_active: der 45s-Online-Heartbeat jedes Mitglieds hätte sonst bei
     // JEDEM Polling-Tick (alle 3s) einen kompletten Neuaufbau der Seite erzwungen, obwohl sich
     // sonst nichts geändert hat — das war die Hauptursache fürs ständige Aufflackern beim Warten
@@ -2968,6 +2973,7 @@ function showMemberProfile(userId){
     : `<div class="empty-hint" style="padding:14px;">${m.username} hat noch keine Angaben in den Benutzer-Einstellungen gemacht.</div>`;
   const memberBanner = cosmeticsFor(m.username).banner;
   const memberBadge = cosmeticsFor(m.username).badge;
+  const isSelf = m.user_id === currentUser.id;
   modal.innerHTML = `<div class="member-modal-card${bannerClassFor(memberBanner)}" style="${memberBanner ? bannerStyleFor(memberBanner) : ''}" onclick="event.stopPropagation();">
     ${bannerImgTagHTML(memberBanner)}
     ${bannerBadgeStampHTML(memberBanner, memberBadge)}
@@ -2978,8 +2984,13 @@ function showMemberProfile(userId){
     ${tierStatusLineHTML(m.username)}
     ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
     <div class="member-modal-facts">${factsHTML}</div>
+    ${isSelf ? '' : `<div style="margin-top:14px;"><button class="sb-btn" style="width:100%;" onclick="addTeammateAsFriend('${m.user_id}','${m.username}')">🤝 Als Freund hinzufügen</button></div>`}
   </div>`;
   modal.classList.remove('hidden');
+}
+async function addTeammateAsFriend(userId, username){
+  const result = await sendFriendRequest(userId, username);
+  showAlert(result.msg, result.ok ? '🤝' : 'ℹ️');
 }
 function showAlert(message, icon){
   document.getElementById('custom-alert-icon').textContent = icon || '⚠️';
@@ -4421,7 +4432,7 @@ function renderTeamLobbyScreen(isHost, mine){
     // um den eigenen Banner-Rahmen zustande. Bei aktivem Banner blenden wir den Chip-Rand aus,
     // der Banner selbst übernimmt dann die einzige sichtbare Umrandung.
     const memberHasBanner = !!cosmeticsFor(m.username).banner;
-    html += `<div class="chip readonly member-clickable"${memberHasBanner?' style="border-color:transparent;background:transparent;padding:0;"':''} onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${onlineDotHTML(m.last_active)}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable"${memberHasBanner?' style="border-color:transparent;background:transparent;"':''} onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${onlineDotHTML(m.last_active)}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   html += `</div>`;
