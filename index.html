@@ -1530,7 +1530,7 @@ function saveTeamCampaignState(){
     localStorage.setItem(LS_TEAM_CAMPAIGN, JSON.stringify({
       teamId: myTeam.id, teamRoundScope, teamRoundGameChoice, teamRoundGameMode, teamRoundModeChoice,
       teamRoundSessionModeChoice, teamRoundDifficulty, teamRoundCount, teamRoundSelectedGames,
-      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment,
+      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment, teamRoundHeroLockMode,
     }));
   }catch(e){}
 }
@@ -1557,6 +1557,7 @@ function restoreTeamCampaignState(teamId){
   teamCampaignIndex = typeof saved.teamCampaignIndex === 'number' ? saved.teamCampaignIndex : teamCampaignIndex;
   teamCampaignHistory = saved.teamCampaignHistory || teamCampaignHistory;
   teamRoundHeroAssignment = saved.teamRoundHeroAssignment || null;
+  teamRoundHeroLockMode = saved.teamRoundHeroLockMode || teamRoundHeroLockMode;
 }
 function saveSetupState(){ try{ localStorage.setItem(LS_SETUP, JSON.stringify({ setupState, stepIndex })); }catch(e){} }
 function loadSetupState(){ try{ const raw = localStorage.getItem(LS_SETUP); if(raw) return JSON.parse(raw); }catch(e){} return null; }
@@ -2682,6 +2683,10 @@ let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der lauf
 // ausgelost werden — danach bleibt er über alle Runden gleich, nur die Challenges wechseln pro
 // Runde. Dieser Cache hält die Zuordnung (user_id -> [heroName, role]) für genau diesen Zweck.
 let teamRoundHeroAssignment = null;
+// Ob der Held bei scope='rounds' über die Kampagne fest bleibt ('locked') oder doch jede Runde
+// neu ausgelost wird ('reroll') — für Fälle, in denen man z.B. 5 Runden lang jedes Mal einen
+// neuen Helden will, statt für die ganze Kampagne denselben.
+let teamRoundHeroLockMode = 'locked';
 let teamCampaignHistory = [];       // Host-lokal: Zusammenfassung jeder abgeschlossenen Runde dieser Kampagne (für die Endübersicht)
 let teamCampaignSyncedFor = null;   // Round-ID, für die die Endübersicht zuletzt an den Server (teams.campaign_summary) geschickt wurde
 let teamRoundCuedFor = null;        // Round-ID, für die der Start-Sound/Vibration schon abgespielt wurde
@@ -2997,6 +3002,28 @@ function renderTeamRoundPicker(){
       diffRow.appendChild(btn);
     });
   }
+  const heroLockStep = document.getElementById('team-round-herolock-step');
+  if(heroLockStep){
+    const showHeroLock = teamRoundScope==='rounds' && !!HERO_GAMES[teamRoundGameChoice] && teamRoundSessionModeChoice!=='chaos';
+    heroLockStep.style.display = showHeroLock ? 'block' : 'none';
+    if(showHeroLock){
+      const heroLockRow = document.getElementById('team-round-herolock-picker');
+      if(heroLockRow){
+        heroLockRow.innerHTML = '';
+        [{key:'locked',label:'🔒 Gleicher Held'},{key:'reroll',label:'🔄 Jede Runde neu'}].forEach(it=>{
+          const btn = document.createElement('button');
+          btn.className = 'filter-pill'+(it.key===teamRoundHeroLockMode?' active':'');
+          btn.textContent = it.label;
+          btn.addEventListener('click', ()=>{ teamRoundHeroLockMode = it.key; renderTeamRoundPicker(); });
+          heroLockRow.appendChild(btn);
+        });
+      }
+      const heroLockDesc = document.getElementById('team-round-herolock-desc');
+      if(heroLockDesc) heroLockDesc.textContent = teamRoundHeroLockMode==='locked'
+        ? 'Der Held wird einmal zu Beginn ausgelost und bleibt für alle Runden dieser Kampagne gleich.'
+        : 'Jede Runde bekommt jede/r einen neu ausgelosten Helden.';
+    }
+  }
   syncDraftSettings();
 }
 function confirmTeamSettings(){
@@ -3061,7 +3088,8 @@ async function startTeamRound(skipReadyCheck){
   const memberIds = teamMembers.map(m=>m.user_id);
   const roleMap = {}; teamMembers.forEach(m=>{ if(m.round_role && m.round_role!=='all') roleMap[m.user_id] = m.round_role; });
   let heroAssignmentById = null;
-  const canReuseLockedHeroes = heroPool && teamRoundScope==='rounds' && sessionMode!=='chaos'
+  const heroLockActive = teamRoundScope==='rounds' && teamRoundHeroLockMode==='locked' && sessionMode!=='chaos';
+  const canReuseLockedHeroes = heroPool && heroLockActive
     && teamCampaignIndex > 0 && teamRoundHeroAssignment && memberIds.every(id=>teamRoundHeroAssignment[id]);
   if(canReuseLockedHeroes){
     heroAssignmentById = teamRoundHeroAssignment;
@@ -3070,8 +3098,8 @@ async function startTeamRound(skipReadyCheck){
     else if(hasAnyRoleChoice(roleMap)) heroAssignmentById = assignHeroesByPlayerRoles(gameId, memberIds, roleMap);
     else heroAssignmentById = assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
   }
-  // Für 'rounds' (nicht 'match'/'chaos') den Helden für die nächsten Runden dieser Kampagne merken.
-  teamRoundHeroAssignment = (heroPool && teamRoundScope==='rounds' && sessionMode!=='chaos') ? heroAssignmentById : null;
+  // Nur merken, wenn der Held für diese Kampagne überhaupt fest bleiben soll.
+  teamRoundHeroAssignment = (heroPool && heroLockActive) ? heroAssignmentById : null;
   const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
   const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
   if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
@@ -4134,6 +4162,11 @@ function renderTeamSettingsScreen(){
     <div class="settings-card" id="team-round-difficulty-step">
       <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Schwierigkeit</div></div>
       <div class="filter-row" id="team-round-difficulty-picker"></div>
+    </div>
+    <div class="settings-card" id="team-round-herolock-step">
+      <div class="setup-step-head"><span class="setup-step-icon">🔒</span><div class="setup-step-title">Held über mehrere Runden</div></div>
+      <div class="filter-row" id="team-round-herolock-picker"></div>
+      <p class="setup-info" id="team-round-herolock-desc" style="margin-top:8px;margin-bottom:0;"></p>
     </div>
 
     <div class="setup-warning" id="team-settings-warning"></div>
