@@ -49,6 +49,14 @@
   .logo{ font-family:'Rajdhani', sans-serif; font-weight:700; font-size:clamp(2.4rem, 6vw, 4.2rem); letter-spacing:0.06em;
     background:linear-gradient(100deg, var(--purple-bright) 0%, #d9c6ff 30%, var(--turquoise-bright) 65%, var(--turquoise) 100%);
     -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:0 0 60px rgba(155,92,246,0.25); display:inline-block; }
+  .auth-hero{ text-align:center; }
+  .auth-hero-badge{ width:84px; height:84px; margin:0 auto 18px; border-radius:26px; display:flex; align-items:center; justify-content:center; font-size:2.6rem;
+    background:linear-gradient(135deg, rgba(155,92,246,0.25), rgba(45,212,191,0.18)); border:1px solid var(--border-soft);
+    box-shadow:0 0 40px -8px rgba(155,92,246,0.5), inset 0 0 24px rgba(155,92,246,0.12); }
+  .auth-hero-logo{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:clamp(2rem, 8vw, 3rem); letter-spacing:0.08em;
+    background:linear-gradient(100deg, var(--purple-bright) 0%, #d9c6ff 30%, var(--turquoise-bright) 65%, var(--turquoise) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .auth-hero-sub{ color:var(--text-muted); font-size:0.95rem; margin:6px 0 0; }
   .logo-sub{ margin-top:10px; color:var(--text-muted); font-size:0.95rem; letter-spacing:0.25em; text-transform:uppercase; }
   .logo-rule{ width:120px; height:3px; margin:22px auto 0; background:linear-gradient(90deg, var(--purple), var(--turquoise)); border-radius:3px; }
 
@@ -738,23 +746,20 @@
 <!-- ===================== ACCOUNT WELCOME ===================== -->
 <section id="view-auth-welcome" class="view active">
   <div class="bg-watermark">👤</div>
-  <div class="topbar">
-    <div class="page-title"><span class="ico"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> Account</div>
-  </div>
-  <div class="content">
-    <div class="section-lead">
-      <div class="eyebrow">Mit Account geht mehr</div>
-      <h2>Team erstellen &amp; Freunde einladen</h2>
-      <p>Mit einem kostenlosen Account könnt ihr ein Team per Code gründen, seht live, wer bereit ist, und könnt später eure Statistiken geräteübergreifend abrufen.</p>
+  <div class="content" style="display:flex;flex-direction:column;justify-content:center;min-height:88vh;">
+    <div class="auth-hero">
+      <div class="auth-hero-badge">🏆</div>
+      <div class="auth-hero-logo">WIN CHALLENGE</div>
+      <p class="auth-hero-sub">Teams gründen · Freunde einladen · Live spielen</p>
     </div>
-    <div class="landing-actions" style="margin-top:10px;">
+    <div class="landing-actions" style="margin-top:26px;">
       <button class="landing-btn primary" onclick="goToAuthForm('login')">
         <span class="landing-btn-icon">🔓</span>
-        <span class="landing-btn-text"><span class="landing-btn-title">Einloggen</span><span class="landing-btn-sub">Ich habe schon einen Account</span></span>
+        <span class="landing-btn-text"><span class="landing-btn-title">Einloggen</span></span>
       </button>
       <button class="landing-btn" onclick="goToAuthForm('register')">
         <span class="landing-btn-icon">🚀</span>
-        <span class="landing-btn-text"><span class="landing-btn-title">Registrieren</span><span class="landing-btn-sub">Neuen Account in 10 Sekunden anlegen</span></span>
+        <span class="landing-btn-text"><span class="landing-btn-title">Registrieren</span><span class="landing-btn-sub">Kostenlos, in 10 Sekunden</span></span>
       </button>
     </div>
     <div class="home-actions">
