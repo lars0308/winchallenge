@@ -670,6 +670,11 @@
   .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
   .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; }
   .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .toast-item{ pointer-events:auto; max-width:420px; width:max-content; margin:0 auto; display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.45); border-radius:14px; padding:12px 16px; font-size:0.92rem; font-weight:600; color:var(--text); animation: toast-in-kf 0.25s ease-out; }
+  .toast-item.toast-leaving{ animation: toast-out-kf 0.25s ease-in forwards; }
+  .toast-item .toast-icon{ font-size:1.2rem; flex-shrink:0; }
+  @keyframes toast-in-kf{ 0%{ opacity:0; transform:translateY(-16px); } 100%{ opacity:1; transform:translateY(0); } }
+  @keyframes toast-out-kf{ 0%{ opacity:1; transform:translateY(0); } 100%{ opacity:0; transform:translateY(-16px); } }
   .custom-alert-backdrop.hidden{ display:none; }
   .custom-alert-box{ position:relative; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:24px; padding:34px 26px 24px; max-width:340px; width:100%; text-align:center; box-shadow:0 24px 70px -20px rgba(0,0,0,0.85); animation:alert-pop-kf 0.28s cubic-bezier(.2,.9,.3,1.2); overflow:hidden; }
   .custom-alert-box::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); }
@@ -693,6 +698,7 @@
 </style>
 </head>
 <body>
+<div id="toast-stack" style="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:100%;padding:0 14px;box-sizing:border-box;"></div>
 <div class="member-modal-backdrop hidden" id="member-profile-modal" onclick="if(event.target===this) closeMemberProfileModal();"></div>
 <div class="member-modal-backdrop hidden" id="all-achievements-modal" onclick="if(event.target===this) closeAllAchievementsRewardModal();"></div>
 <div class="custom-alert-backdrop hidden" id="custom-alert-backdrop" onclick="if(event.target===this) closeCustomAlert();">
@@ -1707,7 +1713,10 @@ async function renderFriendsPage(){
         const canInvite = myTeam && !alreadyIn;
         html += `<div class="chip readonly${canInvite?' member-clickable':''}" style="width:100%;box-sizing:border-box;justify-content:space-between;" ${canInvite?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
           <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username} ${onlineDotHTML(p.last_active, true)}</span>
-          ${canInvite?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':(alreadyIn?'<span style="color:var(--text-faint);">schon dabei</span>':'')}
+          <span style="display:inline-flex;align-items:center;gap:8px;">
+            ${canInvite?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':(alreadyIn?'<span style="color:var(--text-faint);">schon dabei</span>':'')}
+            <button onclick="event.stopPropagation(); removeFriend('${p.id}','${p.username}')" title="Freund entfernen">✕</button>
+          </span>
         </div>`;
       });
       listEl.innerHTML = html;
@@ -1726,6 +1735,18 @@ async function renderFriendsPage(){
 // to_user, status) — Anfrage stellen, Gegenseite nimmt an oder lehnt ab, und beide Seiten legen
 // danach JEWEILS NUR IHRE EIGENE friendships-Zeile an (siehe materializeAcceptedOutgoingFriendRequests).
 // ERFORDERT Supabase-Tabelle+Policies, siehe SQL-Hinweis im Chat.
+async function removeFriend(friendId, friendUsername){
+  if(!currentUser || !sb) return;
+  if(!(await confirmAction(`${friendUsername} wirklich als Freund entfernen?`))) return;
+  try{
+    // Eigene Zeile geht sicher (RLS erlaubt das immer) — die Gegenrichtung entfernen wir im
+    // gleichen Rutsch mit, falls die Policy das zulässt; falls nicht, verschwindet der Freund
+    // trotzdem sofort aus der eigenen Liste.
+    await sb.from('friendships').delete().eq('user_id', currentUser.id).eq('friend_id', friendId);
+    await sb.from('friendships').delete().eq('user_id', friendId).eq('friend_id', currentUser.id);
+  }catch(e){ console.error(e); }
+  await renderFriendsPage();
+}
 async function sendFriendRequest(targetId, targetUsername){
   if(!currentUser || !sb) return { ok:false, msg:'Nicht eingeloggt.' };
   if(targetId === currentUser.id) return { ok:false, msg:'Das bist du selbst.' };
@@ -2111,6 +2132,8 @@ async function loadProfile(userId){
         banner: currentUser.equipped_banner, glow: currentUser.equipped_glow, frame: currentUser.equipped_frame,
       };
       startPresenceHeartbeat();
+      startNotificationsSubscription();
+      await applyAdminAdjustments();
     }
   }catch(e){ console.error(e); }
 }
@@ -2263,6 +2286,7 @@ async function handleForgotPassword(){
 async function handleLogout(){
   if(sb) await sb.auth.signOut();
   stopPresenceHeartbeat();
+  stopNotificationsSubscription();
   currentUser = null; myTeam = null; teamMembers = [];
   if(teamChannel && sb){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
@@ -2996,6 +3020,46 @@ function showAlert(message, icon){
   document.getElementById('custom-alert-icon').textContent = icon || '⚠️';
   document.getElementById('custom-alert-message').textContent = message;
   document.getElementById('custom-alert-backdrop').classList.remove('hidden');
+}
+// Kurze, selbstverschwindende Benachrichtigung oben am Bildschirm (ähnlich wie bei WhatsApp),
+// z.B. für eingehende Team-Einladungen oder Freundschaftsanfragen — läuft unabhängig davon,
+// welche Seite gerade offen ist (siehe startNotificationsSubscription).
+function showToast(message, icon, durationMs){
+  const stack = document.getElementById('toast-stack');
+  if(!stack) return;
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.innerHTML = `<span class="toast-icon">${icon||'🔔'}</span><span>${message}</span>`;
+  stack.appendChild(el);
+  setTimeout(()=>{
+    el.classList.add('toast-leaving');
+    setTimeout(()=>{ el.remove(); }, 250);
+  }, durationMs || 2600);
+}
+let notificationsChannel = null;
+// Läuft für den gesamten Login-Zeitraum (nicht nur auf der Freunde-Seite) — sobald jemand eine
+// Team-Einladung oder Freundschaftsanfrage AN mich schickt, poppt oben eine kurze Meldung auf,
+// egal wo in der App man sich gerade befindet.
+function startNotificationsSubscription(){
+  if(!sb || !currentUser) return;
+  stopNotificationsSubscription();
+  notificationsChannel = sb.channel('notifications-'+currentUser.id)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'team_invites', filter:`to_user=eq.${currentUser.id}` }, async (payload)=>{
+      let fromName = 'Jemand';
+      try{ const { data } = await sb.from('profiles').select('username').eq('id', payload.new.from_user).maybeSingle(); if(data) fromName = data.username; }catch(e){}
+      showToast(`${fromName} hat dich in eine Gruppe eingeladen`, '📨');
+      if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderPendingInvites();
+    })
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'friend_requests', filter:`to_user=eq.${currentUser.id}` }, async (payload)=>{
+      let fromName = 'Jemand';
+      try{ const { data } = await sb.from('profiles').select('username').eq('id', payload.new.from_user).maybeSingle(); if(data) fromName = data.username; }catch(e){}
+      showToast(`${fromName} möchte mit dir befreundet sein`, '🤝');
+      if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderFriendRequests();
+    })
+    .subscribe();
+}
+function stopNotificationsSubscription(){
+  if(notificationsChannel && sb){ sb.removeChannel(notificationsChannel); notificationsChannel = null; }
 }
 function closeCustomAlert(){
   document.getElementById('custom-alert-backdrop').classList.add('hidden');
@@ -4686,14 +4750,29 @@ async function renderAdminUsers(){
   data.forEach(u=>{
     const row = document.createElement('div');
     row.className = 'chip readonly';
-    row.style.width = '100%'; row.style.justifyContent = 'space-between'; row.style.marginBottom = '8px';
+    row.style.width = '100%'; row.style.justifyContent = 'space-between'; row.style.marginBottom = '8px'; row.style.flexWrap = 'wrap'; row.style.rowGap = '8px';
     row.innerHTML = `<span>${renderAccountAvatarHTML(u.avatar,20)} ${u.username}${u.is_admin?' 🛡️':''}${u.is_banned?' 🚫':''}<br><span style="color:var(--text-muted); font-size:0.78rem;">${u.email||'—'}</span></span>`;
-    const actions = document.createElement('span'); actions.style.display = 'flex'; actions.style.gap = '6px';
+    const actions = document.createElement('span'); actions.style.display = 'flex'; actions.style.gap = '6px'; actions.style.flexWrap = 'wrap'; actions.style.justifyContent = 'flex-end';
     const adminBtn = document.createElement('button'); adminBtn.className = 'sb-btn'; adminBtn.textContent = u.is_admin ? 'Admin entfernen' : 'Zu Admin machen';
     adminBtn.addEventListener('click', ()=>toggleAdminFlag(u.id, !u.is_admin));
     const banBtn = document.createElement('button'); banBtn.className = 'sb-btn danger'; banBtn.textContent = u.is_banned ? 'Entsperren' : 'Sperren';
     banBtn.addEventListener('click', ()=>toggleBanFlag(u.id, !u.is_banned));
-    actions.appendChild(adminBtn); actions.appendChild(banBtn);
+    // Coins geben: da die Punkte/Guthaben-Stände lokal auf dem jeweiligen Gerät des Nutzers liegen
+    // (nicht serverseitig), landet der Betrag als "admin_bonus_points" im Profil und wird beim
+    // nächsten Öffnen der App auf DESSEN Gerät automatisch gutgeschrieben (siehe applyAdminAdjustments).
+    const coinsInput = document.createElement('input');
+    coinsInput.type = 'number'; coinsInput.placeholder = 'Coins'; coinsInput.min = '1';
+    coinsInput.style.cssText = 'width:80px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);';
+    const giveBtn = document.createElement('button'); giveBtn.className = 'sb-btn'; giveBtn.textContent = '💰 Geben';
+    giveBtn.addEventListener('click', ()=>{
+      const amt = parseInt(coinsInput.value, 10);
+      if(!amt || amt <= 0){ showAlert('Bitte eine gültige Coin-Zahl eingeben.'); return; }
+      adminGiveCoins(u.id, u.username, amt);
+      coinsInput.value = '';
+    });
+    const resetBtn = document.createElement('button'); resetBtn.className = 'sb-btn danger'; resetBtn.textContent = '♻️ Komplett zurücksetzen';
+    resetBtn.addEventListener('click', ()=>adminResetUser(u.id, u.username));
+    actions.appendChild(adminBtn); actions.appendChild(banBtn); actions.appendChild(coinsInput); actions.appendChild(giveBtn); actions.appendChild(resetBtn);
     row.appendChild(actions);
     el.appendChild(row);
   });
@@ -4701,6 +4780,54 @@ async function renderAdminUsers(){
 }
 async function toggleAdminFlag(userId, val){ if(!sb) return; await sb.from('profiles').update({ is_admin: val }).eq('id', userId); renderAdminUsers(); }
 async function toggleBanFlag(userId, val){ if(!sb) return; await sb.from('profiles').update({ is_banned: val }).eq('id', userId); renderAdminUsers(); }
+async function adminGiveCoins(userId, username, amount){
+  if(!sb) return;
+  try{
+    const { data } = await sb.from('profiles').select('admin_bonus_points').eq('id', userId).maybeSingle();
+    const current = (data && data.admin_bonus_points) || 0;
+    const { error } = await sb.from('profiles').update({ admin_bonus_points: current + amount }).eq('id', userId);
+    if(error) throw error;
+    showAlert(`${amount} Coins an ${username} vergeben — werden gutgeschrieben, sobald ${username} die App das nächste Mal öffnet.`, '💰');
+  }catch(e){ showAlert('Fehler beim Vergeben: ' + e.message); }
+}
+async function adminResetUser(userId, username){
+  if(!sb) return;
+  if(!(await confirmAction(`${username} WIRKLICH komplett zurücksetzen? Statistiken, Coins, Käufe und ausgerüstete Kosmetik werden gelöscht, sobald ${username} die App das nächste Mal öffnet. Das kann nicht rückgängig gemacht werden.`))) return;
+  try{
+    const { error } = await sb.from('profiles').update({
+      admin_bonus_points: 0, admin_reset_pending: true,
+      equipped_badge: null, equipped_hat: null, equipped_banner: null, equipped_glow: null, equipped_frame: null,
+    }).eq('id', userId);
+    if(error) throw error;
+    showAlert(`${username} wird beim nächsten Öffnen der App komplett zurückgesetzt.`, '♻️');
+    renderAdminUsers();
+  }catch(e){ showAlert('Fehler beim Zurücksetzen: ' + e.message); }
+}
+// Wird beim Login/Session-Wiederherstellen für den EIGENEN Account geprüft — Admin-Vergaben und
+// -Resets landen serverseitig im Profil und werden hier auf das lokale Gerät angewendet, weil
+// Punkte/Statistiken/Käufe (statsStore) rein lokal pro Gerät gespeichert sind, nicht zentral.
+async function applyAdminAdjustments(){
+  if(!currentUser || !sb) return;
+  try{
+    const { data } = await sb.from('profiles').select('admin_bonus_points, admin_reset_pending').eq('id', currentUser.id).maybeSingle();
+    if(!data) return;
+    const clear = {};
+    if(data.admin_reset_pending){
+      delete statsStore[currentUser.username];
+      saveStats();
+      clear.admin_reset_pending = false;
+      clear.admin_bonus_points = 0;
+      showAlert('Ein Admin hat deinen Account komplett zurückgesetzt.', '♻️');
+    } else if(data.admin_bonus_points && data.admin_bonus_points > 0){
+      const s = statsStore[currentUser.username] = statsStore[currentUser.username] || { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
+      s.totalPoints = (s.totalPoints||0) + data.admin_bonus_points;
+      saveStats();
+      showAlert(`Ein Admin hat dir ${data.admin_bonus_points} Coins geschenkt!`, '💰');
+      clear.admin_bonus_points = 0;
+    }
+    if(Object.keys(clear).length) await sb.from('profiles').update(clear).eq('id', currentUser.id);
+  }catch(e){ console.error(e); }
+}
 
 let adminSelectedHeroGame = 'ow2';
 function renderAdminHeroGamePicker(){
