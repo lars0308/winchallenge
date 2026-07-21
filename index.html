@@ -1688,6 +1688,7 @@ async function renderFriendsPage(){
     document.getElementById('friends-list').innerHTML = '<div class="empty-hint">Bitte zuerst einloggen.</div>';
     return;
   }
+  await reconcileFriendships();
   document.getElementById('friend-my-code').textContent = currentUser.friend_code || '…';
   document.getElementById('friend-invite-hint').style.display = myTeam ? 'block' : 'none';
   document.getElementById('friend-add-warning').textContent = '';
@@ -1735,6 +1736,27 @@ async function renderFriendsPage(){
 // to_user, status) — Anfrage stellen, Gegenseite nimmt an oder lehnt ab, und beide Seiten legen
 // danach JEWEILS NUR IHRE EIGENE friendships-Zeile an (siehe materializeAcceptedOutgoingFriendRequests).
 // ERFORDERT Supabase-Tabelle+Policies, siehe SQL-Hinweis im Chat.
+// Räumt einseitig "übrig gebliebene" Freundschaften auf: wurde ich entfernt, während ich offline
+// war (App zu, kein Realtime-Event angekommen), bleibt meine eigene friendships-Zeile sonst für
+// immer stehen, weil die Gegenseite meine Zeile aus RLS-Gründen nicht selbst löschen darf. Läuft
+// bei jedem Öffnen der Freunde-Seite: für jede Freundschaft, die ICH eingetragen habe, wird
+// geprüft, ob die Gegenseite ihre Zeile noch hat — falls nicht, war ich offline beim Entfernen und
+// räume jetzt selbst auf.
+async function reconcileFriendships(){
+  if(!currentUser || !sb) return;
+  try{
+    const [{ data: mine, error: e1 }, { data: theirs, error: e2 }] = await Promise.all([
+      sb.from('friendships').select('friend_id').eq('user_id', currentUser.id),
+      sb.from('friendships').select('user_id').eq('friend_id', currentUser.id)
+    ]);
+    if(e1 || e2 || !mine || !mine.length) return;
+    const reciprocated = new Set((theirs||[]).map(r=>r.user_id));
+    const stale = mine.filter(r=>!reciprocated.has(r.friend_id));
+    for(const r of stale){
+      await sb.from('friendships').delete().eq('user_id', currentUser.id).eq('friend_id', r.friend_id);
+    }
+  }catch(e){ console.error(e); }
+}
 async function removeFriend(friendId, friendUsername){
   if(!currentUser || !sb) return;
   if(!(await confirmAction(`${friendUsername} wirklich als Freund entfernen?`))) return;
