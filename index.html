@@ -124,6 +124,18 @@
   .settings-row-title{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:0.98rem; color:var(--text); }
   .settings-row-sub{ font-size:0.78rem; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .settings-row-chev{ flex:none; color:var(--text-faint); font-size:1.3rem; }
+  /* 🌌 Kosmos-Paket: animierter Galaxy-Verlaufsname + lila pulsierendes Abzeichen. */
+  .glow-name-cosmos{ background:linear-gradient(90deg,#8b5cf6,#22d3ee,#e879f9,#8b5cf6); background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+    filter:drop-shadow(0 0 6px rgba(139,92,246,0.7)); animation: cosmos-name-kf 4s linear infinite; }
+  @keyframes cosmos-name-kf{ 0%{ background-position:0% 50%; } 100%{ background-position:300% 50%; } }
+  .badge-cosmos{ display:inline-block; filter:drop-shadow(0 0 5px #8b5cf6) drop-shadow(0 0 12px rgba(34,211,238,0.6)); animation: badge-cosmos-kf 2.6s ease-in-out infinite; }
+  @keyframes badge-cosmos-kf{ 0%,100%{ transform:scale(1) rotate(0deg); } 50%{ transform:scale(1.12) rotate(6deg); } }
+  /* Achievement-Abzeichen (Prestige): golden pulsierender Glanz — sichtbar wertiger als Kauf-Abzeichen. */
+  .badge-prestige{ display:inline-block; filter:drop-shadow(0 0 4px #ffd76a) drop-shadow(0 0 10px rgba(255,215,106,0.55)); animation: badge-prestige-kf 2.2s ease-in-out infinite; }
+  @keyframes badge-prestige-kf{ 0%,100%{ transform:scale(1); filter:drop-shadow(0 0 4px #ffd76a) drop-shadow(0 0 10px rgba(255,215,106,0.55)); } 50%{ transform:scale(1.12); filter:drop-shadow(0 0 7px #fff1c4) drop-shadow(0 0 16px rgba(255,215,106,0.9)); } }
+  /* Im Shop sollen die Item-Beschreibungen komplett lesbar sein — kein 2-Zeilen-Abschneiden. */
+  #shop-sabotage-card .settings-row-sub{ -webkit-line-clamp:unset; display:block; overflow:visible; }
   .scoreboard-title{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.3rem; }
   .scoreboard-meta{ color:var(--text-muted); font-size:0.82rem; margin-top:2px; }
   .scoreboard-actions{ display:flex; gap:8px; flex:none; flex-wrap:wrap; justify-content:flex-end; }
@@ -173,6 +185,15 @@
     0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
     14%{ opacity:1; }
     100%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity:0; }
+  }
+  #fireworks-overlay{ position:fixed; inset:0; z-index:90; pointer-events:none; overflow:hidden; }
+  .fw-rocket{ position:absolute; bottom:-2%; width:4px; height:16px; border-radius:2px; background:linear-gradient(180deg,#fff,#ffd76a); box-shadow:0 0 8px 2px rgba(255,215,106,0.8); animation: fw-rise-kf 0.62s ease-out forwards; }
+  @keyframes fw-rise-kf{ 0%{ transform:translateY(0); opacity:1; } 100%{ transform:translateY(calc(-100vh + var(--burst-top))); opacity:0.9; } }
+  .fw-spark{ position:absolute; width:7px; height:7px; border-radius:50%; box-shadow:0 0 10px 2px currentColor; animation: fw-spark-kf 1.5s cubic-bezier(0.1,0.7,0.3,1) forwards; }
+  @keyframes fw-spark-kf{
+    0%{ transform:translate(-50%,-50%) scale(1.3); opacity:1; }
+    70%{ opacity:1; }
+    100%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 46px)) scale(0.35); opacity:0; }
   }
   .winner-pop{ animation: winner-pop-kf 0.55s ease-out; }
   @keyframes winner-pop-kf{ 0%{ transform:scale(0.7); opacity:0.3; } 60%{ transform:scale(1.14); opacity:1; } 100%{ transform:scale(1); } }
@@ -608,6 +629,9 @@
   .custom-alert-box .roll-btn{ width:100%; padding:14px 0; justify-content:center; }
   .custom-alert-box .filter-row .roll-btn, .custom-alert-box .filter-row .sb-btn{ width:100%; padding:12px 0; justify-content:center; box-sizing:border-box; }
   .member-modal-backdrop.hidden{ display:none; }
+  [class*="-banner-fx"]{ isolation:isolate; }
+  .filter-pill[class*="-banner-fx"] > span{ position:relative; z-index:10; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7); }
+  .member-modal-card > *{ position:relative; z-index:2; }
   .member-modal-card{ position:relative; width:100%; max-width:380px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
   .member-modal-avatar{ font-size:3.2rem; margin-bottom:8px; }
@@ -2058,6 +2082,8 @@ function withHatOverlay(name, avatarHtml, size){
 }
 function badgeIconHTML(badge){
   if(!badge) return '';
+  if(badge.cosmic) return `<span class="badge-cosmos">${badge.icon}</span> `;
+  if(badge.prestige) return `<span class="badge-prestige">${badge.icon}</span> `;
   return badge.animated ? `<span class="badge-lightning-flash">${badge.icon}</span> ` : badge.icon+' ';
 }
 function bannerClassFor(banner){
@@ -2088,6 +2114,7 @@ function playerCosmeticCardHTML(username, avatarBit, suffix){
 function glowNameHTML(name, displayText){
   const glow = cosmeticsFor(name).glow;
   if(!glow) return displayText;
+  if(glow.cosmic) return `<span class="glow-name-cosmos">${displayText}</span>`;
   if(glow.rainbow) return `<span class="glow-name-rainbow">${displayText}</span>`;
   return `<span class="glow-name-text" style="color:${glow.color};text-shadow:0 0 6px ${glow.color},0 0 14px ${glow.color};">${displayText}</span>`;
 }
@@ -3534,7 +3561,7 @@ function renderTeamRoundSection(){
     html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]]) : '');
     const myHeroJokerUses = (currentRound.hero_joker_used||[]).filter(id=>id===currentUser.id).length;
     if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
-      html += `<div class="roll-zone" style="margin:4px 0 12px;"><button class="sb-btn" onclick="requestJoker('hero')">🃏 Helden für alle neu auslosen (${maxJokers-myHeroJokerUses}x übrig)</button></div>`;
+      html += `<div style="text-align:right;margin:-2px 0 10px;"><button class="empty-hint-link" style="display:inline-block;font-size:0.78rem;" onclick="requestJoker('hero')">🃏 Neu auslosen (${maxJokers-myHeroJokerUses}x)</button></div>`;
     }
     html += renderSabotagePanel();
     const doneSet = new Set(currentRound.personally_done || []);
@@ -4943,32 +4970,45 @@ function playFireworkSound(){
 }
 function spawnConfetti(targetId){
   if(!userPrefs.animations) return;
-  const el = document.getElementById(targetId);
-  if(!el) return;
-  const EMOJI = ['🎉','✨','🏆','🎊','⭐','🥳'];
-  function burst(){
-    playFireworkSound();
-    for(let i=0;i<16;i++){
-      const span = document.createElement('span');
-      span.className = 'confetti-piece';
-      span.textContent = EMOJI[randInt(0,EMOJI.length-1)];
-      const angle = Math.random()*Math.PI*2;
-      const dist = 80 + Math.random()*140;
-      span.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
-      span.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
-      span.style.setProperty('--rot', (Math.random()*360-180)+'deg');
-      span.style.animationDelay = (Math.random()*0.15)+'s';
-      el.appendChild(span);
-      setTimeout(()=>{ span.remove(); }, 2700);
-    }
+  // Vollbild-Feuerwerk: einzelne Raketen steigen an zufälligen Positionen auf und explodieren
+  // in großen Funken-Kreisen — deckt den ganzen Bildschirm ab statt nur ums Icon zu wackeln.
+  let overlay = document.getElementById('fireworks-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'fireworks-overlay';
+    document.body.appendChild(overlay);
   }
-  el.classList.add('winner-pop');
-  burst();
-  const waveTimer = setInterval(burst, 900);
-  setTimeout(()=>{
-    clearInterval(waveTimer);
-    el.classList.remove('winner-pop');
-  }, 5000);
+  const COLORS = ['#ffd76a','#ff6ec7','#5ee7ff','#b388ff','#7CFC00','#ff8c5a','#ffffff'];
+  function launchRocket(){
+    const x = 12 + Math.random()*76; // Prozent der Bildschirmbreite
+    const burstY = 18 + Math.random()*38; // Explosionshöhe in Prozent von oben
+    const rocket = document.createElement('span');
+    rocket.className = 'fw-rocket';
+    rocket.style.left = x+'%';
+    rocket.style.setProperty('--burst-top', burstY+'%');
+    overlay.appendChild(rocket);
+    setTimeout(()=>{
+      rocket.remove();
+      playFireworkSound();
+      const color = COLORS[randInt(0,COLORS.length-1)];
+      const sparks = 26;
+      for(let i=0;i<sparks;i++){
+        const s = document.createElement('span');
+        s.className = 'fw-spark';
+        s.style.left = x+'%';
+        s.style.top = burstY+'%';
+        s.style.background = Math.random()<0.25 ? COLORS[randInt(0,COLORS.length-1)] : color;
+        const angle = (i/sparks)*Math.PI*2 + Math.random()*0.3;
+        const dist = 90 + Math.random()*130;
+        s.style.setProperty('--dx', (Math.cos(angle)*dist)+'px');
+        s.style.setProperty('--dy', (Math.sin(angle)*dist)+'px');
+        overlay.appendChild(s);
+        setTimeout(()=>s.remove(), 1600);
+      }
+    }, 620);
+  }
+  for(let r=0;r<6;r++){ setTimeout(launchRocket, r*650 + Math.random()*250); }
+  setTimeout(()=>{ if(overlay && !overlay.childElementCount) overlay.remove(); }, 6500);
 }
 function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function pickN(arr, n){ return shuffle(arr).slice(0,n); }
@@ -5168,8 +5208,11 @@ async function startOnlineBlitzRound(gameId){
   await startTeamRound(true);
 }
 function handleContinue(){
-  if(session){ showView('session'); return; }
+  // Aktive Online-Runde hat Vorrang (dort wartet meist das Team), danach die lokale Session;
+  // gibt es nichts Laufendes mehr, landet man in der Team-Übersicht statt im Nichts.
   if(myTeam && currentRound && (currentRound.status==='active' || currentRound.status==='voting' || currentRound.status==='done')){ showView('team'); return; }
+  if(session){ showView('session'); return; }
+  if(myTeams.length){ showView('teams-list'); return; }
 }
 
 const tileGrid = document.getElementById('tile-grid');
@@ -5506,7 +5549,8 @@ function renderStatsPage(){
     const badges = ACHIEVEMENTS_DEF.filter(a=>a.test(s));
     const banner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
     const shopBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
-    html += `<div class="stat-card${bannerClassFor(banner)}"${banner ? ` style="background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}"` : ''}>
+    const statFrame = SHOP_FRAMES.find(f=>f.id===s.equippedFrame);
+    html += `<div class="stat-card${bannerClassFor(banner)}" style="${banner ? `background:${banner.grad};${banner.animated?'background-size:400% 400%;':''}` : ''}${frameStyleFor(statFrame)}">
       ${bannerBadgeStampHTML(banner, shopBadge)}
       <div class="stat-card-head"><span class="lb-rank">${medal}</span><span class="stat-avatar">${withHatOverlay(name, avatarHTML(name,26), 26)}</span><div class="stat-name">${badgeIconHTML(shopBadge)}${glowNameHTML(name,name)}${tierStatusLineHTML(name)}</div><div class="stat-points">${s.totalPoints} Pkt</div></div>
       <div class="stat-grid">
@@ -5532,11 +5576,12 @@ const SHOP_BADGES = [
   {id:'skull', icon:'💀', label:'Gefürchtet', cost:120},
   {id:'diamond', icon:'💎', label:'Diamant', cost:200},
   {id:'lightning', icon:'⚡', label:'Blitz', cost:170, animated:true},
-  {id:'rank_neuling', icon:'🌱', label:'Neuling', cost:0, requiresAchievementCount:5},
-  {id:'rank_anfaenger', icon:'🔰', label:'Anfänger', cost:0, requiresAchievementCount:10},
-  {id:'rank_erfahren', icon:'⭐', label:'Erfahrener', cost:0, requiresAchievementCount:15},
-  {id:'rank_profi', icon:'🎖️', label:'Profi', cost:0, requiresAchievementCount:19},
-  {id:'rank_ultimate', icon:'🌠', label:'Ultimativer Winner', cost:0, animated:true, requiresAchievementCount:20},
+  {id:'rank_neuling', icon:'🌱', label:'Neuling', cost:0, requiresAchievementCount:5, prestige:true},
+  {id:'rank_anfaenger', icon:'🔰', label:'Anfänger', cost:0, requiresAchievementCount:10, prestige:true},
+  {id:'rank_erfahren', icon:'⭐', label:'Erfahrener', cost:0, requiresAchievementCount:15, prestige:true},
+  {id:'rank_profi', icon:'🎖️', label:'Profi', cost:0, requiresAchievementCount:19, prestige:true},
+  {id:'rank_ultimate', icon:'🌠', label:'Ultimativer Winner', cost:0, animated:true, requiresAchievementCount:20, prestige:true},
+  {id:'cosmos', icon:'🌌', label:'Kosmos', cost:0, cosmicExclusive:true, cosmic:true},
 ];
 const SHOP_HATS = [
   {id:'cap', icon:'🧢', label:'Cap', cost:40},
@@ -5545,23 +5590,24 @@ const SHOP_HATS = [
   {id:'graduate', icon:'🎓', label:'Doktorhut', cost:80},
   {id:'helmet', icon:'🪖', label:'Helm', cost:100},
   {id:'crownhat', icon:'👑', label:'Krone', cost:150},
+  {id:'cosmos_ufo', icon:'🛸', label:'UFO', cost:0, cosmicExclusive:true},
 ];
 const SHOP_BANNERS = [
-  {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(120deg,#ff7e5f,#feb47b,#ff7e5f)', cost:60, animated:true},
-  {id:'ocean', label:'Ozean', grad:'linear-gradient(120deg,#2193b0,#6dd5ed,#2193b0)', cost:60, animated:true},
-  {id:'matrix', label:'Matrix 🟩', grad:'linear-gradient(120deg,#020a02,#0a3d0a,#020a02)', cost:120, animated:true},
-  {id:'toxic', label:'Toxic Smoke 💨', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:110, animated:true},
-  {id:'midnight', label:'Mitternacht', grad:'linear-gradient(120deg,#000428,#004e92,#000428)', cost:80, animated:true},
-  {id:'purple', label:'Neon-Lila', grad:'linear-gradient(120deg,#a044ff,#6a3093,#a044ff)', cost:100, animated:true},
-  {id:'gold', label:'Gold', grad:'linear-gradient(120deg,#f7971e,#ffd200,#f7971e)', cost:150, animated:true},
-  {id:'nightsky', label:'Nachthimmel 🌙', grad:'linear-gradient(120deg,#1a0b2e,#4a1a6e,#c026d3,#1a0b2e)', cost:250, animated:true},
-  {id:'moon2', label:'Mondsee 🌊', grad:'linear-gradient(120deg,#0a0618,#2d1b5e,#6b21a8,#0a0618)', cost:240, animated:true},
-  {id:'blossom', label:'Nachtblüten 🌸', grad:'linear-gradient(120deg,#0a1420,#1e3a4a,#e879b9,#0a1420)', cost:240, animated:true},
-  {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:220, animated:true},
-  {id:'ice', label:'Eis ❄️', grad:'linear-gradient(120deg,#a1e8ff,#e0f7ff,#6ec6ea,#c8f1ff,#a1e8ff)', cost:220, animated:true},
-  {id:'soundwave', label:'Soundwave 🎵', grad:'linear-gradient(120deg,#0a0a0a,#e8e8e8,#0a0a0a)', cost:200, animated:true},
-  {id:'glitch', label:'Glitch 📺', grad:'linear-gradient(120deg,#0a0a0a,#ff2079,#00e5ff,#0a0a0a)', cost:260, animated:true},
-  {id:'mystery', label:'🌌 Kosmos', hiddenLabel:'❓ Geheim', grad:'linear-gradient(120deg,#03040f,#0a1442,#132a6e,#0a1442,#03040f)', cost:1000, animated:true, mystery:true},
+  {id:'sunset', label:'Sonnenuntergang', grad:'linear-gradient(120deg,#ff7e5f,#feb47b,#ff7e5f)', cost:50, animated:true},
+  {id:'ocean', label:'Ozean', grad:'linear-gradient(120deg,#2193b0,#6dd5ed,#2193b0)', cost:50, animated:true},
+  {id:'midnight', label:'Mitternacht', grad:'linear-gradient(120deg,#000428,#004e92,#000428)', cost:60, animated:true},
+  {id:'purple', label:'Neon-Lila', grad:'linear-gradient(120deg,#a044ff,#6a3093,#a044ff)', cost:70, animated:true},
+  {id:'ice', label:'Eis ❄️', grad:'linear-gradient(120deg,#a1e8ff,#e0f7ff,#6ec6ea,#c8f1ff,#a1e8ff)', cost:80, animated:true},
+  {id:'gold', label:'Gold', grad:'linear-gradient(120deg,#f7971e,#ffd200,#f7971e)', cost:90, animated:true},
+  {id:'matrix', label:'Matrix 🟩', grad:'linear-gradient(120deg,#020a02,#0a3d0a,#020a02)', cost:140, animated:true},
+  {id:'toxic', label:'Toxic Smoke 💨', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:140, animated:true},
+  {id:'moon2', label:'Nachtblüten 🌸', grad:'linear-gradient(120deg,#0a1420,#1e3a4a,#e879b9,#0a1420)', cost:180, animated:true},
+  {id:'blossom', label:'Soundwave 🎵', grad:'linear-gradient(120deg,#0a0a0a,#e8e8e8,#0a0a0a)', cost:180, animated:true},
+  {id:'glitch', label:'Glitch 📺', grad:'linear-gradient(120deg,#0a0a0a,#ff2079,#00e5ff,#0a0a0a)', cost:220, animated:true},
+  {id:'nightsky', label:'Nachthimmel 🌙', grad:'linear-gradient(120deg,#1a0b2e,#4a1a6e,#c026d3,#1a0b2e)', cost:240, animated:true},
+  {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:260, animated:true},
+  {id:'soundwave', label:'Hands 🤲', grad:'linear-gradient(120deg,#0a0a0a,#cfcfcf,#0a0a0a)', cost:320, animated:true},
+  {id:'mystery', label:'🌌 Kosmos-Paket', hiddenLabel:'❓ Geheimnis-Paket', grad:'linear-gradient(120deg,#03040f,#0a1442,#132a6e,#0a1442,#03040f)', cost:1000, animated:true, mystery:true},
 ];
 const SHOP_GLOWS = [
   {id:'cyan', icon:'✨', label:'Cyan-Glühen', color:'#5ee7ff', cost:130},
@@ -5570,6 +5616,7 @@ const SHOP_GLOWS = [
   {id:'gold', icon:'✨', label:'Gold-Glühen', color:'#ffd76a', cost:180},
   {id:'purple', icon:'✨', label:'Lila-Glühen', color:'#b388ff', cost:150},
   {id:'rainbow', icon:'🌈', label:'Regenbogen', cost:280, rainbow:true},
+  {id:'cosmos', icon:'🌌', label:'Galaxy-Glühen', cost:0, cosmic:true, cosmicExclusive:true},
 ];
 // Rahmen um Avatar+Name (Kosmetik-Chip): 3 Farbverläufe + 5 statische Farben.
 const SHOP_FRAMES = [
@@ -5581,11 +5628,14 @@ const SHOP_FRAMES = [
   {id:'red', label:'Rot', c1:'#ff3b5c', cost:100},
   {id:'turquoise', label:'Türkis', c1:'#2dd4bf', cost:100},
   {id:'gold_frame', label:'Gold', c1:'#ffd76a', cost:120},
+  {id:'cosmos', label:'Galaxy-Verlauf', c1:'#8b5cf6', c2:'#22d3ee', grad:true, cost:0, cosmicExclusive:true},
 ];
 function frameStyleFor(frame){
   if(!frame) return '';
-  if(frame.grad) return `box-shadow:0 0 0 2px ${frame.c1}, 0 0 8px 2px ${frame.c2};`;
-  return `box-shadow:0 0 0 2px ${frame.c1};`;
+  // Bewusst dezent wie ein dünner LED-Streifen: 1px Ring, bei Verläufen nur ein hauchzarter
+  // zweiter Farbschimmer außen — kein dicker Leucht-Doppelring.
+  if(frame.grad) return `box-shadow:0 0 0 1px ${frame.c1}, 0 0 4px 0.5px ${frame.c2};`;
+  return `box-shadow:0 0 0 1px ${frame.c1};`;
 }
 // Sabotage/Vorteils-Material: einmalig einsetzbar (wird beim Benutzen verbraucht), pro Item bis zu
 // 10 Stück auf Lager, bewusst teuer. Nur online, nur während der Helden-Auslosungsphase einsetzbar.
@@ -5641,13 +5691,15 @@ function renderShopPage(){
   const owned = (s && s.shopOwned) || {badges:[], banners:[], hats:[], sabotage:{}};
   const previewBadge = SHOP_BADGES.find(b=>b.id===s.equippedBadge);
   const previewBanner = SHOP_BANNERS.find(b=>b.id===s.equippedBanner);
-  let html = `<div class="stat-card${bannerClassFor(previewBanner)}"${previewBanner ? ` style="background:${previewBanner.grad};${previewBanner.animated?'background-size:400% 400%;':''}"` : ''}>
+  const previewFrame = SHOP_FRAMES.find(f=>f.id===s.equippedFrame);
+  let html = `<div class="stat-card${bannerClassFor(previewBanner)}" style="${previewBanner ? `background:${previewBanner.grad};${previewBanner.animated?'background-size:400% 400%;':''}` : ''}${frameStyleFor(previewFrame)}">
     ${bannerBadgeStampHTML(previewBanner, previewBadge)}
     <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
   </div>`;
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎖️</span><div class="setup-step-title">Abzeichen (neben dem Namen)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
   SHOP_BADGES.forEach(b=>{
     const isOwned = owned.badges.includes(b.id);
+    if(b.cosmicExclusive && !isOwned) return; // nur übers Kosmos-Paket — vorher unsichtbar
     const isEquipped = s && s.equippedBadge===b.id;
     const myAchievementCount = s ? (s.achievementsClaimed||[]).length : 0;
     const locked = b.requiresAchievementCount && myAchievementCount < b.requiresAchievementCount;
@@ -5659,6 +5711,7 @@ function renderShopPage(){
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🧢</span><div class="setup-step-title">Mützen (Avatar-Aufsatz)</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
   SHOP_HATS.forEach(b=>{
     const isOwned = owned.hats && owned.hats.includes(b.id);
+    if(b.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedHat===b.id;
     html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('hat','${b.id}')`:`buyShopItem('hat','${b.id}')`}">
       <span>${b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
@@ -5673,12 +5726,13 @@ function renderShopPage(){
     const btnStyle = showHidden
       ? 'background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);'
       : `background:${b.grad};border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);${b.animated?'background-size:400% 400%;':''}`;
-    html += `<button class="filter-pill${isEquipped?' active':''}${!showHidden?bannerClassFor(b):''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}">${showHidden?b.hiddenLabel:b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</button>`;
+    html += `<button class="filter-pill${isEquipped?' active':''}${!showHidden?bannerClassFor(b):''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`}"><span style="position:relative;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6);">${showHidden?b.hiddenLabel:b.label} ${isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'}</span></button>`;
   });
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">✨</span><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
   SHOP_GLOWS.forEach(g=>{
     const isOwned = owned.glows && owned.glows.includes(g.id);
+    if(g.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedGlow===g.id;
     const btnClass = g.rainbow ? 'glow-name-rainbow' : 'glow-name-text';
     const btnStyle = g.rainbow ? 'border-color:#b388ff;' : `color:${g.color};text-shadow:0 0 6px ${g.color},0 0 14px ${g.color};border-color:${g.color};`;
@@ -5688,11 +5742,12 @@ function renderShopPage(){
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🖼️</span><div class="setup-step-title">Rahmen</div></div><div class="filter-row">';
   SHOP_FRAMES.forEach(f=>{
     const isOwned = owned.frames && owned.frames.includes(f.id);
+    if(f.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedFrame===f.id;
     html += `<button class="filter-pill${isEquipped?' active':''}" style="${frameStyleFor(f)}" onclick="${isOwned?`equipShopItem('frame','${f.id}')`:`buyShopItem('frame','${f.id}')`}">${f.label} ${isOwned?(isEquipped?'✓':''):'· '+f.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
-  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
+  html += '<div class="settings-card" id="shop-sabotage-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
   SHOP_SABOTAGE.forEach(b=>{
     const ownedCount = (owned.sabotage && owned.sabotage[b.id]) || 0;
     html += `<div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="buySabotageItem('${b.id}')">
@@ -5725,6 +5780,16 @@ function buyShopItem(kind, id){
   else if(kind==='glow') s.equippedGlow = id;
   else if(kind==='frame') s.equippedFrame = id;
   else s.equippedBanner = id;
+  // 🌌 Kosmos ist ein Komplett-Paket: der Bannerkauf schaltet Abzeichen, UFO-Hut, Galaxy-Glühen
+  // und Galaxy-Rahmen mit frei und rüstet alles sofort aus. Einzeln sind diese Teile unkaufbar.
+  if(kind==='banner' && id==='mystery'){
+    if(!s.shopOwned.badges.includes('cosmos')) s.shopOwned.badges.push('cosmos');
+    if(!s.shopOwned.hats.includes('cosmos_ufo')) s.shopOwned.hats.push('cosmos_ufo');
+    if(!s.shopOwned.glows.includes('cosmos')) s.shopOwned.glows.push('cosmos');
+    if(!s.shopOwned.frames.includes('cosmos')) s.shopOwned.frames.push('cosmos');
+    s.equippedBadge = 'cosmos'; s.equippedHat = 'cosmos_ufo'; s.equippedGlow = 'cosmos'; s.equippedFrame = 'cosmos';
+    showAlert('🌌 KOSMOS-PAKET freigeschaltet! Banner, Abzeichen, UFO-Hut, Galaxy-Glühen und Galaxy-Rahmen sind jetzt deins — alles direkt angelegt.', '🌌');
+  }
   saveStats();
   syncMyCosmeticsToProfile();
   renderShopPage();
@@ -6747,6 +6812,11 @@ function finalizeSoloReel(heroWrap, challWrap, results, challengePool, challenge
 }
 function setupHeroRandomizer(prefix, heroes, roles, challengePool, challengeRange, challengeLabel){
   const filterRow = document.getElementById(prefix+'-filters');
+  // Idempotent: falls die Initialisierung mehrfach läuft (z.B. Dokument versehentlich doppelt
+  // deployed), werden die Reihen vorher geleert statt doppelt befüllt.
+  if(filterRow) filterRow.innerHTML = '';
+  const _modeRowClear = document.getElementById(prefix+'-modes');
+  if(_modeRowClear) _modeRowClear.innerHTML = '';
   const labels = { all:'Alle' }; roles.forEach(r=>{ labels[r]=r; });
   let activeRole = 'all';
   ['all', ...roles].forEach(r=>{
