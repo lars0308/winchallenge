@@ -241,7 +241,7 @@
      nur über einen deutlichen Ring plus Haken — ohne die Leuchtfarbe zu übertünchen. */
   .glow-name-text.active, .glow-name-rainbow.active{ background:var(--bg-elevated) !important; color:inherit; box-shadow:0 0 0 2px currentColor, 0 0 14px -2px currentColor; }
   .glow-name-rainbow.active{ box-shadow:0 0 0 2px #b388ff, 0 0 14px -2px #b388ff; }
-  .player-cosmetic-card{ display:inline-flex; align-items:center; gap:6px; background:var(--bg-elevated); border:1px solid transparent; border-radius:999px; padding:3px 10px 3px 3px; font-size:0.82rem; font-weight:600; max-width:100%; overflow:hidden; box-sizing:border-box; }
+  .player-cosmetic-card{ display:inline-flex; align-items:center; gap:7px; background:var(--bg-elevated); border:1px solid transparent; border-radius:999px; padding:5px 13px 5px 4px; font-size:0.94rem; font-weight:600; max-width:100%; overflow:hidden; box-sizing:border-box; }
   .player-cosmetic-card.has-banner{ border-color:transparent; background-size:cover; background-position:center; }
   .glow-name-rainbow{ font-weight:700; background:linear-gradient(90deg,#ff3b3b,#ff9d3b,#f6ff3b,#3bff6a,#3bd4ff,#7a3bff,#ff3bd4,#ff3b3b); background-size:400% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none; animation: rainbow-name-kf 5s linear infinite; }
   @keyframes rainbow-name-kf{ 0%{ background-position:0% 50%; } 100%{ background-position:400% 50%; } }
@@ -309,6 +309,8 @@
   .solo-hero-item{ display:flex; flex-direction:column; gap:10px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:14px 18px; opacity:0; transform:translateY(10px); animation:chip-in 0.4s ease forwards; }
   .solo-avatar{ position:relative; flex:none; width:64px; height:64px; border-radius:17px; display:flex; align-items:center; justify-content:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.15rem; color:#08080d; }
   .avatar-badge{ position:absolute; bottom:-5px; right:-5px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.72rem; border:2px solid var(--bg-card); }
+  .online-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--win); box-shadow:0 0 0 2px rgba(52,211,153,0.25), 0 0 8px -1px var(--win); flex:none; }
+  .online-label{ color:var(--win); font-size:0.74rem; font-weight:700; }
   .solo-hero-body{ display:flex; align-items:center; gap:16px; }
   .solo-info{ flex:1; min-width:0; }
   .solo-player{ font-size:0.95rem; font-weight:700; }
@@ -1528,7 +1530,7 @@ function saveTeamCampaignState(){
     localStorage.setItem(LS_TEAM_CAMPAIGN, JSON.stringify({
       teamId: myTeam.id, teamRoundScope, teamRoundGameChoice, teamRoundGameMode, teamRoundModeChoice,
       teamRoundSessionModeChoice, teamRoundDifficulty, teamRoundCount, teamRoundSelectedGames,
-      teamCampaignIndex, teamCampaignHistory,
+      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment,
     }));
   }catch(e){}
 }
@@ -1554,6 +1556,7 @@ function restoreTeamCampaignState(teamId){
   teamRoundSelectedGames = saved.teamRoundSelectedGames || teamRoundSelectedGames;
   teamCampaignIndex = typeof saved.teamCampaignIndex === 'number' ? saved.teamCampaignIndex : teamCampaignIndex;
   teamCampaignHistory = saved.teamCampaignHistory || teamCampaignHistory;
+  teamRoundHeroAssignment = saved.teamRoundHeroAssignment || null;
 }
 function saveSetupState(){ try{ localStorage.setItem(LS_SETUP, JSON.stringify({ setupState, stepIndex })); }catch(e){} }
 function loadSetupState(){ try{ const raw = localStorage.getItem(LS_SETUP); if(raw) return JSON.parse(raw); }catch(e){} return null; }
@@ -1628,7 +1631,7 @@ async function openFriendInviteModal(){
   backdrop.classList.remove('hidden');
   listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
   try{
-    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar)').eq('user_id', currentUser.id);
+    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar, last_active)').eq('user_id', currentUser.id);
     if(error) throw error;
     if(!data || !data.length){
       listEl.innerHTML = `<div class="empty-hint">Noch keine Freunde. <a href="#" onclick="closeFriendInviteModal(); showView('friends'); return false;" style="color:var(--turquoise-bright);">Freund hinzufügen</a></div>`;
@@ -1641,7 +1644,7 @@ async function openFriendInviteModal(){
       if(!p) return;
       const alreadyIn = memberIds.has(p.id);
       html += `<div class="chip readonly" style="width:100%;box-sizing:border-box;justify-content:space-between;margin-bottom:6px;">
-        <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
+        <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username} ${onlineDotHTML(p.last_active, true)}</span>
         ${alreadyIn ? '<span style="color:var(--text-faint);">schon dabei</span>' : `<button class="header-menu-btn" style="width:32px;height:32px;font-size:1rem;" onclick="inviteFriendFromModal('${p.id}','${p.username}')">➕</button>`}
       </div>`;
     });
@@ -1667,7 +1670,7 @@ async function renderFriendsPage(){
   const listEl = document.getElementById('friends-list');
   listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
   try{
-    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar)').eq('user_id', currentUser.id);
+    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar, last_active)').eq('user_id', currentUser.id);
     if(error) throw error;
     if(!data || !data.length){
       listEl.innerHTML = '<div class="empty-hint">Noch keine Freunde — Code eines Freundes oben eingeben.</div>';
@@ -1677,7 +1680,7 @@ async function renderFriendsPage(){
         const p = f.profiles;
         if(!p) return;
         html += `<div class="chip readonly${myTeam?' member-clickable':''}" style="width:100%;box-sizing:border-box;justify-content:space-between;" ${myTeam?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
-          <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
+          <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username} ${onlineDotHTML(p.last_active, true)}</span>
           ${myTeam?'<span style="color:var(--turquoise-bright);">📨 Einladen</span>':''}
         </div>`;
       });
@@ -1951,8 +1954,38 @@ async function loadProfile(userId){
         badge: currentUser.equipped_badge, hat: currentUser.equipped_hat,
         banner: currentUser.equipped_banner, glow: currentUser.equipped_glow, frame: currentUser.equipped_frame,
       };
+      startPresenceHeartbeat();
     }
   }catch(e){ console.error(e); }
+}
+// ===== Online-Status =====
+// Kein echtes Presence-System nötig — ein simpler "last_active"-Zeitstempel im eigenen Profil,
+// der alle 45s aktualisiert wird, reicht: alle, die diesen Zeitstempel sehen (Freunde, Team-
+// Mitglieder), gelten als "online", solange er nicht älter als ONLINE_THRESHOLD_MS ist.
+const PRESENCE_HEARTBEAT_MS = 45000;
+const ONLINE_THRESHOLD_MS = 120000; // 2 Min. Puffer über dem Heartbeat-Intervall
+let presenceHeartbeatTimer = null;
+async function sendPresenceHeartbeat(){
+  if(!currentUser || !sb) return;
+  try{
+    const nowIso = new Date().toISOString();
+    await sb.from('profiles').update({ last_active: nowIso }).eq('id', currentUser.id);
+    currentUser.last_active = nowIso;
+  }catch(e){ /* z.B. Spalte fehlt noch — still ignorieren, kein Presence-Feature dann */ }
+}
+function startPresenceHeartbeat(){
+  stopPresenceHeartbeat();
+  sendPresenceHeartbeat();
+  presenceHeartbeatTimer = setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_MS);
+}
+function stopPresenceHeartbeat(){ if(presenceHeartbeatTimer){ clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; } }
+function isOnline(lastActive){
+  if(!lastActive) return false;
+  return (Date.now() - new Date(lastActive).getTime()) < ONLINE_THRESHOLD_MS;
+}
+function onlineDotHTML(lastActive, withLabel){
+  if(!isOnline(lastActive)) return '';
+  return `<span class="online-dot" title="Online"></span>${withLabel ? '<span class="online-label">Online</span>' : ''}`;
 }
 async function ensureFriendCode(){
   if(!currentUser || !sb) return;
@@ -2051,7 +2084,7 @@ async function handleLogin(){
   if(error){ errEl.textContent = 'Login fehlgeschlagen: E-Mail oder Passwort falsch.'; return; }
   await loadProfile(data.user.id);
   if(currentUser && currentUser.is_banned){
-    await sb.auth.signOut(); currentUser = null;
+    await sb.auth.signOut(); currentUser = null; stopPresenceHeartbeat();
     errEl.textContent = 'Dieser Account wurde gesperrt.';
     return;
   }
@@ -2073,6 +2106,7 @@ async function handleForgotPassword(){
 }
 async function handleLogout(){
   if(sb) await sb.auth.signOut();
+  stopPresenceHeartbeat();
   currentUser = null; myTeam = null; teamMembers = [];
   if(teamChannel && sb){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
@@ -2564,7 +2598,7 @@ function stopTeamsListPolling(){
 }
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active)').eq('team_id', myTeam.id).order('joined_at');
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
     // Mitgliederliste auftauchen, wurden wir vom Host gekickt (oder das Team wurde aufgelöst).
@@ -2575,6 +2609,7 @@ async function refreshTeamMembers(){
       bio: r.profiles ? r.profiles.bio : null, favorite_game: r.profiles ? r.profiles.favorite_game : null,
       preferred_role: r.profiles ? r.profiles.preferred_role : null, skill_level: r.profiles ? r.profiles.skill_level : null,
       preferred_mode: r.profiles ? r.profiles.preferred_mode : null,
+      last_active: r.profiles ? r.profiles.last_active : null,
     }));
     // Kosmetik (Banner/Abzeichen/Mütze/Leuchtname) für alle Mitglieder in den geteilten Cache legen,
     // damit jeder auf seinem eigenen Gerät die echten Vorlieben der anderen sieht, nicht nur seine eigenen lokalen Daten.
@@ -2601,7 +2636,7 @@ function handleRemovedFromTeam(){
   if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
   myTeam = null; teamMembers = []; currentRound = null; roundItems = []; roundVotes = {};
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = [];
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null;
   updateContinueButton();
   showHome();
   showAlert('Du wurdest aus der Gruppe entfernt.');
@@ -2643,10 +2678,23 @@ let teamRoundScope = 'rounds';      // 'rounds' = 1 Spiel über mehrere Runden |
 let teamRoundCount = 3;             // Anzahl Runden bei scope 'rounds'
 let teamRoundSelectedGames = [];    // gewählte Spiele bei scope 'games' (beliebig viele)
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
+// Bei scope='rounds' (im Gegensatz zu 'match') soll der Held nur EINMAL zu Beginn der Kampagne
+// ausgelost werden — danach bleibt er über alle Runden gleich, nur die Challenges wechseln pro
+// Runde. Dieser Cache hält die Zuordnung (user_id -> [heroName, role]) für genau diesen Zweck.
+let teamRoundHeroAssignment = null;
 let teamCampaignHistory = [];       // Host-lokal: Zusammenfassung jeder abgeschlossenen Runde dieser Kampagne (für die Endübersicht)
 let teamCampaignSyncedFor = null;   // Round-ID, für die die Endübersicht zuletzt an den Server (teams.campaign_summary) geschickt wurde
 let teamRoundCuedFor = null;        // Round-ID, für die der Start-Sound/Vibration schon abgespielt wurde
 function stopTeamPolling(){ if(teamPollInterval){ clearInterval(teamPollInterval); teamPollInterval = null; } }
+let friendsPollInterval = null;
+function stopFriendsPolling(){ if(friendsPollInterval){ clearInterval(friendsPollInterval); friendsPollInterval = null; } }
+function startFriendsPolling(){
+  stopFriendsPolling();
+  friendsPollInterval = setInterval(()=>{
+    if(!document.getElementById('view-friends').classList.contains('active')){ stopFriendsPolling(); return; }
+    renderFriendsPage();
+  }, 8000);
+}
 function startTeamPolling(){
   stopTeamPolling();
   // Safety-net alongside the realtime subscription below: keeps ready-status and round
@@ -2964,6 +3012,7 @@ function confirmTeamSettings(){
   }
   teamCampaignIndex = 0;
   teamCampaignHistory = [];
+  teamRoundHeroAssignment = null;
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[0];
   teamSettingsOpen = false;
   saveTeamCampaignState();
@@ -3012,11 +3061,17 @@ async function startTeamRound(skipReadyCheck){
   const memberIds = teamMembers.map(m=>m.user_id);
   const roleMap = {}; teamMembers.forEach(m=>{ if(m.round_role && m.round_role!=='all') roleMap[m.user_id] = m.round_role; });
   let heroAssignmentById = null;
-  if(heroPool){
+  const canReuseLockedHeroes = heroPool && teamRoundScope==='rounds' && sessionMode!=='chaos'
+    && teamCampaignIndex > 0 && teamRoundHeroAssignment && memberIds.every(id=>teamRoundHeroAssignment[id]);
+  if(canReuseLockedHeroes){
+    heroAssignmentById = teamRoundHeroAssignment;
+  } else if(heroPool){
     if(sessionMode==='chaos') heroAssignmentById = assignHeroesChaos(heroPool, memberIds);
     else if(hasAnyRoleChoice(roleMap)) heroAssignmentById = assignHeroesByPlayerRoles(gameId, memberIds, roleMap);
     else heroAssignmentById = assignHeroesBalanced(heroPool, memberIds, ROLE_WEIGHTS[gameId]);
   }
+  // Für 'rounds' (nicht 'match'/'chaos') den Helden für die nächsten Runden dieser Kampagne merken.
+  teamRoundHeroAssignment = (heroPool && teamRoundScope==='rounds' && sessionMode!=='chaos') ? heroAssignmentById : null;
   const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
   const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById }).select().single();
   if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
@@ -3143,9 +3198,9 @@ function renderSabotagePanel(){
   // erscheinen nur, wenn der aktuelle Runden-Modus passt.
   const available = SHOP_SABOTAGE.filter(item => (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode));
   if(!available.length){
-    return `<div class="empty-hint" style="margin-top:10px;">🎯 Keine Vorteile mitgenommen — vor dem nächsten Rundenstart in der Lobby auswählen.</div>`;
+    return '';
   }
-  let html = `<details class="hero-avatar-group" open style="margin-top:0;margin-bottom:14px;border-color:var(--lose);"><summary style="font-size:1.05rem;padding:14px 16px;">🎯 Vorteil einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:0 14px 14px;">`;
+  let html = `<details class="hero-avatar-group" style="margin-top:0;margin-bottom:14px;border-color:var(--lose);"><summary style="font-size:0.95rem;padding:10px 14px;">🎯 Vorteil einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:0 12px 12px;">`;
   available.forEach(item=>{
     if(item.selfOnly){
       html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} — ${item.desc}</p>`;
@@ -3562,7 +3617,7 @@ async function cancelTeamRound(){
   await sb.from('game_rounds').delete().eq('id', currentRound.id);
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null;
   saveTeamCampaignState();
   teamMembers.forEach(m=>{ m.ready = false; });
   await sb.from('team_members').update({ ready: false }).eq('team_id', myTeam.id);
@@ -3572,7 +3627,7 @@ function returnToLobbyFromDone(){
   unlockTeamRoundRender();
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null;
   saveTeamCampaignState();
   renderTeamPage();
 }
@@ -3590,7 +3645,7 @@ function renderTeamHeroBlock(){
   Object.entries(currentRound.hero_assignment).forEach(([uid, hero])=>{
     const member = teamMembers.find(m=>m.user_id===uid);
     const username = member ? member.username : '?';
-    const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 16), 16);
+    const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 18), 18);
     const playerCard = `<span class="member-clickable" style="cursor:pointer;" onclick="showMemberProfile('${uid}')">${playerCosmeticCardHTML(username, avatarBit)}</span>`;
     if(revealedSet.has(uid)){
       const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
@@ -3688,9 +3743,8 @@ function renderTeamRoundSection(){
     html += renderSabotagePanel();
     html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]]) : '');
     const myHeroJokerUses = (currentRound.hero_joker_used||[]).filter(id=>id===currentUser.id).length;
-    if(currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker){
-      html += `<div style="text-align:right;margin:-2px 0 10px;"><button class="empty-hint-link" style="display:inline-block;font-size:0.78rem;" onclick="requestJoker('hero')">🃏 Neu auslosen (${maxJokers-myHeroJokerUses}x)</button></div>`;
-    }
+    const heroJokerBtn = (currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker)
+      ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-myHeroJokerUses}x)</button>` : '';
     const doneSet = new Set(currentRound.personally_done || []);
     const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
     const missing = others.filter(m=>!doneSet.has(m.user_id));
@@ -3701,19 +3755,22 @@ function renderTeamRoundSection(){
       ).join('') + `</div>`;
     }
     if(currentRound.mode === 'team'){
-      html += `<div class="rules-note">Diese Regeln gelten für alle und sind für jeden sichtbar.</div>`;
       html += renderChallengeListPlain(roundItems.filter(it=>it.scope==='shared'));
       const teamJokerUses = currentRound.team_challenge_joker_uses || 0;
-      if(teamJokerUses < maxJokers && !currentRound.pending_joker){
-        html += `<div class="roll-zone" style="margin:8px 0 4px;"><button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges neu auslosen (${maxJokers-teamJokerUses}x übrig)</button></div>`;
+      const challengeJokerBtn = (teamJokerUses < maxJokers && !currentRound.pending_joker)
+        ? `<button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>` : '';
+      if(heroJokerBtn || challengeJokerBtn){
+        html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
       }
     } else {
       const mine = roundItems.filter(it=>it.user_id===currentUser.id);
       html += `<div class="rules-note">🔒 Nur du siehst diese Liste auf deinem Handy.</div>`;
       html += renderChallengeListPlain(mine);
       const myChallengeJokerUses = (currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
-      if(myChallengeJokerUses < maxJokers && !currentRound.pending_joker){
-        html += `<div class="roll-zone" style="margin:8px 0 4px;"><button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges neu auslosen (${maxJokers-myChallengeJokerUses}x übrig)</button></div>`;
+      const challengeJokerBtn = (myChallengeJokerUses < maxJokers && !currentRound.pending_joker)
+        ? `<button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>` : '';
+      if(heroJokerBtn || challengeJokerBtn){
+        html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
       }
       // Spionage-Vorteil: für jedes ausspionierte Ziel dessen (sonst geheime) Liste einblenden.
       const spiedTargets = (currentRound.spied_pairs||[]).filter(p=>p.startsWith(currentUser.id+'>')).map(p=>p.split('>')[1]);
@@ -3945,7 +4002,7 @@ function nextCampaignRound(){
 function startNewCampaign(){
   unlockTeamRoundRender();
   currentRound = null; roundItems = []; roundVotes = {};
-  teamCampaignIndex = 0; teamSettingsOpen = true;
+  teamCampaignIndex = 0; teamSettingsOpen = true; teamRoundHeroAssignment = null;
   renderTeamPage();
 }
 async function toggleMyReady(){
@@ -3966,7 +4023,7 @@ async function leaveTeam(){
   const leftId = myTeam.id;
   myTeams = myTeams.filter(t=>t.id !== leftId);
   teamMembers = [];
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = [];
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null;
   if(myTeams.length){
     // Noch in anderen Teams Mitglied — direkt eins davon als aktiv setzen, statt komplett rauszufliegen.
     myTeam = myTeams[myTeams.length-1];
@@ -4109,7 +4166,7 @@ function renderTeamLobbyScreen(isHost, mine){
   teamMembers.forEach(m=>{
     const canKick = isHost && m.user_id !== currentUser.id;
     const roleBadge = (m.round_role && m.round_role!=='all' && ROLE_META[m.round_role]) ? `<span title="${m.round_role}">${ROLE_META[m.round_role].icon}</span>` : '';
-    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳'))}${onlineDotHTML(m.last_active)}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   html += `</div>`;
@@ -5282,7 +5339,7 @@ function showView(id, skipHistory){
   if(id==='local-choice') renderLocalChoicePage();
   if(id==='achievements') renderAchievementsPage();
   if(id==='custom-challenges') renderCustomChallengesPage();
-  if(id==='friends') renderFriendsPage();
+  if(id==='friends'){ renderFriendsPage(); startFriendsPolling(); } else { stopFriendsPolling(); }
   if(id==='user-settings') renderUserSettingsPage();
 }
 function goBack(){
@@ -5368,7 +5425,7 @@ async function startOnlineBlitzRound(gameId){
   const gmPool = GAME_MODES[gameId];
   teamRoundGameMode = gmPool ? gmPool[randInt(0, gmPool.length-1)].key : null;
   teamRoundDifficulty = 'Mittel';
-  teamRoundScope = 'rounds'; teamRoundCount = 1; teamCampaignIndex = 0;
+  teamRoundScope = 'rounds'; teamRoundCount = 1; teamCampaignIndex = 0; teamRoundHeroAssignment = null;
   teamSettingsOpen = false;
   blitzOnlineIntent = false;
   showView('team');
@@ -6699,7 +6756,7 @@ function renderHeroRow(entries, avatarResolver){
   let html = '<div class="solo-hero-list sb-hero-row">';
   entries.forEach(([playerName, hero])=>{
     const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
-    const avatarBit = withHatOverlay(playerName, avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,16), 16);
+    const avatarBit = withHatOverlay(playerName, avatarResolver ? avatarResolver(playerName) : avatarHTML(playerName,18), 18);
     const playerCard = playerCosmeticCardHTML(playerName, avatarBit);
     html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
       <div class="solo-player">${playerCard}</div>
@@ -7067,7 +7124,7 @@ function finalizeSoloReel(heroWrap, challWrap, results, challengePool, challenge
   const list = document.createElement('div'); list.className = 'solo-hero-list reel-done-list';
   results.forEach(([playerName, heroEntry], i)=>{
     const [heroName, role] = heroEntry; const meta = ROLE_META[role]; const bg = heroImageCache[heroName] ? '#000' : heroColor(heroName);
-    const avatarBit = withHatOverlay(playerName, avatarHTML(playerName,16), 16);
+    const avatarBit = withHatOverlay(playerName, avatarHTML(playerName,18), 18);
     const playerCard = playerCosmeticCardHTML(playerName, avatarBit);
     const item = document.createElement('div'); item.className = 'solo-hero-item'; item.style.animationDelay = (i*0.06)+'s';
     item.innerHTML = `<div class="solo-player">${playerCard}</div>
