@@ -315,6 +315,8 @@
   .avatar-badge{ position:absolute; bottom:-5px; right:-5px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.72rem; border:2px solid var(--bg-card); }
   .online-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--win); box-shadow:0 0 0 2px rgba(52,211,153,0.25), 0 0 8px -1px var(--win); flex:none; }
   .online-label{ color:var(--win); font-size:0.74rem; font-weight:700; }
+  .offline-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--text-faint); flex:none; }
+  .offline-label{ color:var(--text-faint); font-size:0.74rem; font-weight:600; }
   .solo-hero-body{ display:flex; align-items:center; gap:16px; }
   .solo-info{ flex:1; min-width:0; }
   .solo-player{ font-size:0.95rem; font-weight:700; }
@@ -2021,6 +2023,16 @@ function saveSession(){ try{ if(session) localStorage.setItem(LS_SESSION, JSON.s
 function loadSession(){ try{ const raw = localStorage.getItem(LS_SESSION); if(raw) return JSON.parse(raw); }catch(e){} return null; }
 function saveStats(){ try{ localStorage.setItem(LS_STATS, JSON.stringify(statsStore)); }catch(e){} }
 function loadStats(){ try{ const raw = localStorage.getItem(LS_STATS); if(raw) return JSON.parse(raw); }catch(e){} return {}; }
+// Spielverlauf: kurze Zusammenfassung jeder beendeten Runde (Spiel, Modus, Spieler, Challenges) —
+// rein lokal auf diesem Gerät, auf die letzten 30 Einträge gedeckelt.
+const LS_HISTORY = 'winchallenge_game_history_v1';
+function saveGameHistory(){ try{ localStorage.setItem(LS_HISTORY, JSON.stringify(gameHistory)); }catch(e){} }
+function loadGameHistory(){ try{ const raw = localStorage.getItem(LS_HISTORY); if(raw) return JSON.parse(raw); }catch(e){} return []; }
+function recordGameHistoryEntry(entry){
+  gameHistory.unshift(entry);
+  if(gameHistory.length > 30) gameHistory.length = 30;
+  saveGameHistory();
+}
 function saveAvatars(){ try{ localStorage.setItem(LS_AVATARS, JSON.stringify(avatarMap)); }catch(e){} }
 function loadAvatars(){ try{ const raw = localStorage.getItem(LS_AVATARS); if(raw) return JSON.parse(raw); }catch(e){} return {}; }
 
@@ -2199,8 +2211,28 @@ function isOnline(lastActive){
   return (Date.now() - new Date(lastActive).getTime()) < ONLINE_THRESHOLD_MS;
 }
 function onlineDotHTML(lastActive, withLabel){
-  if(!isOnline(lastActive)) return '';
-  return `<span class="online-dot" title="Online"></span>${withLabel ? '<span class="online-label">Online</span>' : ''}`;
+  if(isOnline(lastActive)){
+    return `<span class="online-dot" title="Online"></span>${withLabel ? '<span class="online-label">Online</span>' : ''}`;
+  }
+  if(!withLabel) return '';
+  return `<span class="offline-dot" title="Offline"></span><span class="offline-label">${formatLastActive(lastActive)}</span>`;
+}
+// Menschenlesbarer "zuletzt online"-Text für die Freundesliste — grob gerundet (Minuten/Stunden/Tage),
+// damit es nicht wie eine exakte Sekunden-Uhr wirkt.
+function formatLastActive(lastActive){
+  if(!lastActive) return 'Nie online';
+  const diffMs = Date.now() - new Date(lastActive).getTime();
+  if(diffMs < 0) return 'Zuletzt online: gerade eben';
+  const mins = Math.floor(diffMs/60000);
+  if(mins < 1) return 'Zuletzt online: gerade eben';
+  if(mins < 60) return `Zuletzt online vor ${mins} Min.`;
+  const hours = Math.floor(mins/60);
+  if(hours < 24) return `Zuletzt online vor ${hours} Std.`;
+  const days = Math.floor(hours/24);
+  if(days < 7) return `Zuletzt online vor ${days} Tag${days===1?'':'en'}`;
+  const weeks = Math.floor(days/7);
+  if(weeks < 5) return `Zuletzt online vor ${weeks} Woche${weeks===1?'':'n'}`;
+  return `Zuletzt online: ${new Date(lastActive).toLocaleDateString('de-DE')}`;
 }
 async function ensureFriendCode(){
   if(!currentUser || !sb) return;
@@ -2839,7 +2871,7 @@ function stopTeamsListPolling(){
 let lastTeamMembersSignature = null;
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active, stats)').eq('team_id', myTeam.id).order('joined_at');
   let changed = true;
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
@@ -2869,6 +2901,7 @@ async function refreshTeamMembers(){
       preferred_role: r.profiles ? r.profiles.preferred_role : null, skill_level: r.profiles ? r.profiles.skill_level : null,
       preferred_mode: r.profiles ? r.profiles.preferred_mode : null,
       last_active: r.profiles ? r.profiles.last_active : null,
+      stats: r.profiles ? r.profiles.stats : null,
     }));
     // Kosmetik (Banner/Abzeichen/Mütze/Leuchtname) für alle Mitglieder in den geteilten Cache legen,
     // damit jeder auf seinem eigenen Gerät die echten Vorlieben der anderen sieht, nicht nur seine eigenen lokalen Daten.
@@ -3044,9 +3077,30 @@ function showMemberProfile(userId){
     ${tierStatusLineHTML(m.username)}
     ${m.bio ? `<div class="member-modal-bio">„${m.bio}"</div>` : ''}
     <div class="member-modal-facts">${factsHTML}</div>
+    ${renderMemberStatsSummaryHTML(m)}
     ${isSelf ? '' : `<div style="margin-top:14px;"><button class="sb-btn" style="width:100%;" onclick="addTeammateAsFriend('${m.user_id}','${m.username}')">🤝 Als Freund hinzufügen</button></div>`}
   </div>`;
   modal.classList.remove('hidden');
+}
+// Die "Kurzversion" der Statistik (Coins, Erfolgsquote, welche Challenges meistens klappen/scheitern)
+// — die sieht hier jede/r bei jedem Team-Mitglied, nicht nur bei sich selbst. Kommt aus dem
+// Cloud-Feld profiles.stats (per syncStatsToCloud aktuell gehalten), nicht aus dem lokalen Gerät der
+// betrachtenden Person, sonst würde bei anderen ja nichts oder falsche Werte auftauchen.
+function renderMemberStatsSummaryHTML(m){
+  const st = m.stats;
+  if(!st || !st.roundsPlayed) return `<div class="empty-hint" style="margin-top:10px;">Noch keine Runde gespielt — hier erscheint die Statistik, sobald ${m.username} die erste Runde beendet hat.</div>`;
+  const rate = (st.challengesWon+st.challengesLost) ? Math.round((st.challengesWon/(st.challengesWon+st.challengesLost))*100) : 0;
+  const rowHTML = (e, key) => `<div class="settings-row-sub" style="margin-top:2px;">${e.text.slice(0,50)}${e.text.length>50?'…':''} — ${e[key]}/${e.total}x</div>`;
+  return `<div class="settings-card" style="margin-top:12px;">
+    <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Statistik</div></div>
+    <div class="stat-grid">
+      <div class="stat-mini"><div class="stat-mini-val">${st.totalPoints}</div><div class="stat-mini-label">Coins insgesamt</div></div>
+      <div class="stat-mini"><div class="stat-mini-val">${st.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
+      <div class="stat-mini"><div class="stat-mini-val">${rate}%</div><div class="stat-mini-label">Erfolgsquote</div></div>
+    </div>
+    ${(st.topDone&&st.topDone.length) ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>✅ Klappen meistens:</strong></div>${st.topDone.map(e=>rowHTML(e,'won')).join('')}` : ''}
+    ${(st.topMissed&&st.topMissed.length) ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>❌ Scheitern oft:</strong></div>${st.topMissed.map(e=>rowHTML(e,'lost')).join('')}` : ''}
+  </div>`;
 }
 async function addTeammateAsFriend(userId, username){
   const result = await sendFriendRequest(userId, username);
@@ -3915,8 +3969,8 @@ function recordMyLocalStatsForRound(){
   const s = getPlayerStats(currentUser.username);
   let earned = 0, won = 0, lost = 0;
   myItems.forEach(it=>{
-    if(it.result === 'success'){ earned += it.points; won++; }
-    else if(it.result === 'fail'){ lost++; }
+    if(it.result === 'success'){ earned += it.points; won++; recordChallengeOutcome(s, it.text, true); }
+    else if(it.result === 'fail'){ lost++; recordChallengeOutcome(s, it.text, false); }
   });
   s.totalPoints += earned; s.roundsPlayed += 1; s.challengesWon += won; s.challengesLost += lost;
   if(earned > 0 && won >= lost) s.roundWins += 1;
@@ -3924,8 +3978,21 @@ function recordMyLocalStatsForRound(){
   const myHeroForStats = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
   if(myHeroForStats){ s.heroesPlayed = s.heroesPlayed || {}; s.heroesPlayed[currentRound.game_id+':'+myHeroForStats[0]] = true; }
   if(earned > s.bestRoundScore) s.bestRoundScore = earned;
+  recordGameHistoryEntry({
+    date: new Date().toISOString(),
+    gameId: currentRound.game_id,
+    mode: currentRound.mode,
+    difficulty: currentRound.difficulty || null,
+    players: teamMembers.map(m=>m.username),
+    challenges: roundItems.map(it=>({
+      text: it.text, diff: it.diff, scope: it.scope,
+      player: it.scope==='personal' ? ((it.profiles && it.profiles.username) || teamMembers.find(m=>m.user_id===it.user_id)?.username || null) : null,
+      result: it.result==='success' ? 'win' : it.result==='fail' ? 'lose' : null,
+    })),
+  });
   saveStats();
   notifyNewAchievements(checkAchievements(currentUser.username));
+  syncStatsToCloud(currentUser.username);
 }
 function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItems = []; roundVotes = {}; renderTeamPage(); }
 function renderTeamRoundHeader(){
@@ -6072,6 +6139,7 @@ setupDiceScenes();
 
 /* ============================================================ STATS / ACHIEVEMENTS ============================================================ */
 let statsStore = loadStats();
+let gameHistory = loadGameHistory();
 function getPlayerStats(name){
   if(!statsStore[name]){
     statsStore[name] = { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
@@ -6249,6 +6317,34 @@ function successRate(s){
   const total = s.challengesWon + s.challengesLost;
   return total ? Math.round((s.challengesWon/total)*100) : 0;
 }
+// Baut die kompakte "Kurzversion" der Statistik (fürs Mitglieder-Profil, das jeder bei jedem sehen
+// kann) — bewusst klein gehalten (nur Top-3-Listen statt der vollen challengeStats-Map), damit die
+// profiles.stats-Spalte nicht unnötig groß wird.
+function buildStatsSummary(s){
+  const entries = Object.entries(s.challengeStats||{}).map(([text,c])=>({text, won:c.won||0, lost:c.lost||0, total:(c.won||0)+(c.lost||0)})).filter(e=>e.total>=2);
+  const topDone = entries.filter(e=>e.won>0).sort((a,b)=> (b.won/b.total)-(a.won/a.total) || b.total-a.total).slice(0,3).map(e=>({text:e.text, won:e.won, total:e.total}));
+  const topMissed = entries.filter(e=>e.lost>0).sort((a,b)=> (b.lost/b.total)-(a.lost/a.total) || b.total-a.total).slice(0,3).map(e=>({text:e.text, lost:e.lost, total:e.total}));
+  return {
+    totalPoints: s.totalPoints, roundsPlayed: s.roundsPlayed, roundWins: s.roundWins,
+    challengesWon: s.challengesWon, challengesLost: s.challengesLost,
+    bestRoundScore: s.bestRoundScore===-Infinity?0:s.bestRoundScore,
+    favoriteGame: favoriteGame(s), topDone, topMissed,
+  };
+}
+async function syncStatsToCloud(name){
+  if(!currentUser || !sb || name !== currentUser.username) return;
+  try{ await sb.from('profiles').update({ stats: buildStatsSummary(statsStore[name]) }).eq('id', currentUser.id); }
+  catch(e){ console.error('Stats-Sync fehlgeschlagen:', e); }
+}
+// Merkt sich pro Challenge-Text, wie oft sie geschafft bzw. nicht geschafft wurde — Basis für die
+// "welche Challenges schafft man eher/seltener"-Übersicht auf der Statistik-Seite.
+function recordChallengeOutcome(s, text, won){
+  if(!text) return;
+  s.challengeStats = s.challengeStats || {};
+  const entry = s.challengeStats[text] || { won:0, lost:0 };
+  if(won) entry.won++; else entry.lost++;
+  s.challengeStats[text] = entry;
+}
 function recordRoundStats(){
   if(session.mode==='team'){
     const roundScore = scoreOf(session.sharedRules);
@@ -6258,6 +6354,7 @@ function recordRoundStats(){
     session.players.forEach(p=>{
       const s = getPlayerStats(p);
       s.totalPoints += roundScore; s.challengesWon += wins; s.challengesLost += losses; s.roundsPlayed += 1;
+      session.sharedRules.forEach(c=>{ if(c.state==='win'||c.state==='lose') recordChallengeOutcome(s, c.text, c.state==='win'); });
       s.gamesPlayed[session.gameId] = (s.gamesPlayed[session.gameId]||0)+1;
       const heroT = session.heroAssignment ? session.heroAssignment[p] : null;
       if(heroT){ s.heroesPlayed = s.heroesPlayed || {}; s.heroesPlayed[session.gameId+':'+heroT[0]] = true; }
@@ -6276,6 +6373,8 @@ function recordRoundStats(){
       const losses = personal.filter(c=>c.state==='lose').length;
       const s = getPlayerStats(p);
       s.totalPoints += roundScore; s.challengesWon += wins; s.challengesLost += losses; s.roundsPlayed += 1;
+      personal.forEach(c=>{ if(c.state==='win'||c.state==='lose') recordChallengeOutcome(s, c.text, c.state==='win'); });
+      session.sharedRules.forEach(c=>{ if(c.state==='win'||c.state==='lose') recordChallengeOutcome(s, c.text, c.state==='win'); });
       s.gamesPlayed[session.gameId] = (s.gamesPlayed[session.gameId]||0)+1;
       const heroV = session.heroAssignment ? session.heroAssignment[p] : null;
       if(heroV){ s.heroesPlayed = s.heroesPlayed || {}; s.heroesPlayed[session.gameId+':'+heroV[0]] = true; }
@@ -6285,8 +6384,20 @@ function recordRoundStats(){
       else { s.currentRoundStreak = 0; }
     });
   }
+  recordGameHistoryEntry({
+    date: new Date().toISOString(),
+    gameId: session.gameId,
+    mode: session.mode,
+    difficulty: session.difficultyKey || null,
+    players: session.players.slice(),
+    challenges: [
+      ...session.sharedRules.map(c=>({ text:c.text, diff:c.diff, scope:'shared', player:null, result: c.state==='win'?'win':c.state==='lose'?'lose':null })),
+      ...(session.mode==='team' ? [] : session.players.flatMap(p=>(session.personalChallenges[p]||[]).map(c=>({ text:c.text, diff:c.diff, scope:'personal', player:p, result: c.state==='win'?'win':c.state==='lose'?'lose':null })))),
+    ],
+  });
   saveStats();
   session.players.forEach(p=>notifyNewAchievements(checkAchievements(p)));
+  session.players.forEach(p=>syncStatsToCloud(p));
 }
 function notifyNewAchievements(newlyEarned){
   if(!newlyEarned || !newlyEarned.length) return;
@@ -6315,7 +6426,7 @@ async function resetStatsOnly(){
   // lokal gesetztes Emblem-Avatar mit verschwinden, sonst bleibt das Bild trotz Reset stehen.
   Object.keys(statsStore).forEach(n=>{ if(avatarMap[n]===EMBLEM_RED_GIF) delete avatarMap[n]; });
   saveAvatars();
-  statsStore = {}; saveStats(); renderStatsPage();
+  statsStore = {}; saveStats(); gameHistory = []; saveGameHistory(); renderStatsPage();
   await clearMyCloudCosmetics();
   if(currentUser && sb && currentUser.avatar===EMBLEM_RED_GIF){
     try{
@@ -6327,6 +6438,7 @@ async function resetStatsOnly(){
 async function resetAllLocalData(){
   if(!(await confirmAction('WIRKLICH ALLES zurücksetzen? Statistiken, lokale Mitspieler und Avatare auf diesem Gerät gehen verloren. Euer Online-Account/Team bleibt bestehen.'))) return;
   statsStore = {}; saveStats();
+  gameHistory = []; saveGameHistory();
   globalPlayers = []; savePlayers();
   avatarMap = {}; saveAvatars();
   session = null; saveSession();
@@ -6334,12 +6446,39 @@ async function resetAllLocalData(){
   renderGlobalPlayerChips(); renderStatsPage(); updateContinueButton();
   showAlert('Erledigt — lokale Daten wurden zurückgesetzt.');
 }
+// Kurzer Überblick über die letzten gespielten Runden: welches Spiel, welcher Modus, wer hat
+// mitgespielt und welche Challenges kamen mit welchem Ergebnis dran.
+function renderGameHistoryHTML(){
+  if(!gameHistory || !gameHistory.length) return '';
+  const recent = gameHistory.slice(0, 12);
+  const entryHTML = h=>{
+    const dateStr = new Date(h.date).toLocaleString('de-DE', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+    const modeLabel = h.mode==='team' ? '🤝 Team' : '⚔️ Jeder gegen Jeden';
+    const challengeRows = (h.challenges||[]).map(c=>{
+      const icon = c.result==='win' ? '✅' : c.result==='lose' ? '❌' : '➖';
+      const who = c.player ? ` (${c.player})` : '';
+      return `<div class="settings-row-sub" style="margin-top:2px;">${icon} ${c.text.slice(0,50)}${c.text.length>50?'…':''}${who}</div>`;
+    }).join('');
+    return `<details class="hero-avatar-group" style="margin-top:8px;">
+      <summary style="font-size:0.85rem;padding:8px 12px;">${gameIconHTML(h.gameId,16)} ${GAME_NAME[h.gameId]||h.gameId} · ${modeLabel} · ${dateStr}</summary>
+      <div style="padding:2px 12px 10px;">
+        <div class="setup-info" style="margin:4px 0;">Spieler: ${(h.players||[]).join(', ')}${h.difficulty?` · Schwierigkeit: ${h.difficulty}`:''}</div>
+        ${challengeRows}
+      </div>
+    </details>`;
+  };
+  return `<div class="settings-card" style="margin-bottom:16px;">
+    <div class="setup-step-head"><span class="setup-step-icon">📜</span><div class="setup-step-title">Spielverlauf</div></div>
+    <p class="setup-info" style="margin-top:0;">Die letzten Runden — Spiel, Modus, Mitspieler und wie die Challenges ausgegangen sind.</p>
+    ${recent.map(entryHTML).join('')}
+  </div>`;
+}
 function renderStatsPage(){
   const el = document.getElementById('stats-content');
   const names = Object.keys(statsStore);
   if(!names.length){ el.innerHTML = '<div class="empty-hint">Noch keine gespielten Runden. Startet eine Session, um Statistiken zu sammeln.</div>'; return; }
   const ranked = names.map(n=>({name:n, s:statsStore[n]})).sort((a,b)=>b.s.totalPoints-a.s.totalPoints);
-  let html = '';
+  let html = renderGameHistoryHTML();
   ranked.forEach(({name, s}, i)=>{
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
     const fav = favoriteGame(s);
@@ -6359,11 +6498,31 @@ function renderStatsPage(){
         <div class="stat-mini"><div class="stat-mini-val">${successRate(s)}%</div><div class="stat-mini-label">Erfolgsquote</div></div>
         <div class="stat-mini"><div class="stat-mini-val">${s.bestRoundScore===-Infinity?0:s.bestRoundScore}</div><div class="stat-mini-label">Rekord/Runde</div></div>
         <div class="stat-mini"><div class="stat-mini-val">${fav?gameIconHTML(fav,20):'—'}</div><div class="stat-mini-label">Lieblingsspiel</div></div>
+        <div class="stat-mini"><div class="stat-mini-val">${s.totalPoints}</div><div class="stat-mini-label">Coins insgesamt</div></div>
       </div>
       ${badges.length ? `<div class="stat-badges">${badges.map(b=>`<span class="stat-badge">${b.icon} ${b.label}</span>`).join('')}</div>` : ''}
+      ${renderChallengeStatsHTML(s)}
     </div>`;
   });
   el.innerHTML = html;
+}
+// Zeigt pro Spieler(-in), welche konkreten Challenges am häufigsten geschafft bzw. am häufigsten
+// nicht geschafft werden — nur Einträge mit mindestens 2 Versuchen, damit ein einzelner Ausreißer
+// nicht gleich als Muster erscheint.
+function renderChallengeStatsHTML(s){
+  const entries = Object.entries(s.challengeStats||{}).map(([text,c])=>({text, won:c.won||0, lost:c.lost||0, total:(c.won||0)+(c.lost||0)})).filter(e=>e.total>=2);
+  if(!entries.length) return '';
+  const bestDone = entries.filter(e=>e.won>0).sort((a,b)=> (b.won/b.total)-(a.won/a.total) || b.total-a.total).slice(0,3);
+  const oftenMissed = entries.filter(e=>e.lost>0).sort((a,b)=> (b.lost/b.total)-(a.lost/a.total) || b.total-a.total).slice(0,3);
+  if(!bestDone.length && !oftenMissed.length) return '';
+  const rowHTML = e => `<div class="settings-row-sub" style="margin-top:2px;">${e.text.slice(0,60)}${e.text.length>60?'…':''} — ${e.won}/${e.total}x geschafft</div>`;
+  return `<details class="hero-avatar-group" style="margin-top:10px;">
+    <summary style="font-size:0.85rem;padding:8px 12px;">📊 Welche Challenges klappen eher/seltener?</summary>
+    <div style="padding:2px 12px 10px;">
+      ${bestDone.length ? `<div class="setup-info" style="margin:6px 0 2px;"><strong>✅ Klappen meistens:</strong></div>${bestDone.map(rowHTML).join('')}` : ''}
+      ${oftenMissed.length ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>❌ Scheitern oft:</strong></div>${oftenMissed.map(rowHTML).join('')}` : ''}
+    </div>
+  </details>`;
 }
 
 /* ============================================================ PUNKTE-SHOP ============================================================ */
