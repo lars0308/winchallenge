@@ -1097,11 +1097,11 @@
       </div>
       <div class="setup-warning" id="friend-add-warning"></div>
     </div>
+    <div class="setup-info" id="friend-invite-hint" style="display:none;">Ihr seid in einer Team-Lobby — tippt auf einen Freund, um ihn direkt einzuladen.</div>
+    <div id="friends-list"></div>
     <div class="section-divider" id="friend-requests-divider" style="display:none;">🤝 Freundschaftsanfragen</div>
     <div id="friend-requests-incoming"></div>
     <div id="friend-requests-outgoing"></div>
-    <div class="setup-info" id="friend-invite-hint" style="display:none;">Ihr seid in einer Team-Lobby — tippt auf einen Freund, um ihn direkt einzuladen.</div>
-    <div id="friends-list"></div>
     <div class="section-divider" id="friend-invites-divider" style="display:none;">📩 Team-Einladungen</div>
     <div id="friend-invites-list"></div>
   </div>
@@ -3055,6 +3055,30 @@ function startNotificationsSubscription(){
       try{ const { data } = await sb.from('profiles').select('username').eq('id', payload.new.from_user).maybeSingle(); if(data) fromName = data.username; }catch(e){}
       showToast(`${fromName} möchte mit dir befreundet sein`, '🤝');
       if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderFriendRequests();
+    })
+    // Jemand hat MICH als Freund entfernt (seine friendships-Zeile mit friend_id = meine ID wurde
+    // gelöscht) — läuft für den gesamten Login-Zeitraum, nicht nur auf der Freunde-Seite, damit es
+    // wirklich sofort bei jedem Spieler ankommt statt erst beim nächsten Polling-Tick. Räumt dabei
+    // auch die eigene, spiegelbildliche friendships-Zeile auf (die RLS erlaubt der Gegenseite nicht,
+    // diese direkt mitzulöschen).
+    .on('postgres_changes', { event:'DELETE', schema:'public', table:'friendships', filter:`friend_id=eq.${currentUser.id}` }, async (payload)=>{
+      const removerId = payload.old ? payload.old.user_id : null;
+      if(!removerId) return;
+      let removerName = 'Ein Freund';
+      try{ const { data } = await sb.from('profiles').select('username').eq('id', removerId).maybeSingle(); if(data) removerName = data.username; }catch(e){}
+      try{ await sb.from('friendships').delete().eq('user_id', currentUser.id).eq('friend_id', removerId); }catch(e){ console.error(e); }
+      showToast(`${removerName} hat dich als Freund entfernt`, '💔');
+      if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderFriendsPage();
+    })
+    // Eine von mir verschickte Freundschaftsanfrage wurde angenommen — legt live die eigene
+    // friendships-Zeile an, statt darauf zu warten, dass ich die Freunde-Seite neu öffne.
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'friend_requests', filter:`from_user=eq.${currentUser.id}` }, async (payload)=>{
+      if(!payload.new || payload.new.status !== 'accepted') return;
+      let targetName = 'Jemand';
+      try{ const { data } = await sb.from('profiles').select('username').eq('id', payload.new.to_user).maybeSingle(); if(data) targetName = data.username; }catch(e){}
+      await materializeAcceptedOutgoingFriendRequests();
+      showToast(`${targetName} hat deine Freundschaftsanfrage angenommen`, '🤝');
+      if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderFriendsPage();
     })
     .subscribe();
 }
