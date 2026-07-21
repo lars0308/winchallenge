@@ -3369,8 +3369,10 @@ async function requestJoker(type, forSelf){
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
   if(usedKey){
     const used = currentRound[usedKey] || [];
-    const myUses = used.filter(id=>id===currentUser.id).length;
-    if(myUses >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`, '🃏'); return; }
+    // Held-Joker: teamweites Kontingent (rerollt ja für alle) — Meine Challenges: pro Person
+    // (betrifft nur die anfragende Person, soll also auch nur deren eigenes Kontingent belasten).
+    const usesSoFar = type==='hero' ? used.length : used.filter(id=>id===currentUser.id).length;
+    if(usesSoFar >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Joker für ${jokerLabel(type)} aufgebraucht.`, '🃏'); return; }
   } else if(type==='team_challenge'){
     const uses = currentRound.team_challenge_joker_uses || 0;
     if(uses >= maxJokerUses()){ showAlert(`Ihr habt für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Team-Challenge-Joker aufgebraucht.`, '🃏'); return; }
@@ -3978,9 +3980,12 @@ function renderTeamRoundSection(){
     // egal ob Team- oder Jeder-gegen-Jeden-Modus.
     html += renderSabotagePanel();
     html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]]) : '');
-    const myHeroJokerUses = (currentRound.hero_joker_used||[]).filter(id=>id===currentUser.id).length;
-    const heroJokerBtn = (currentRound.hero_assignment && myHero && myHeroJokerUses < maxJokers && !currentRound.pending_joker)
-      ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-myHeroJokerUses}x)</button>` : '';
+    // Der Held-Reroll losst für das GANZE Team neu aus (nicht nur für die anfragende Person) — das
+    // Kontingent zählt deshalb teamweit (jede Nutzung durch irgendjemanden zählt), nicht pro Person
+    // wie bei "Meine Challenges" (die betrifft ja nur die anfragende Person selbst).
+    const heroJokerUsesTotal = (currentRound.hero_joker_used||[]).length;
+    const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker)
+      ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>` : '';
     const doneSet = new Set(currentRound.personally_done || []);
     const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
     const missing = others.filter(m=>!doneSet.has(m.user_id));
@@ -5264,7 +5269,7 @@ const OW2_PERSONAL = [
   C('Meiste Assists im Match.','leicht','assist-race', ['Tank','Damage','Support']),
   C('Meiste Objective-Zeit (auf dem Punkt/am Payload).','leicht','objective-time-race', ['Tank','Damage','Support']),
   C('Meiste Eliminierungen im Match.','mittel','kills-race', ['Damage']),
-  C('Erste Ultimate-Elimination des Matches.','mittel','ultimate-race', ['Tank','Damage','Support']),
+  C('Erste Ultimate-Elimination des Matches.','mittel','ultimate', ['Tank','Damage','Support']),
   C('Höchster Schaden im Match.','mittel','damage-race', ['Damage','Tank']),
   C('Meiste Heilung im Match.','mittel','healing-race', ['Support']),
   C('Meiste geblockte/absorbierte Schadenswerte.','mittel','block-race', ['Tank']),
@@ -5272,14 +5277,14 @@ const OW2_PERSONAL = [
   C('Meiste Rettungen (Teamkollegen kurz vorm Tod gerettet).','schwer','save-race', ['Support']),
   C('Erste Mehrfach-Elimination (Multikill).','schwer','multikill-race', ['Damage']),
   C('Höchste Einzel-Elimination-Serie.','schwer','streak-race', ['Damage']),
-  C('Meiste Kills mit einer einzigen Ultimate-Aktivierung.','schwer','ult-value-race', ['Damage','Tank','Support']),
+  C('Meiste Kills mit einer einzigen Ultimate-Aktivierung.','schwer','ultimate', ['Damage','Tank','Support']),
   C('Längste durchgehende Zeit am Leben als Frontliner.','schwer','survive-tank-race', ['Tank']),
 ];
 const MR_PERSONAL = [
   C('Wenigste Tode im Match.','leicht','deaths-race', ['Tank','Damage','Support']),
   C('Meiste Assists im Match.','leicht','assist-race', ['Tank','Damage','Support']),
   C('Meiste Eliminierungen im Match.','mittel','kills-race', ['Damage']),
-  C('Erste Ultimate-Elimination des Matches.','mittel','ultimate-race', ['Tank','Damage','Support']),
+  C('Erste Ultimate-Elimination des Matches.','mittel','ultimate', ['Tank','Damage','Support']),
   C('Höchster Schaden im Match.','mittel','damage-race', ['Damage','Tank']),
   C('Meiste Heilung im Match.','mittel','healing-race', ['Support']),
   C('Meiste geblockte/absorbierte Schadenswerte.','mittel','block-race', ['Tank']),
@@ -5491,8 +5496,21 @@ function pickUniqueThemes(pool, n, usedThemes){
   if(n <= 0) return [];
   const shuffled = shuffle(pool);
   const picked = [];
-  for(const item of shuffled){ if(picked.length >= n) break; if(!usedThemes.has(item.theme)){ picked.push(item); usedThemes.add(item.theme); } }
-  if(picked.length < n){ for(const item of shuffled){ if(picked.length >= n) break; if(!picked.includes(item)){ picked.push(item); usedThemes.add(item.theme); } } }
+  const pickedThemes = new Set();
+  // 1. Bevorzugt: Themen, die weder in dieser Liste noch anderswo im selben Runden-Aufbau
+  //    (z. B. den gemeinsamen Team-Regeln, falls usedThemes von dort mitgegeben wird) schon vorkommen.
+  for(const item of shuffled){ if(picked.length >= n) break; if(!usedThemes.has(item.theme)){ picked.push(item); usedThemes.add(item.theme); pickedThemes.add(item.theme); } }
+  // 2. Fallback, falls der Pool für komplett neue Themen zu klein ist: wenigstens innerhalb DIESER
+  //    einen Liste keine Themen doppeln — verhindert zwei quasi-identische/widersprüchliche
+  //    Challenges nebeneinander (das war die Hauptursache für "doppelte Challenges im Match").
+  if(picked.length < n){
+    for(const item of shuffled){ if(picked.length >= n) break; if(picked.includes(item)) continue; if(!pickedThemes.has(item.theme)){ picked.push(item); usedThemes.add(item.theme); pickedThemes.add(item.theme); } }
+  }
+  // 3. Letzter Ausweg: Pool wirklich komplett ausgeschöpft — dann doch mit Themen-Duplikat auffüllen,
+  //    damit zumindest die gewünschte Anzahl Challenges zustande kommt.
+  if(picked.length < n){
+    for(const item of shuffled){ if(picked.length >= n) break; if(!picked.includes(item)){ picked.push(item); usedThemes.add(item.theme); } }
+  }
   return picked;
 }
 function pickNUnique(pool, n){ return pickUniqueThemes(pool, n, new Set()); }
@@ -6786,28 +6804,32 @@ function assignHeroesChaos(heroPool, players){
 }
 
 /* ============================================================ CHALLENGE GENERATION ============================================================ */
-function pickByComposition(pool, comp){
+function pickByComposition(pool, comp, usedThemes){
+  usedThemes = usedThemes || new Set();
   const cats = { leicht:[], mittel:[], schwer:[] };
   pool.forEach(c=>cats[c.diff].push(c));
-  const usedThemes = new Set(); let result = [];
+  let result = [];
   ['leicht','mittel','schwer'].forEach(d=>{ const n = Math.min(comp[d], cats[d].length); result = result.concat(shuffle(pickUniqueThemes(cats[d], n, usedThemes))); });
   return result;
 }
-function generateChallengesForRound(pool, difficultyKey, sessionMode, forcedComp, players){
+function generateChallengesForRound(pool, difficultyKey, sessionMode, forcedComp, players, usedThemes){
   const comp = forcedComp || (sessionMode === 'chaos' ? CHAOS_COMPOSITION : DIFF_COMPOSITION[difficultyKey]);
-  const chosen = pickByComposition(pool, comp);
+  const chosen = pickByComposition(pool, comp, usedThemes);
   const mult = sessionMode === 'chaos' ? 2 : 1;
   return chosen.map((c,i)=>({
     id: 'c'+i+'_'+Math.random().toString(36).slice(2,7),
     text: substitutePlayerName(c.text, players), diff: c.diff, points: DIFF_POINTS[c.diff]*mult, state: 'pending', chaos: sessionMode==='chaos',
   }));
 }
-function buildPersonalChallengeSet(gameId, difficultyKey, sessionMode, playerKeys, heroAssignment, forcedComp, overridePool){
+function buildPersonalChallengeSet(gameId, difficultyKey, sessionMode, playerKeys, heroAssignment, forcedComp, overridePool, usedThemes){
   const personalPool = overridePool || PERSONAL_SOURCES[gameId];
   const comp = forcedComp || (sessionMode === 'chaos' ? CHAOS_COMPOSITION : DIFF_COMPOSITION[difficultyKey]);
   const mult = sessionMode === 'chaos' ? 2 : 1;
   const roleAware = !!heroAssignment && personalPool.some(c=>c.roles);
-  const usedThemesAcrossTeam = new Set();
+  // Optional von außen mitgegeben (z. B. die Themen der bereits gewählten gemeinsamen Team-Regeln),
+  // damit eine persönliche Challenge nicht einer gemeinsamen Regel widerspricht (z. B. "Setzt euer
+  // Ultimate ein" gleichzeitig mit der Team-Regel "Niemand darf seine Ultimate benutzen").
+  const usedThemesAcrossTeam = usedThemes || new Set();
   const result = {};
   playerKeys.forEach(key=>{
     let poolForPlayer = personalPool;
@@ -6883,8 +6905,13 @@ function buildRound(){
     session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, forcedComp, session.players);
     session.personalChallenges = null;
   } else {
-    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, VERSUS_RULES_COMPOSITION, session.players);
-    session.personalChallenges = buildPersonalChallengeSet(session.gameId, session.difficultyKey, session.sessionMode, session.players, session.heroAssignment, forcedComp, personalPoolFor(session.gameId, session.gameMode));
+    // Gemeinsames Themen-Set für BEIDE Aufrufe — sonst wurden gemeinsame Regeln und persönliche
+    // Challenges unabhängig voneinander dedupliziert und konnten sich inhaltlich widersprechen
+    // (z. B. gemeinsame Regel "Niemand darf seine Ultimate benutzen" gleichzeitig mit einer
+    // persönlichen Challenge, die genau das verlangt) oder sich schlicht doppeln.
+    const usedThemes = new Set();
+    session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, VERSUS_RULES_COMPOSITION, session.players, usedThemes);
+    session.personalChallenges = buildPersonalChallengeSet(session.gameId, session.difficultyKey, session.sessionMode, session.players, session.heroAssignment, forcedComp, personalPoolFor(session.gameId, session.gameMode), usedThemes);
   }
 }
 
