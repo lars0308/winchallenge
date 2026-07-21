@@ -766,7 +766,7 @@
   <div class="content">
     <div class="section-lead"><div class="eyebrow">Wie wollt ihr spielen?</div><h2>Modus wählen</h2><p>Online mit einer Live-Lobby für Freunde, oder direkt loslegen auf diesem Gerät.</p></div>
     <div class="landing-actions" style="margin-top:10px;">
-      <button class="landing-btn primary" onclick="showView('teams-list')">
+      <button class="landing-btn primary" onclick="goToOnlinePlay()">
         <span class="landing-btn-icon">🌐</span>
         <span class="landing-btn-text"><span class="landing-btn-title">Online mit Freunden</span><span class="landing-btn-sub">Team-Lobby mit Live-Bereit-Status</span></span>
       </button>
@@ -2141,6 +2141,17 @@ function renderAuthBar(){
   }
 }
 function goToAuthForm(mode){ authMode = mode; showView('auth'); }
+// Online-Spielen (Team-Lobby) erfordert zwingend einen Account — ohne Account führten "Team
+// erstellen"/"Team beitreten" bisher lautlos zu nichts (createTeam()/joinTeam() brechen ohne
+// currentUser einfach ab, ohne Rückmeldung). Jetzt wird gleich zum Login/Registrieren geleitet.
+function goToOnlinePlay(){
+  if(!currentUser){
+    showAlert('Für Online-Spiele mit Freunden wird ein Account benötigt. Bitte erst einloggen oder kostenlos registrieren.', '👤');
+    goToAuthForm('login');
+    return;
+  }
+  showView('teams-list');
+}
 
 /* ============================================================ ACCOUNT PROFILE (Benutzer) ============================================================ */
 function findHeroImageCI(heroName){
@@ -2528,11 +2539,17 @@ async function loadTeamsOverviewData(teamIds){
 }
 let teamsListTab = 'mine'; // 'mine' | 'create' | 'join'
 function switchTeamsListTab(tab){
+  // "Team erstellen"/"Team beitreten" erfordern einen Account — ohne Login gibt's nur den
+  // (leeren) "Meine Teams"-Tab mit Login-Hinweis, siehe renderTeamsListPage().
+  if(!currentUser) tab = 'mine';
   teamsListTab = tab;
   const tabRow = document.getElementById('teams-list-tabs');
   if(tabRow){
     tabRow.innerHTML = '';
-    [{key:'mine',label:'🏘️ Meine Teams'},{key:'create',label:'🆕 Team erstellen'},{key:'join',label:'🔑 Team beitreten'}].forEach(it=>{
+    const tabs = currentUser
+      ? [{key:'mine',label:'🏘️ Meine Teams'},{key:'create',label:'🆕 Team erstellen'},{key:'join',label:'🔑 Team beitreten'}]
+      : [{key:'mine',label:'🏘️ Meine Teams'}];
+    tabs.forEach(it=>{
       const btn = document.createElement('button');
       btn.className = 'filter-pill'+(it.key===tab?' active':'');
       btn.textContent = it.label;
@@ -2551,6 +2568,10 @@ let teamsOverviewCache = {};
 async function renderTeamsListPage(){
   const el = document.getElementById('teams-list-existing');
   if(!el) return;
+  if(!currentUser){
+    el.innerHTML = '<div class="empty-hint">Für Online-Spiele mit Freunden wird ein Account benötigt.<button class="empty-hint-link" onclick="showView(\'auth\')">👤 Einloggen</button></div>';
+    return;
+  }
   if(!myTeams.length){
     el.innerHTML = '<div class="empty-hint">Noch in keinem Team — erstellt eins oder tretet per Code bei.</div>';
     return;
@@ -5387,7 +5408,7 @@ function showView(id, skipHistory){
   window.scrollTo({top:0, behavior:'smooth'});
   if(id==='auth') renderAuthPage();
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
-  if(id==='teams-list'){ switchTeamsListTab(teamsListTab); renderTeamsListPage(); startTeamsListPolling(); } else { stopTeamsListPolling(); }
+  if(id==='teams-list'){ switchTeamsListTab(currentUser ? teamsListTab : 'mine'); renderTeamsListPage(); if(currentUser) startTeamsListPolling(); else stopTeamsListPolling(); } else { stopTeamsListPolling(); }
   if(id==='start-choice') renderStartChoicePage();
   if(id==='blitz') renderBlitzPage();
   if(id==='shop') renderShopPage();
