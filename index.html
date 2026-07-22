@@ -5094,6 +5094,12 @@ const GAMES = [
   { id:'lethal', icon:'🛰️', watermark:'🛰️', name:'Lethal Company', tag:'Koop-Horror', grad:'linear-gradient(135deg,#0d1a1a,#12122a)' },
   { id:'cw', icon:'📹', watermark:'📹', name:'Content Warning', tag:'Koop-Horror-Komödie', grad:'linear-gradient(135deg,#2a1740,#0d3b3a)' },
   { id:'wwm', icon:'💰', watermark:'💰', name:'Wer wird Millionär', tag:'Quiz-Show', grad:'linear-gradient(135deg,#241a3a,#2a2314)' },
+  { id:'among', icon:'🛸', watermark:'🛸', name:'Among Us', tag:'Social-Deduction', grad:'linear-gradient(135deg,#8b1a1a,#1a1a2e)' },
+  { id:'hff', icon:'🫠', watermark:'🫠', name:'Human: Fall Flat', tag:'Physik-Partyspiel', grad:'linear-gradient(135deg,#3a1a5c,#0d3b3a)' },
+  { id:'golf', icon:'⛳', watermark:'⛳', name:'Golf With Your Friends', tag:'Mini-Golf-Partyspiel', grad:'linear-gradient(135deg,#145a32,#154360)' },
+  { id:'crab', icon:'🦀', watermark:'🦀', name:'Crab Game', tag:'Battle-Royale-Minispiele', grad:'linear-gradient(135deg,#922b21,#1c2833)' },
+  { id:'rl', icon:'🚀', watermark:'🚀', name:'Rocket League', tag:'Fußball mit Autos', grad:'linear-gradient(135deg,#0d2b4a,#3a1a0d)' },
+  { id:'gb', icon:'🥊', watermark:'🥊', name:'Gang Beasts', tag:'Physik-Partybrawler', grad:'linear-gradient(135deg,#7a1a1a,#1a1a3a)' },
 ];
 const GAME_NAME = {}; const GAME_ICON = {};
 GAMES.forEach(g=>{ GAME_NAME[g.id]=g.name; GAME_ICON[g.id]=g.icon; });
@@ -5174,7 +5180,7 @@ function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
   });
   return result;
 }
-const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'], wwm:['team'] };
+const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'], wwm:['team'], hff:['team'], crab:['versus'] };
 const GAME_ROUND_PRESETS = { cs2:[6,9,12,16,24], val:[6,9,12,16,24], ow2:[2,3], mr:[2,3] };
 /* Ingame-Modi für Spiele mit echtem Rundensystem (Valorant, CS2). 'match' = ein komplettes
    Match hat viele interne Runden (bis 24) — hier soll 1 App-Runde = 1 komplettes Match sein,
@@ -5482,6 +5488,145 @@ const FINALS_CHALLENGES = [
   C('Nur {player} darf den Cash-Out tragen — alle anderen dürfen ihn höchstens beschützen.','schwer','named-player-restriction'),
 ];
 
+const AMONG_CHALLENGES = [
+  C('Alle Crewmates müssen mindestens eine Aufgabe abschließen, bevor die erste Notfallversammlung einberufen wird.','leicht','task'),
+  C('Meldet jede gefundene Leiche sofort, statt sie zu ignorieren.','leicht','report'),
+  C('Jeder muss mindestens einmal den Admin-Raum betreten, um den Aufgabenfortschritt zu checken.','leicht','map-check'),
+  C('Die erste Notfallversammlung darf frühestens nach 2 Minuten einberufen werden.','leicht','meeting-timing'),
+  C('Löst mindestens ein Sabotage (z. B. Strom, Sauerstoff) rechtzeitig, bevor die Zeit abläuft.','mittel','sabotage'),
+  C('Die Crew gewinnt, indem alle Aufgaben abgeschlossen werden — ein Rauswurf-Sieg zählt nicht.','mittel','win-by-tasks'),
+  C('Niemand darf in einer Versammlung mehr als einen Verdächtigen nennen.','mittel','comms'),
+  C('Bewegt euch für die erste Hälfte der Runde ausschließlich in Zweier-Gruppen (Buddy-System).','mittel','buddy-system'),
+  C('Stimmt bei jeder Versammlung ab — Skip Vote ist verboten.','mittel','voting-rule'),
+  C('Die Impostor(en) werden korrekt identifiziert und rausgewählt, bevor ein zweiter Crewmate stirbt.','schwer','early-catch'),
+  C('Gewinnt die Runde, ohne dass eine einzige Sabotage erfolgreich durchgeführt wird.','schwer','flawless-sabotage'),
+  C('Schließt alle Aufgaben ab, bevor die erste Leiche gefunden wird.','schwer','fast-tasks'),
+  C('{player} muss die gesamte Runde stumm bleiben — auch in Versammlungen nur Text statt Voice-Chat.','schwer','named-player-restriction'),
+  C('Gewinnt als Crew, obwohl ein Sabotage-Countdown mit unter 10 Sekunden Restzeit gerettet wurde.','schwer','clutch-sabotage'),
+];
+const AMONG_PERSONAL = [
+  C('Erste abgeschlossene Aufgabe der Runde.','leicht','first-task-race'),
+  C('Meiste abgeschlossene Aufgaben persönlich.','leicht','tasks-race'),
+  C('Erste gefundene Leiche gemeldet.','mittel','first-report-race'),
+  C('Überlebt als Impostor am längsten unentdeckt (falls ausgelost).','mittel','impostor-survive-race'),
+  C('Deckt den Impostor als Erste(r) korrekt auf (Vermutung vor der Abstimmung).','schwer','first-guess-race'),
+  C('Überlebt die gesamte Runde als Einzige(r), während andere sterben.','schwer','survive-race'),
+  C('Wird als Impostor nie verdächtigt und gewinnt die Runde (falls ausgelost).','schwer','stealth-impostor-race'),
+];
+const HFF_CHALLENGES = [
+  C('Schließt das Level gemeinsam ab, ohne dass jemand vom Rand fällt.','leicht','no-fall'),
+  C('Jeder muss mindestens einmal ein Objekt tragen oder werfen, um dem Team zu helfen.','leicht','teamwork'),
+  C('Überlegt euch für ein Hindernis vorher gemeinsam eine Lösung, statt einfach drauflos zu probieren.','leicht','planning'),
+  C('Schließt das Level ab, ohne die Karte/den Kompass zu benutzen.','mittel','no-map'),
+  C('Baut gemeinsam eine menschliche Kletterkette/einen Turm, um eine schwer erreichbare Stelle zu erreichen.','mittel','human-tower'),
+  C('Niemand darf springen — nur klettern und laufen erlaubt.','mittel','no-jump'),
+  C('Schließt das Level ab, ohne dass jemand länger als 10 Sekunden kopfüber hängen bleibt.','mittel','ragdoll-control'),
+  C('Schließt das Level komplett ohne Sprachchat ab — nur Gesten/Emotes erlaubt.','schwer','silent-run'),
+  C('Schließt das Level ab, ohne dass ein Spieler abstürzt und neu starten muss.','schwer','flawless'),
+  C('Findet einen alternativen oder geheimen Weg durchs Level.','schwer','secret-path'),
+  C('{player} muss das gesamte Level tragen/schieben lassen — der Rest darf nur unterstützen, nicht selbst lösen.','schwer','named-player-restriction'),
+  C('Schließt zwei Level hintereinander ab, mit insgesamt maximal 3 Abstürzen.','schwer','multi-level'),
+];
+const HFF_PERSONAL = [
+  C('Findet als Erste(r) den Levelausgang.','leicht','first-finish-race'),
+  C('Wenigste Abstürze/Fehlversuche persönlich.','leicht','mistake-race'),
+  C('Trägt das schwerste/sperrigste Objekt am längsten durchs Level.','mittel','carry-race'),
+  C('Löst ein Rätsel als Erste(r) im Alleingang.','mittel','solo-solve-race'),
+  C('Meiste Zeit in einer witzigen Ragdoll-Pose verbracht (Gruppenvotum).','mittel','funniest-race'),
+  C('Erreicht als Einzige(r) einen geheimen/optionalen Bereich des Levels.','schwer','secret-area-race'),
+  C('Rettet einen Mitspieler kurz vorm Absturz (Gruppenvotum für die beste Rettung).','schwer','save-race'),
+];
+const GOLF_CHALLENGES = [
+  C('Spielt eine komplette Runde im klassischen Mini-Golf-Modus.','leicht','classic-round'),
+  C('Jeder muss mindestens einmal ein Power-Up gegen einen Mitspieler einsetzen.','leicht','powerup'),
+  C('Spielt mindestens ein Loch im Hockey- oder Dunk-Modus.','leicht','mode-variety'),
+  C('Jeder muss auf mindestens einem Loch ein Hole-in-One versuchen (vorher ansagen).','mittel','hole-in-one-attempt'),
+  C('Niemand darf den eigenen Ball zurücksetzen/neu platzieren lassen.','mittel','no-reset'),
+  C('Spielt eine Runde im Teams-Modus (2 Teams gegeneinander) statt Free-for-All.','mittel','teams-mode'),
+  C('Sabotiert euch als Gruppe insgesamt mindestens dreimal gegenseitig mit Power-Ups.','mittel','sabotage-count'),
+  C('Die gesamte Gruppe bleibt zusammen unter einer festgelegten Gesamt-Schlagzahl.','schwer','total-strokes'),
+  C('Schließt eine komplette Runde ab, ohne dass ein Ball ins Wasser oder Aus fällt.','schwer','no-water'),
+  C('Spielt eine komplette Runde auf einer Themenkarte, ohne ein einziges Power-Up zu benutzen.','schwer','no-powerup'),
+  C('{player} muss auf jedem Loch als Erste(r) abschlagen, egal wie die Reihenfolge sonst wäre.','schwer','named-player-restriction'),
+  C('Gewinnt eine komplette Runde im Hockey-Modus als Team mit mindestens 3 Toren Vorsprung.','schwer','hockey-margin'),
+];
+const GOLF_PERSONAL = [
+  C('Wenigste Schläge auf einem einzelnen Loch.','leicht','fewest-strokes-race'),
+  C('Erstes Hole-in-One der Runde.','leicht','hole-in-one-race'),
+  C('Beste Gesamt-Schlagzahl der kompletten Runde.','mittel','total-score-race'),
+  C('Meiste erfolgreiche Sabotagen gegen Mitspieler (Power-Ups getroffen).','mittel','sabotage-race'),
+  C('Am wenigsten selbst sabotiert/getroffen worden.','mittel','avoid-sabotage-race'),
+  C('Bestes Einzelloch der gesamten Gruppe — keiner kommt ran.','schwer','best-hole-race'),
+  C('Gewinnt drei Löcher in Folge mit der besten Schlagzahl.','schwer','streak-race'),
+];
+const CRAB_CHALLENGES = [
+  C('Mindestens die Hälfte der Gruppe übersteht die erste Runde Rot Licht, Grün Licht.','leicht','survive-early'),
+  C('Jeder muss mindestens ein Minispiel überstehen, ohne einen anderen Spieler anzugreifen.','leicht','fair-play'),
+  C('Bildet in Tile Drive oder Hat King spontane kurzzeitige Zweier-Allianzen.','leicht','alliance'),
+  C('Mindestens zwei aus der Gruppe erreichen gemeinsam die Stepping-Stones-Finalrunde.','mittel','finalists'),
+  C('Niemand darf in Bomb Tag die Bombe absichtlich länger als 5 Sekunden festhalten, bevor er sie weitergibt.','mittel','bomb-rule'),
+  C('Überlebt gemeinsam mindestens drei verschiedene Minispiele in Folge.','mittel','survive-streak'),
+  C('Ein Mitglied der Gruppe gewinnt die komplette Runde (holt sich den Sieg).','schwer','group-win'),
+  C('Mindestens die Hälfte der Gruppe erreicht das Finale.','schwer','half-finalists'),
+  C('Übersteht Stepping Stones/Glass Bridge, ohne dass jemand aus der Gruppe abstürzt.','schwer','flawless-bridge'),
+  C('{player} darf kein einziges Minispiel aktiv gewinnen — nur reines Überleben zählt für {player}.','schwer','named-player-restriction'),
+];
+const CRAB_PERSONAL = [
+  C('Übersteht Red Light, Green Light als Erste(r) der Gruppe.','leicht','first-clear-race'),
+  C('Wenigste Regelverstöße/Tode in den ersten beiden Minispielen.','leicht','survive-race'),
+  C('Höchste Punktzahl in Hat King.','mittel','points-race'),
+  C('Meiste erfolgreiche Stöße/Sabotagen gegen andere aus der Gruppe.','mittel','push-race'),
+  C('Übersteht Stepping Stones ohne einen einzigen Fehlversuch.','mittel','flawless-bridge-race'),
+  C('Bestes Gesamt-Abschneiden der Gruppe (höchste Platzierung am Ende).','schwer','placement-race'),
+  C('Gewinnt die meisten einzelnen Minispiel-Runden.','schwer','round-win-race'),
+];
+const RL_CHALLENGES = [
+  C('Gewinnt das Match.','leicht','win'),
+  C('Jeder muss mindestens ein Tor oder eine Vorlage (Assist) beisteuern.','leicht','contribution'),
+  C('Erzielt das erste Tor des Matches.','leicht','first-goal'),
+  C('Gewinnt ein Match im Hoops- oder Snow-Day-Modus statt im klassischen Soccar.','mittel','mode-variety'),
+  C('Jeder muss mindestens einen Aerial-Treffer (Ball in der Luft getroffen) landen.','mittel','aerial'),
+  C('Verteidigt erfolgreich, ohne in der ersten Halbzeit ein Gegentor zu kassieren.','mittel','clean-sheet-half'),
+  C('Gewinnt ein Match im Rumble-Modus mit mindestens einem genutzten Power-Up.','mittel','rumble-combo'),
+  C('Gewinnt das Match, ohne ein einziges Gegentor zu kassieren (Shutout).','schwer','flawless'),
+  C('Erzielt mindestens 3 Tore als Team in einem einzigen Match.','schwer','goals-total'),
+  C('Dreht einen Rückstand von mindestens 2 Toren zum Sieg.','schwer','comeback'),
+  C('{player} muss ausschließlich als Torwart/Verteidiger spielen — der Rest übernimmt den Angriff.','schwer','named-player-restriction'),
+  C('Gewinnt das Match in der Verlängerung (Overtime).','schwer','overtime-win'),
+];
+const RL_PERSONAL = [
+  C('Erstes Tor des Matches.','leicht','first-goal-race'),
+  C('Meiste Vorlagen (Assists) im Match.','leicht','assist-race'),
+  C('Meiste Tore im Match.','mittel','goals-race'),
+  C('Meiste Rettungen (Saves) im Match.','mittel','saves-race'),
+  C('Erster erfolgreicher Aerial-Treffer.','mittel','aerial-race'),
+  C('Höchste Ballbeteiligung des Matches (Gruppenvotum).','schwer','involvement-race'),
+  C('Erzielt einen Hattrick (3 Tore) im Match.','schwer','hattrick-race'),
+];
+const GB_CHALLENGES = [
+  C('Spielt mindestens eine Runde im Football-Modus.','leicht','mode-variety'),
+  C('Jeder muss mindestens einen Gegner erfolgreich von der Plattform werfen/schubsen.','leicht','knockout'),
+  C('Spielt eine Runde im Waves-Modus komplett als Team gegen die KI durch.','leicht','coop-waves'),
+  C('Gewinnt eine Runde im Gang-Modus (Team gegen Team).','mittel','gang-win'),
+  C('Niemand darf in einer Melee-Runde die erste Person angreifen, die er trifft — wartet mindestens 10 Sekunden.','mittel','delayed-attack'),
+  C('Gewinnt ein Football-Match mit Shutout — der Gegner erzielt kein Tor.','mittel','shutout'),
+  C('Bildet im Gang-Modus zwei möglichst ausgeglichene Teams und spielt Best-of-3.','mittel','best-of-3'),
+  C('Übersteht alle 4 Wellen im Waves-Modus, ohne dass ein Spieler ausscheidet.','schwer','flawless-waves'),
+  C('Gewinnt drei Melee-Runden in Folge mit demselben Spieler als Sieger.','schwer','streak'),
+  C('Wirft einen Gegner mit einem einzigen Wurf direkt in einen Umgebungs-Hazard (Wasser, Presse, Zug etc.).','schwer','environmental-throw'),
+  C('{player} muss die gesamte Football-Partie ausschließlich als Torwart/Verteidiger spielen.','schwer','named-player-restriction'),
+  C('Gewinnt eine Gang-Runde 3 gegen 1 (letzter Überlebender dreht die Runde).','schwer','clutch-comeback'),
+];
+const GB_PERSONAL = [
+  C('Erster erfolgreicher Knockout/Wurf der Runde.','leicht','first-knockout-race'),
+  C('Wenigste Male selbst geworfen/ausgeschaltet worden.','leicht','survive-race'),
+  C('Meiste erfolgreiche Würfe/Knockouts persönlich.','mittel','knockout-race'),
+  C('Meiste Tore im Football-Modus.','mittel','goals-race'),
+  C('Längste Zeit als Letzte(r) Überlebende(r) in einer Melee-Runde.','mittel','last-standing-race'),
+  C('Gewinnt die meisten Melee-Runden insgesamt.','schwer','round-win-race'),
+  C('Schafft den witzigsten/spektakulärsten Umgebungs-Kill der Session (Gruppenvotum).','schwer','funniest-kill-race'),
+];
+
 const CS2_DEATHMATCH_CHALLENGES = [
   C('Gewinnt das Match (höchste Kills).','leicht','win'),
   C('Alle erreichen mindestens 10 Kills.','mittel','kills'),
@@ -5527,6 +5672,7 @@ function personalPoolFor(gameId, gameMode){
 const CHALLENGE_SOURCES = {
   cs2: CS2_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
   fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES, wwm: WWM_CHALLENGES,
+  among: AMONG_CHALLENGES, hff: HFF_CHALLENGES, golf: GOLF_CHALLENGES, crab: CRAB_CHALLENGES, rl: RL_CHALLENGES, gb: GB_CHALLENGES,
 };
 
 /* ============================================================ PERSONAL POOLS (Gegeneinander, competitive per player) ============================================================ */
@@ -5657,6 +5803,7 @@ const FINALS_PERSONAL = [
 const PERSONAL_SOURCES = {
   cs2: CS2_PERSONAL, ow2: OW2_PERSONAL, mr: MR_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
   fg: FG_PERSONAL, ph: PH_PERSONAL, repo: REPO_PERSONAL, lethal: LETHAL_PERSONAL, cw: CW_PERSONAL,
+  among: AMONG_PERSONAL, hff: HFF_PERSONAL, golf: GOLF_PERSONAL, crab: CRAB_PERSONAL, rl: RL_PERSONAL, gb: GB_PERSONAL,
 };
 
 const DIFF_ORDER = { leicht: 0, mittel: 1, schwer: 2 };
