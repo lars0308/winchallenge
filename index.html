@@ -2021,7 +2021,7 @@ function playStartCue(){
 }
 function saveSession(){ try{ if(session) localStorage.setItem(LS_SESSION, JSON.stringify(session)); else localStorage.removeItem(LS_SESSION); }catch(e){} }
 function loadSession(){ try{ const raw = localStorage.getItem(LS_SESSION); if(raw) return JSON.parse(raw); }catch(e){} return null; }
-function saveStats(){ try{ localStorage.setItem(LS_STATS, JSON.stringify(statsStore)); }catch(e){} }
+function saveStats(){ try{ localStorage.setItem(LS_STATS, JSON.stringify(statsStore)); }catch(e){} scheduleFullStatsCloudSync(); }
 function loadStats(){ try{ const raw = localStorage.getItem(LS_STATS); if(raw) return JSON.parse(raw); }catch(e){} return {}; }
 // Spielverlauf: kurze Zusammenfassung jeder beendeten Runde (Spiel, Modus, Spieler, Challenges) —
 // rein lokal auf diesem Gerät, auf die letzten 30 Einträge gedeckelt.
@@ -2181,6 +2181,7 @@ async function loadProfile(userId){
       };
       startPresenceHeartbeat();
       startNotificationsSubscription();
+      await restoreFullStatsFromCloud();
       await applyAdminAdjustments();
     }
   }catch(e){ console.error(e); }
@@ -4958,6 +4959,7 @@ async function applyAdminAdjustments(){
       saveStats();
       clear.admin_reset_pending = false;
       clear.admin_bonus_points = 0;
+      clear.full_stats = null;
       showAlert('Ein Admin hat deinen Account komplett zurückgesetzt.', '♻️');
     } else if(data.admin_bonus_points && data.admin_bonus_points > 0){
       const s = statsStore[currentUser.username] = statsStore[currentUser.username] || { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
@@ -6483,6 +6485,75 @@ async function syncStatsToCloud(name){
   try{ await sb.from('profiles').update({ stats: buildStatsSummary(statsStore[name]) }).eq('id', currentUser.id); }
   catch(e){ console.error('Stats-Sync fehlgeschlagen:', e); }
 }
+/* ============================================================ VOLLSTÄNDIGER CLOUD-STATS-SYNC ============================================================
+   Coins, Käufe (shopOwned), Erfolge etc. lagen bisher NUR im localStorage des jeweiligen Geräts
+   (statsStore) — bei geräteübergreifender Nutzung (anderes Handy/Browser) waren Coins & Käufe
+   dadurch scheinbar "weg". Jetzt wird der komplette statsStore-Eintrag des eigenen Accounts
+   zusätzlich in der Cloud gespiegelt (profiles.full_stats, jsonb) und beim Login/Session-Start
+   zurückgeholt + mit dem lokalen Stand zusammengeführt (jeweils der höhere/vollständigere Wert
+   gewinnt, damit auf keinem Gerät versehentlich Fortschritt verloren geht).
+   ERFORDERT Supabase-Spalte: alter table profiles add column if not exists full_stats jsonb; */
+let fullStatsSyncTimer = null;
+function scheduleFullStatsCloudSync(){
+  if(!currentUser || !sb) return;
+  clearTimeout(fullStatsSyncTimer);
+  fullStatsSyncTimer = setTimeout(()=>{ syncFullStatsToCloud(currentUser.username); }, 900);
+}
+async function syncFullStatsToCloud(name){
+  if(!currentUser || !sb || name !== currentUser.username) return;
+  const s = statsStore[name];
+  if(!s) return;
+  try{
+    const safe = JSON.parse(JSON.stringify(s, (k,v)=> v===-Infinity ? null : v));
+    await sb.from('profiles').update({ full_stats: safe }).eq('id', currentUser.id);
+  }catch(e){ console.error('Vollständiger Stats-Sync fehlgeschlagen (evtl. fehlt Spalte full_stats):', e); }
+}
+function mergeStatsForRestore(local, cloud){
+  if(!cloud) return local || null;
+  if(!local) return cloud;
+  const merged = JSON.parse(JSON.stringify(local));
+  ['totalPoints','spent','roundsPlayed','roundWins','challengesWon','challengesLost','currentRoundStreak','bestRoundStreak'].forEach(k=>{
+    merged[k] = Math.max(local[k]||0, cloud[k]||0);
+  });
+  const localBest = (typeof local.bestRoundScore==='number' && isFinite(local.bestRoundScore)) ? local.bestRoundScore : -Infinity;
+  const cloudBest = (typeof cloud.bestRoundScore==='number' && isFinite(cloud.bestRoundScore)) ? cloud.bestRoundScore : -Infinity;
+  merged.bestRoundScore = Math.max(localBest, cloudBest);
+  merged.gamesPlayed = Object.assign({}, local.gamesPlayed||{});
+  Object.entries(cloud.gamesPlayed||{}).forEach(([g,c])=>{ merged.gamesPlayed[g] = Math.max(merged.gamesPlayed[g]||0, c||0); });
+  const lo = local.shopOwned || {badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
+  const co = cloud.shopOwned || {badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
+  const unionArr = (a,b)=> Array.from(new Set([...(a||[]), ...(b||[])]));
+  merged.shopOwned = {
+    badges: unionArr(lo.badges, co.badges), banners: unionArr(lo.banners, co.banners),
+    hats: unionArr(lo.hats, co.hats), glows: unionArr(lo.glows, co.glows), frames: unionArr(lo.frames, co.frames),
+    sabotage: Object.assign({}, lo.sabotage),
+  };
+  Object.entries(co.sabotage||{}).forEach(([id,c])=>{ merged.shopOwned.sabotage[id] = Math.max(merged.shopOwned.sabotage[id]||0, c||0); });
+  merged.achievementsClaimed = Array.from(new Set([...(local.achievementsClaimed||[]), ...(cloud.achievementsClaimed||[])]));
+  merged.challengeStats = Object.assign({}, local.challengeStats||{});
+  Object.entries(cloud.challengeStats||{}).forEach(([text,c])=>{
+    const ex = merged.challengeStats[text] || {won:0,lost:0};
+    merged.challengeStats[text] = { won: Math.max(ex.won||0, c.won||0), lost: Math.max(ex.lost||0, c.lost||0) };
+  });
+  ['equippedBadge','equippedHat','equippedBanner','equippedGlow','equippedFrame'].forEach(k=>{
+    if(merged[k]==null && cloud[k]!=null) merged[k] = cloud[k];
+  });
+  return merged;
+}
+async function restoreFullStatsFromCloud(){
+  if(!currentUser || !sb) return;
+  try{
+    const { data } = await sb.from('profiles').select('full_stats').eq('id', currentUser.id).maybeSingle();
+    const cloud = data && data.full_stats;
+    const local = statsStore[currentUser.username] || null;
+    const merged = mergeStatsForRestore(local, cloud);
+    if(merged){
+      statsStore[currentUser.username] = merged;
+      try{ localStorage.setItem(LS_STATS, JSON.stringify(statsStore)); }catch(e){}
+      scheduleFullStatsCloudSync(); // gleicht bei Bedarf beide Seiten wieder an (z.B. nach einem Merge)
+    }
+  }catch(e){ console.error('Stats-Wiederherstellung aus der Cloud fehlgeschlagen (evtl. fehlt Spalte full_stats):', e); }
+}
 // Merkt sich pro Challenge-Text, wie oft sie geschafft bzw. nicht geschafft wurde — Basis für die
 // "welche Challenges schafft man eher/seltener"-Übersicht auf der Statistik-Seite.
 function recordChallengeOutcome(s, text, won){
@@ -6575,6 +6646,7 @@ async function resetStatsOnly(){
   saveAvatars();
   statsStore = {}; saveStats(); gameHistory = []; saveGameHistory(); renderStatsPage();
   await clearMyCloudCosmetics();
+  if(currentUser && sb){ try{ await sb.from('profiles').update({ full_stats: null }).eq('id', currentUser.id); }catch(e){ console.error('Cloud-Stats-Reset fehlgeschlagen:', e); } }
   if(currentUser && sb && currentUser.avatar===EMBLEM_RED_GIF){
     try{
       await sb.from('profiles').update({ avatar:null }).eq('id', currentUser.id);
@@ -6590,6 +6662,7 @@ async function resetAllLocalData(){
   avatarMap = {}; saveAvatars();
   session = null; saveSession();
   await clearMyCloudCosmetics();
+  if(currentUser && sb){ try{ await sb.from('profiles').update({ full_stats: null }).eq('id', currentUser.id); }catch(e){ console.error('Cloud-Stats-Reset fehlgeschlagen:', e); } }
   renderGlobalPlayerChips(); renderStatsPage(); updateContinueButton();
   showAlert('Erledigt — lokale Daten wurden zurückgesetzt.');
 }
