@@ -3368,6 +3368,12 @@ function startNotificationsSubscription(){
       showToast(`${targetName} hat deine Freundschaftsanfrage angenommen`, '🤝');
       if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderFriendsPage();
     })
+    // Direkte Meldungen bei Vorteilen/Sabotagen. Die Tabelle player_notifications wird mit dem
+    // beiliegenden Supabase-Skript angelegt; die Nachricht landet nur beim Zielspieler.
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'player_notifications', filter:`target_user_id=eq.${currentUser.id}` }, (payload)=>{
+      const n = payload.new || {};
+      showToast(n.message || 'Es gibt eine neue Spiel-Benachrichtigung.', n.icon || '🎯', 4200);
+    })
     .subscribe();
 }
 function stopNotificationsSubscription(){
@@ -4011,7 +4017,15 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       const theirOpen = roundItems.filter(it=>it.scope==='personal' && it.user_id===targetUserId && !it.result);
       if(!theirOpen.length){ showAlert('Zielspieler hat keine offene Challenge zum Klauen.', '🦝'); return; }
       const steal = theirOpen[randInt(0, theirOpen.length-1)];
-      await sb.from('round_items').update({ user_id: currentUser.id, text: '🦝 GEKLAUT: '+steal.text }).eq('id', steal.id);
+      // Der Punkte-Dieb darf sich nur dann verbrauchen, wenn die Challenge wirklich den Besitzer
+      // gewechselt hat. Vorher wurde ein Supabase-/RLS-Fehler ignoriert und das Item trotzdem
+      // abgezogen, wodurch es wie „geht nicht“ wirkte.
+      const { data: stolenRows, error: stealError } = await sb.from('round_items')
+        .update({ user_id: currentUser.id, text: '🦝 GEKLAUT: '+steal.text })
+        .eq('id', steal.id)
+        .eq('user_id', targetUserId)
+        .select('id');
+      if(stealError || !stolenRows || stolenRows.length!==1) throw new Error('Punkte-Dieb konnte die Challenge nicht übertragen'+(stealError?': '+stealError.message:'; prüfe die UPDATE-Policy für round_items in Supabase.'));
     } else if(itemId==='delete_challenge'){
       if(!extraId) return;
       const target = roundItems.find(it=>it.id===extraId);
@@ -4026,7 +4040,21 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     renderTeamPage();
     const ownAction = item.selfOnly ? `Du hast „${item.label}“ benutzt.` : `${item.label} gegen ${target.username} eingesetzt.`;
     showToast(ownAction, item.icon);
-    if(itemId==='force_reroll' && targetUserId===currentUser.id) showToast('⚠️ Du wurdest sabotiert! Dein Held wurde neu ausgewürfelt.', '⚠️');
+    if(!item.selfOnly && targetUserId !== currentUser.id){
+      const targetMessage = itemId==='point_thief'
+        ? `${currentUser.username} hat dir eine offene Challenge geklaut.`
+        : `${currentUser.username} hat „${item.label}“ gegen dich eingesetzt.`;
+      // Die Aktion selbst bleibt erfolgreich, falls die Benachrichtigungs-Tabelle noch nicht
+      // eingerichtet ist; der Fehler wird nur protokolliert und die nötige SQL steht in der Datei.
+      const { error: notificationError } = await sb.from('player_notifications').insert({
+        target_user_id: targetUserId,
+        from_user_id: currentUser.id,
+        round_id: currentRound.id,
+        icon: item.icon,
+        message: targetMessage,
+      });
+      if(notificationError) console.warn('Sabotage-Benachrichtigung konnte nicht gespeichert werden:', notificationError.message);
+    }
   }catch(e){
     showAlert('Fehler beim Einsetzen: ' + e.message);
   }
@@ -4313,7 +4341,14 @@ function recordMyLocalStatsForRound(){
     else if(it.result === 'fail'){ lost++; recordChallengeOutcome(s, it.text, false); }
   });
   s.totalPoints += earned; s.roundsPlayed += 1; s.challengesWon += won; s.challengesLost += lost;
-  if(earned > 0 && won >= lost) s.roundWins += 1;
+  // Ein Sieg ist ein echter erster Platz, nicht bloß eine Runde mit positivem Ergebnis. Die alte
+  // Regel („mehr geschafft als verloren“) konnte dadurch den falschen Spieler als Sieger zählen.
+  const roundRanking = computeTeamRoundResults(currentRound, roundItems);
+  const myRoundResult = roundRanking.find(r=>r.userId===currentUser.id);
+  const roundWon = currentRound.mode==='team'
+    ? earned > 0
+    : !!(myRoundResult && roundRanking[0] && myRoundResult.score===roundRanking[0].score);
+  if(roundWon) s.roundWins += 1;
   s.gamesPlayed[currentRound.game_id] = (s.gamesPlayed[currentRound.game_id]||0)+1;
   const myHeroForStats = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
   if(myHeroForStats){ s.heroesPlayed = s.heroesPlayed || {}; s.heroesPlayed[currentRound.game_id+':'+myHeroForStats[0]] = true; }
@@ -4761,8 +4796,19 @@ function renderCampaignFinalSummary(history){
     </div>`;
   }
   const totals = {};
-  history.forEach(r=>{ r.results.forEach(x=>{ const key=x.userId||x.name; const ex=totals[key]||{name:x.name,userId:x.userId,score:0}; ex.score+=Number(x.score)||0; totals[key]=ex; }); });
-  const ranked = Object.values(totals).sort((a,b)=>b.score-a.score || a.name.localeCompare(b.name));
+  history.forEach(r=>{
+    const topScore = r.results.length ? Math.max(...r.results.map(x=>Number(x.score)||0)) : null;
+    r.results.forEach(x=>{
+      const key=x.userId||x.name;
+      const ex=totals[key]||{name:x.name,userId:x.userId,score:0,wins:0};
+      ex.score+=Number(x.score)||0;
+      // Gleichstände zählen bewusst für alle geteilten Erstplatzierten als Sieg.
+      if(topScore!==null && (Number(x.score)||0)===topScore) ex.wins++;
+      totals[key]=ex;
+    });
+  });
+  // Das Treppchen zeigt die meisten Rundensiege zuerst; Punkte lösen nur einen Gleichstand auf.
+  const ranked = Object.values(totals).sort((a,b)=>b.wins-a.wins || b.score-a.score || a.name.localeCompare(b.name));
   return renderPodium(ranked);
 }
 function renderPodium(ranked){
@@ -4783,7 +4829,7 @@ function renderPodium(ranked){
       <div class="podium-name">${badgeIconHTML(cosmeticsFor(p.name).badge)}${glowNameHTML(p.name,p.name)}</div>
       <div class="podium-step podium-step-${idx+1}" style="height:${heights[idx]};">
         <span class="podium-medal">${medals[idx]}</span>
-        <span class="podium-score">${p.score} Pkt</span>
+        <span class="podium-score">${p.wins||0} Siege · ${p.score} Pkt</span>
       </div>
     </div>`;
   });
