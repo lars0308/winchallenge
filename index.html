@@ -1072,6 +1072,7 @@
       <div class="player-input-row" style="max-width:none;">
         <input type="text" id="cc-text-input" placeholder="z. B. Gewinnt eine Runde ohne zu schießen" maxlength="140">
       </div>
+      <p style="color:var(--text-muted);font-size:0.78rem;margin:8px 0 0;">Tipp: Bei „🤝 Team-Regel" könnt ihr <code>{player}</code> in den Text schreiben (z. B. „Nur {player} darf die AWP benutzen") — wird beim Spielen automatisch durch einen echten Mitspielernamen ersetzt.</p>
       <div class="filter-row" id="cc-diff-picker" style="margin-top:10px;margin-bottom:10px;"></div>
       <div class="filter-row" id="cc-scope-picker" style="margin-bottom:12px;"></div>
       <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="submitCustomChallenge()">✅ Hinzufügen</button></div>
@@ -1697,14 +1698,40 @@ function loadCustomChallenges(){ try{ const raw = localStorage.getItem(LS_CUSTOM
 function addCustomChallenge(gameId, text, diff, scope){
   if(!text || !text.trim()) return;
   customChallenges[gameId] = customChallenges[gameId] || [];
-  customChallenges[gameId].push({ text: text.trim(), diff, scope, id: Date.now()+'-'+Math.random().toString(36).slice(2,7) });
+  const item = { text: text.trim(), diff, scope, id: Date.now()+'-'+Math.random().toString(36).slice(2,7) };
+  customChallenges[gameId].push(item);
   saveCustomChallenges();
+  // Cloud-Sync: eigene Challenges gelten für die ganze Gruppe, nicht nur für dieses Gerät.
+  if(sb) sb.from('custom_challenges').insert({ id: item.id, game_id: gameId, text: item.text, diff: item.diff, scope: item.scope }).then(({error})=>{ if(error) console.error('Custom-Challenge Cloud-Sync Fehler:', error); });
 }
 function removeCustomChallenge(gameId, id){
   if(!customChallenges[gameId]) return;
   customChallenges[gameId] = customChallenges[gameId].filter(c=>c.id!==id);
   saveCustomChallenges();
   renderCustomChallengesPage();
+  if(sb) sb.from('custom_challenges').delete().eq('id', id).then(({error})=>{ if(error) console.error('Custom-Challenge Lösch-Sync Fehler:', error); });
+}
+// Lädt die geteilten eigenen Challenges aller Mitspieler aus der Cloud. Falls die Tabelle noch
+// nicht existiert (SQL-Migration fehlt) oder kein Supabase verbunden ist, bleibt der bisherige
+// rein-lokale Stand unangetastet (stiller Fallback). Beim allerersten erfolgreichen Sync nach dem
+// Update: falls die Cloud noch leer ist, aber lokal schon eigene Challenges existieren, werden
+// diese einmalig hochgeladen (Migration), statt verworfen zu werden.
+async function loadCustomChallengesFromCloud(){
+  if(!sb) return;
+  try{
+    const { data, error } = await sb.from('custom_challenges').select('id, game_id, text, diff, scope');
+    if(error){ console.error('Custom-Challenges Cloud-Load Fehler:', error.message); return; }
+    if(data && data.length){
+      const merged = {};
+      data.forEach(r=>{ merged[r.game_id] = merged[r.game_id] || []; merged[r.game_id].push({ id:r.id, text:r.text, diff:r.diff, scope:r.scope }); });
+      customChallenges = merged;
+      saveCustomChallenges();
+    } else {
+      const localEntries = Object.entries(customChallenges).flatMap(([gameId, list])=>list.map(c=>({ id:c.id, game_id:gameId, text:c.text, diff:c.diff, scope:c.scope })));
+      if(localEntries.length){ const { error: insErr } = await sb.from('custom_challenges').insert(localEntries); if(insErr) console.error('Custom-Challenges Migrations-Sync Fehler:', insErr.message); }
+    }
+    if(document.getElementById('cc-list') && document.getElementById('view-custom-challenges')?.classList.contains('active')) renderCustomChallengesPage();
+  }catch(e){ console.error('Custom-Challenges Cloud-Load Fehler:', e); }
 }
 let ccSelectedGame = null, ccDiff = 'mittel', ccScope = 'shared';
 function renderCustomChallengesPage(){
@@ -3030,7 +3057,7 @@ function handleRemovedFromTeam(){
   if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
   myTeam = null; teamMembers = []; currentRound = null; roundItems = []; roundVotes = {};
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null;
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
   updateContinueButton();
   showHome();
   showAlert('Du wurdest aus der Gruppe entfernt.');
@@ -3575,6 +3602,7 @@ function allMembersReady(){
   return others.every(m=>m.ready);
 }
 let teamRoundTransitioning = false;
+let teamPendingGameIntro = false; // Zeigt lokal beim Host kurz die Spiel-Intro-Karte, bevor die nächste Online-Runde gestartet wird (nur bei Spielen ohne Helden-Roulette, scope 'games')
 async function startTeamRound(skipReadyCheck){
   if(!teamRoundGameChoice){ showAlert('Bitte zuerst ein Spiel auswählen.'); return; }
   if(!skipReadyCheck && !allMembersReady()){ showAlert('Noch nicht alle Mitglieder sind bereit.'); return; }
@@ -4178,7 +4206,7 @@ async function cancelTeamRound(){
   await sb.from('game_rounds').delete().eq('id', currentRound.id);
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
   saveTeamCampaignState();
   teamMembers.forEach(m=>{ m.ready = false; });
   await sb.from('team_members').update({ ready: false }).eq('team_id', myTeam.id);
@@ -4188,7 +4216,7 @@ function returnToLobbyFromDone(){
   unlockTeamRoundRender();
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
   saveTeamCampaignState();
   renderTeamPage();
 }
@@ -4558,12 +4586,23 @@ function nextCampaignRound(){
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[teamCampaignIndex];
   currentRound = null; roundItems = []; roundVotes = {};
   teamHeroRevealedFor = null; teamIdleReelCacheFor = null; teamPersonallyDoneFor = null;
-  teamRoundTransitioning = true;
   saveTeamCampaignState();
+  // Bei Spielen ohne Helden-Roulette gibt's sonst keinerlei spürbaren Übergang zwischen zwei
+  // Spielen im "Spiele nacheinander"-Ablauf — hier kurz die Spiel-Intro-Karte zeigen (analog zum
+  // lokalen Modus), bevor die nächste Online-Runde tatsächlich erstellt wird.
+  if(teamRoundScope==='games' && !HERO_GAMES[teamRoundGameChoice]){
+    teamPendingGameIntro = true;
+    renderTeamPage();
+    return;
+  }
+  teamRoundTransitioning = true;
   renderTeamPage();
-  // Innerhalb einer laufenden Kampagne wurde beim Start bereits einmal "bereit" bestätigt —
-  // die nächste Runde soll deshalb nahtlos weitergehen, statt jedes Mal zurück in die Lobby
-  // zu springen und erneut "Bereit" zu verlangen.
+  startTeamRound(true);
+}
+function confirmTeamGameIntro(){
+  teamPendingGameIntro = false;
+  teamRoundTransitioning = true;
+  renderTeamPage();
   startTeamRound(true);
 }
 function startNewCampaign(){
@@ -4590,7 +4629,7 @@ async function leaveTeam(){
   const leftId = myTeam.id;
   myTeams = myTeams.filter(t=>t.id !== leftId);
   teamMembers = [];
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null;
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
   if(myTeams.length){
     // Noch in anderen Teams Mitglied — direkt eins davon als aktiv setzen, statt komplett rauszufliegen.
     myTeam = myTeams[myTeams.length-1];
@@ -4824,6 +4863,20 @@ function renderTeamPage(){
 
   const isHost = myTeam.host_id === currentUser.id;
   const mine = teamMembers.find(m=>m.user_id===currentUser.id);
+
+  if(teamPendingGameIntro){
+    setTeamPageChrome('🎮','Nächstes Spiel','','','');
+    if(leaveBtn) leaveBtn.style.display = 'none';
+    const g = GAMES.find(x=>x.id===teamRoundGameChoice);
+    el.innerHTML = `<div class="game-intro-card" style="background:${g?g.grad:'var(--bg-card)'};">
+      <div class="game-intro-eyebrow">Nächstes Spiel</div>
+      <div class="game-intro-icon">${g?g.icon:'🎮'}</div>
+      <div class="game-intro-name">${GAME_NAME[teamRoundGameChoice]||''}</div>
+      <div class="game-intro-tag">${g?g.tag:''}</div>
+      <button class="round-prompt-btn primary" onclick="confirmTeamGameIntro()">▶️ Los geht's</button>
+    </div>`;
+    return;
+  }
 
   if(teamRoundTransitioning){
     setTeamPageChrome('⏳','Nächste Runde','','','');
@@ -5408,6 +5461,8 @@ const OW2_CHALLENGES = [
   C('Erobert alle 5 Punkte einer Flashpoint-Karte, ohne einen einzigen zu verlieren.','schwer','flashpoint-sweep'),
   C('Maximal 1 Tod pro Spieler im gesamten Match.','schwer','deaths-strict'),
   C('Mindestens 20 Eliminierungen als gesamtes Team.','schwer','kills-high'),
+  C('Erobert das erste Ziel einer Hybrid-Karte, ohne dass der Payload zwischenzeitlich zurückrutscht.','mittel','hybrid-objective'),
+  C('Gewinnt ein Match, in dem alle drei Rollen (Tank/Damage/Support) mindestens einmal ihre Ultimates kombiniert einsetzen.','schwer','ult-combo'),
 ];
 const MR_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
@@ -5421,6 +5476,10 @@ const MR_CHALLENGES = [
   C('Gewinnt, ohne dass ein Spieler stirbt.','schwer','flawless'),
   C('Mindestens 3 Mehrfach-Eliminierungen (Multikills) im Match.','schwer','multikill'),
   C('Nur {player} darf in der ersten Hälfte des Matches die Ultimate benutzen — alle anderen müssen warten.','schwer','named-player-restriction'),
+  C('Jeder muss mindestens einmal einen Team-Up-Ability-Kombo mit einem Mitspieler auslösen.','leicht','team-up'),
+  C('Erobert das Ziel auf einer Convoy-Karte, ohne dass der Konvoi zwischenzeitlich zurückrutscht.','mittel','convoy'),
+  C('Gewinnt eine Karte im Convergence-Modus.','mittel','mode-variety'),
+  C('Zerstört gezielt mindestens ein Umgebungsobjekt zu eurem taktischen Vorteil (Destruction).','schwer','destruction'),
 ];
 
 const CS2_CHALLENGES = [
@@ -5449,6 +5508,9 @@ const CS2_CHALLENGES = [
   C('Gewinnt ohne einen Spieler zu verlieren.','schwer','perfect'),
   C('Entschärft die Bombe in letzter Sekunde erfolgreich.','schwer','bomb-defuse'),
   C('Nur {player} darf im gesamten Match die AWP/das Scharfschützengewehr benutzen.','schwer','named-player-restriction'),
+  C('Spielt eine komplette Halbzeit ohne ein einziges Team-Kill (Friendly Fire).','leicht','teamplay'),
+  C('Gewinnt eine Force-Buy-Runde (kauft direkt nach einem Verlust wieder auf).','mittel','round-type'),
+  C('Gewinnt eine Runde durch eine erfolgreiche Rückeroberung des Bombenziels (Retake).','schwer','retake'),
 ];
 
 const R6_CHALLENGES = [
@@ -5470,13 +5532,15 @@ const R6_CHALLENGES = [
   C('Gewinnt eine Runde im Geisel-Modus, ohne dass die Geisel verletzt wird.','mittel','hostage'),
   C('Setzt in mindestens einer Runde ein Operator-Gadget entscheidend ein (Falle, Schild, Kamera o. Ä.).','mittel','gadget'),
   C('Gewinnt eine Runde nur mit Schrotflinten oder Faustfeuerwaffen.','schwer','weapon'),
-  C('Gewinnt eine Runde, ohne ein einziges Gadget zu benutzen.','schwer','no-gadget'),
+  C('Gewinnt eine Runde, ohne ein einziges Gadget zu benutzen.','schwer','gadget'),
   C('Gewinnt drei Runden in Folge.','schwer','streak'),
   C('Gewinnt das Match, ohne dass ein Spieler stirbt (Perfect Match).','schwer','perfect'),
   C('Entschärft die Bombe in den letzten 5 Sekunden der Zeit.','schwer','bomb-defuse'),
   C('Gewinnt eine Runde als Verteidiger, obwohl bereits alle Wände durchbrochen wurden.','schwer','clutch-defense'),
   C('Nur {player} darf im gesamten Match als Verteidiger spielen — der Rest übernimmt ausschließlich den Angriff.','schwer','named-player-restriction'),
   C('Gewinnt eine Runde in einer 1-gegen-3-Unterzahl oder schlechter (Clutch).','schwer','clutch'),
+  C('Spielt eine komplette Runde als reine Roamer — verlasst als Verteidiger vor Rundenbeginn die Bombenziel-Räume.','mittel','roam'),
+  C('Gewinnt eine Runde, nachdem zuvor eine Falle oder ein Gadget einen Gegner sichtbar aufgehalten hat (bestätigter Trade).','schwer','trade'),
 ];
 
 const VAL_CHALLENGES = [
@@ -5502,6 +5566,8 @@ const VAL_CHALLENGES = [
   C('Gewinnt ohne einen Spieler zu verlieren.','schwer','perfect'),
   C('Verteidigt den Spike erfolgreich (legt entschärft).','schwer','spike'),
   C('Nur {player} darf im gesamten Match Ultimates benutzen — der Rest des Teams verzichtet komplett.','schwer','named-player-restriction'),
+  C('Gewinnt eine Runde mit einem vollständigen Team-Ability-Kombo (mindestens 3 verschiedene Fähigkeiten kombiniert).','mittel','ability-combo'),
+  C('Gewinnt einen Post-Plant-Save — verteidigt den gelegten Spike erfolgreich in Unterzahl.','schwer','post-plant'),
 ];
 
 const FP_CHALLENGES = [
@@ -5519,6 +5585,8 @@ const FP_CHALLENGES = [
   C('Mindestens ein Ace im Team.','schwer','ace'),
   C('Gewinnt trotz 0:2 Rückstand.','schwer','comeback'),
   C('Nur {player} darf im gesamten Match looten — der Rest bekommt nur das, was {player} übrig lässt oder abgibt.','schwer','named-player-restriction'),
+  C('Spielt eine Runde, in der jeder Spieler eine andere Shard-Karte aktiviert.','mittel','shard-variety'),
+  C('Gewinnt eine Runde, obwohl eine gegnerische Shard-Karte aktiv war.','schwer','shard-comeback'),
 ];
 
 const FG_CHALLENGES = [
@@ -5536,6 +5604,9 @@ const FG_CHALLENGES = [
   C('Schafft das Finale im ersten Versuch.','schwer','finalists'),
   C('Alle überleben bis Runde 3.','schwer','survive-late'),
   C('Schafft es, ohne ein einziges Mal zu stürzen.','schwer','flawless'),
+  C('Übersteht ein Hindernis-Rennen-Level (Race), ohne dass jemand von einer Plattform fällt.','leicht','race-level'),
+  C('Gewinnt eine Runde in einem Survival-Modus (letzte Übriggebliebene gewinnen).','mittel','survival-mode'),
+  C('{player} muss in jeder gespielten Runde unter den letzten 10 überleben — scheidet {player} vorher aus, ist die Challenge sofort verloren.','schwer','named-player-restriction'),
 ];
 
 const PH_CHALLENGES = [
@@ -5555,6 +5626,8 @@ const PH_CHALLENGES = [
   C('Erfüllt alle Nebenziele.','schwer','objectives'),
   C('Schafft den Auftrag innerhalb von 15 Minuten.','schwer','time-limit'),
   C('Meistert eine Nightmare- oder Insane-Schwierigkeit erfolgreich.','schwer','difficulty-tier'),
+  C('{player} muss die komplette Auftrags-Recherche im Van/Truck übernehmen und darf das Gebäude nicht betreten.','mittel','named-player-restriction'),
+  C('Sammelt Beweise auf einer Karte mit erhöhtem Schwierigkeits-/Risiko-Modifikator (aggressiverer Geist).','schwer','risk-modifier'),
 ];
 
 const REPO_CHALLENGES = [
@@ -5573,6 +5646,8 @@ const REPO_CHALLENGES = [
   C('Kein Heilgegenstand benutzen.','schwer','item-ban'),
   C('Schließt den Run innerhalb von 15 Minuten ab.','schwer','time-limit'),
   C('Niemand darf eine Waffe gegen ein Monster einsetzen.','schwer','no-weapon'),
+  C('Trägt ein besonders schweres/sperriges Objekt zu zweit gemeinsam statt einzeln.','leicht','co-carry'),
+  C('{player} muss den gesamten Run über als Einzige(r) den Truck/das Extraktionsfahrzeug bedienen und darf das Level nicht betreten.','mittel','named-player-restriction'),
 ];
 
 const LETHAL_CHALLENGES = [
@@ -5589,6 +5664,8 @@ const LETHAL_CHALLENGES = [
   C('Schafft den Run, ohne dass jemand stirbt.','schwer','flawless'),
   C('Holt das teuerste Schrott-Objekt der Karte.','schwer','high-value'),
   C('Übersteht eine Begegnung mit einem gefährlichen Monster ohne Verluste.','schwer','monster-encounter'),
+  C('{player} muss die gesamte Zeit als Pilot am Ship bleiben und darf den Mond nicht betreten.','mittel','named-player-restriction'),
+  C('Übersteht einen Run bei Sturm- oder Ecliptic-Wetter ohne Verluste.','schwer','weather-hazard'),
 ];
 
 const CW_CHALLENGES = [
@@ -5603,6 +5680,8 @@ const CW_CHALLENGES = [
   C('Filmt eine Kreatur aus nächster Nähe.','schwer','close-shot'),
   C('Dreht das gesamte Video ohne Taschenlampe.','schwer','no-light'),
   C('Filmt einen kompletten Run ohne Schnitt oder Unterbrechung.','schwer','no-cut'),
+  C('{player} muss die gesamte Aufnahme über die Kamera halten — niemand anderes darf sie übernehmen.','mittel','named-player-restriction'),
+  C('Filmt eine Szene, in der zwei verschiedene Kreaturen-Typen gleichzeitig im Bild sind.','schwer','double-creature-shot'),
 ];
 
 const WWM_CHALLENGES = [
@@ -5617,6 +5696,9 @@ const WWM_CHALLENGES = [
   C('Mindestens 64.000 € erreichen.','schwer','milestone'),
   C('Nur 10 Sekunden Bedenkzeit pro Frage.','schwer','time-limit'),
   C('Erreicht die 500.000 €-Frage.','schwer','milestone'),
+  C('Nutzt den Telefonjoker mindestens einmal.','leicht','joker-limit'),
+  C('Beantwortet mindestens 3 Fragen ohne lange Bedenkzeit (sofort antworten).','mittel','speed-answer'),
+  C('Sitzt {player} im Stuhl, darf in dieser Runde kein Publikumsjoker genutzt werden.','mittel','named-player-restriction'),
 ];
 
 const FINALS_CHALLENGES = [
@@ -5633,6 +5715,8 @@ const FINALS_CHALLENGES = [
   C('Gewinnt das Turnier-Finale.','schwer','tournament-win'),
   C('Schafft zwei Cash-Outs im selben Match.','schwer','double-cashout'),
   C('Nur {player} darf den Cash-Out tragen — alle anderen dürfen ihn höchstens beschützen.','schwer','named-player-restriction'),
+  C('Sprengt gezielt einen Gebäudeteil frei, um einen neuen taktischen Weg zum Cash-Out zu schaffen.','mittel','destruction-combo'),
+  C('Gewinnt, nachdem euer gesamtes Team zwischenzeitlich eliminiert und über einen Respawn zurückgeholt wurde.','schwer','respawn-comeback'),
 ];
 
 const AMONG_CHALLENGES = [
@@ -5650,6 +5734,8 @@ const AMONG_CHALLENGES = [
   C('Schließt alle Aufgaben ab, bevor die erste Leiche gefunden wird.','schwer','fast-tasks'),
   C('{player} muss die gesamte Runde stumm bleiben — auch in Versammlungen nur Text statt Voice-Chat.','schwer','named-player-restriction'),
   C('Gewinnt als Crew, obwohl ein Sabotage-Countdown mit unter 10 Sekunden Restzeit gerettet wurde.','schwer','clutch-sabotage'),
+  C('Sabotiert erfolgreich die Kommunikation kurz vor einer wichtigen Versammlung (falls verfügbar).','mittel','comms-sabotage'),
+  C('Gewinnt als Impostor, indem alle Crewmates eliminiert werden, bevor auch nur eine Aufgabe fertig ist.','schwer','impostor-win'),
 ];
 const AMONG_PERSONAL = [
   C('Erste abgeschlossene Aufgabe der Runde.','leicht','first-task-race'),
@@ -5673,6 +5759,8 @@ const HFF_CHALLENGES = [
   C('Findet einen alternativen oder geheimen Weg durchs Level.','schwer','secret-path'),
   C('{player} muss das gesamte Level tragen/schieben lassen — der Rest darf nur unterstützen, nicht selbst lösen.','schwer','named-player-restriction'),
   C('Schließt zwei Level hintereinander ab, mit insgesamt maximal 3 Abstürzen.','schwer','multi-level'),
+  C('Löst ein Level, in dem ihr gemeinsam ein Fahrzeug (Auto, Boot o. Ä.) steuert.','mittel','vehicle-level'),
+  C('Schließt ein Level ab, in dem mindestens einmal ein Spieler bewusst einen anderen geworfen/katapultiert hat, um voranzukommen.','schwer','launch-teammate'),
 ];
 const HFF_PERSONAL = [
   C('Findet als Erste(r) den Levelausgang.','leicht','first-finish-race'),
@@ -5696,6 +5784,8 @@ const PICO_CHALLENGES = [
   C('Löst ein Level, bei dem alle Spieler gleichzeitig das Ziel erreichen müssen.','schwer','sync-finish'),
   C('{player} darf im gesamten Level keinen einzigen Schalter/Hebel selbst betätigen — nur die anderen dürfen.','schwer','named-player-restriction'),
   C('Schließt zwei Level hintereinander ab, mit insgesamt maximal 2 Fehlversuchen/Resets.','schwer','multi-level'),
+  C('Spielt ein Level mit voller Spielerzahl, statt mit weniger Spielern zu starten (Vollbesetzung).','leicht','full-squad'),
+  C('Löst ein Level mit einem besonderen Mechanik-Element (z. B. bewegliche Plattformen oder Portale).','mittel','special-mechanic'),
 ];
 const PICO_PERSONAL = [
   C('Löst als Erste(r) einen Teil-Abschnitt oder Schalter im Level.','leicht','first-solve-race'),
@@ -5719,6 +5809,8 @@ const GOLF_CHALLENGES = [
   C('Spielt eine komplette Runde auf einer Themenkarte, ohne ein einziges Power-Up zu benutzen.','schwer','no-powerup'),
   C('{player} muss auf jedem Loch als Erste(r) abschlagen, egal wie die Reihenfolge sonst wäre.','schwer','named-player-restriction'),
   C('Gewinnt eine komplette Runde im Hockey-Modus als Team mit mindestens 3 Toren Vorsprung.','schwer','hockey-margin'),
+  C('Spielt eine komplette Runde auf einer Themenkarte (z. B. Halloween oder Weihnachten).','leicht','theme-map'),
+  C('Gewinnt ein Loch durch einen Trickshot über eine Wand oder Rampe.','schwer','trickshot'),
 ];
 const GOLF_PERSONAL = [
   C('Wenigste Schläge auf einem einzelnen Loch.','leicht','fewest-strokes-race'),
@@ -5740,6 +5832,9 @@ const CRAB_CHALLENGES = [
   C('Mindestens die Hälfte der Gruppe erreicht das Finale.','schwer','half-finalists'),
   C('Übersteht Stepping Stones/Glass Bridge, ohne dass jemand aus der Gruppe abstürzt.','schwer','flawless-bridge'),
   C('{player} darf kein einziges Minispiel aktiv gewinnen — nur reines Überleben zählt für {player}.','schwer','named-player-restriction'),
+  C('Gewinnt gemeinsam ein Team-Minispiel (z. B. Tauziehen) als Gruppe.','mittel','team-minigame'),
+  C('Übersteht gemeinsam eine Runde Hexagon/Wackelplattform, ohne dass mehr als einer aus der Gruppe ausscheidet.','mittel','hexagon'),
+  C('Meidet erfolgreich eine Falle/Umgebungsgefahr, die mindestens 3 andere Spieler eliminiert hat.','schwer','trap-dodge'),
 ];
 const CRAB_PERSONAL = [
   C('Übersteht Red Light, Green Light als Erste(r) der Gruppe.','leicht','first-clear-race'),
@@ -5763,6 +5858,8 @@ const RL_CHALLENGES = [
   C('Dreht einen Rückstand von mindestens 2 Toren zum Sieg.','schwer','comeback'),
   C('{player} muss ausschließlich als Torwart/Verteidiger spielen — der Rest übernimmt den Angriff.','schwer','named-player-restriction'),
   C('Gewinnt das Match in der Verlängerung (Overtime).','schwer','overtime-win'),
+  C('Spielt einen kompletten Satz eines Extra-Modus (Dropshot oder Spike Rush) statt klassischem Fußball.','leicht','mode-variety'),
+  C('Erzielt ein Tor direkt im Anschluss an eine erfolgreiche Rammung/Demolition eines Gegners.','schwer','demo-combo'),
 ];
 const RL_PERSONAL = [
   C('Erstes Tor des Matches.','leicht','first-goal-race'),
@@ -5786,6 +5883,8 @@ const GB_CHALLENGES = [
   C('Wirft einen Gegner mit einem einzigen Wurf direkt in einen Umgebungs-Hazard (Wasser, Presse, Zug etc.).','schwer','environmental-throw'),
   C('{player} muss die gesamte Football-Partie ausschließlich als Torwart/Verteidiger spielen.','schwer','named-player-restriction'),
   C('Gewinnt eine Gang-Runde 3 gegen 1 (letzter Überlebender dreht die Runde).','schwer','clutch-comeback'),
+  C('Spielt eine Runde mit einem Custom-Modifikator (z. B. rutschiger Untergrund).','mittel','modifier-round'),
+  C('Wirft zwei Gegner mit einem einzigen kombinierten Stoß gleichzeitig von der Plattform.','schwer','double-knockout'),
 ];
 const GB_PERSONAL = [
   C('Erster erfolgreicher Knockout/Wurf der Runde.','leicht','first-knockout-race'),
@@ -6150,6 +6249,10 @@ function pickNUnique(pool, n){ return pickUniqueThemes(pool, n, new Set()); }
 function renderChallengeList(container, items, label){
   container.innerHTML = '';
   if(!items || !items.length) return;
+  // {player}-Platzhalter war hier bisher unersetzt sichtbar — auf den Free-Play-Seiten (nicht im
+  // Session-Modus) lief renderChallengeList direkt mit dem rohen Pool-Text. Zentral hier fixen,
+  // damit alle Aufrufer (Free-Play-Generatoren, Helden-Roulette, WWM) automatisch profitieren.
+  items = substitutePlayerNames(items, globalPlayers);
   const wrap = document.createElement('div');
   const heading = document.createElement('div');
   heading.className = 'challenges-label'; heading.textContent = label;
@@ -8426,6 +8529,7 @@ renderAuthBar();
 if(!checkPasswordRecoveryRedirect()) restoreAuthSession();
 loadHeroImages();
 loadGameCovers();
+loadCustomChallengesFromCloud();
 </script>
 </body>
 </html>
