@@ -39,10 +39,10 @@
   .view.active{ display:block; }
   .bg-watermark{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center; font-size:min(60vw, 620px); opacity:0.035; pointer-events:none; z-index:0; user-select:none; filter:blur(1px); }
   .topbar{ position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:16px; padding:18px 28px; background:rgba(8,8,13,0.97); backdrop-filter:blur(10px); }
-  .back-btn{ display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:10px 18px 10px 14px; border-radius:999px; font-weight:600; font-size:0.95rem; transition:all 0.2s ease; }
-  .back-btn:hover{ border-color:var(--turquoise); box-shadow:0 0 0 1px var(--turquoise), 0 0 18px -4px var(--turquoise); transform:translateX(-2px); }
+  .back-btn{ position:absolute; left:28px; top:50%; transform:translateY(-50%); z-index:2; display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:10px 18px 10px 14px; border-radius:999px; font-weight:600; font-size:0.95rem; transition:all 0.2s ease; }
+  .back-btn:hover{ border-color:var(--turquoise); box-shadow:0 0 0 1px var(--turquoise), 0 0 18px -4px var(--turquoise); transform:translateY(-50%) translateX(-2px); }
   .back-btn svg{ width:18px; height:18px; }
-  .page-title{ font-size:1.35rem; font-weight:700; display:flex; align-items:center; justify-content:center; text-align:center; gap:10px; flex:1; min-width:0; overflow:hidden; }
+  .page-title{ font-size:1.35rem; font-weight:700; display:flex; align-items:center; justify-content:center; text-align:center; gap:10px; flex:1; min-width:0; overflow:hidden; padding:0 100px; box-sizing:border-box; }
   #team-page-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .page-title .ico{ display:none; }
   .content{ position:relative; z-index:1; max-width:1000px; margin:0 auto; padding:20px 24px 100px; }
@@ -641,6 +641,8 @@
 
   @media (max-width:520px){
     .home-header{ padding:44px 12px 6px; } .tile-grid{ padding:20px 10px 60px; } .topbar{ padding:14px 12px; }
+    .back-btn{ left:12px; }
+    .page-title{ padding:0 70px; }
     .content{ padding:16px 8px 80px; } .landing-actions, .home-actions{ padding:0 8px; }
     .admin-block, .panel-block{ padding:16px 12px; }
     .settings-card{ padding:14px 10px 16px; }
@@ -701,6 +703,8 @@
   .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:24px; }
   .toast-item{ pointer-events:auto; max-width:420px; width:max-content; margin:0 auto; display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.45); border-radius:14px; padding:12px 16px; font-size:0.92rem; font-weight:600; color:var(--text); animation: toast-in-kf 0.25s ease-out; }
+  .toast-item.toast-clickable{ border-color:var(--turquoise); box-shadow:0 8px 24px rgba(0,0,0,0.45), 0 0 0 1px var(--turquoise); transition:transform 0.15s ease; }
+  .toast-item.toast-clickable:active{ transform:scale(0.97); }
   .toast-item.toast-leaving{ animation: toast-out-kf 0.25s ease-in forwards; }
   .toast-item .toast-icon{ font-size:1.2rem; flex-shrink:0; }
   @keyframes toast-in-kf{ 0%{ opacity:0; transform:translateY(-16px); } 100%{ opacity:1; transform:translateY(0); } }
@@ -3398,12 +3402,21 @@ function showAlert(message, icon){
 // Kurze, selbstverschwindende Benachrichtigung oben am Bildschirm (ähnlich wie bei WhatsApp),
 // z.B. für eingehende Team-Einladungen oder Freundschaftsanfragen — läuft unabhängig davon,
 // welche Seite gerade offen ist (siehe startNotificationsSubscription).
-function showToast(message, icon, durationMs){
+function showToast(message, icon, durationMs, onClick){
   const stack = document.getElementById('toast-stack');
   if(!stack) return;
   const el = document.createElement('div');
-  el.className = 'toast-item';
+  el.className = 'toast-item'+(onClick?' toast-clickable':'');
   el.innerHTML = `<span class="toast-icon">${icon||'🔔'}</span><span>${message}</span>`;
+  if(onClick){
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', ()=>{
+      el.classList.add('toast-leaving');
+      setTimeout(()=>{ el.remove(); }, 250);
+      onClick();
+    });
+  }
   stack.appendChild(el);
   setTimeout(()=>{
     el.classList.add('toast-leaving');
@@ -3485,7 +3498,10 @@ function startNotificationsSubscription(){
     .on('postgres_changes', { event:'INSERT', schema:'public', table:'team_invites', filter:`to_user=eq.${currentUser.id}` }, async (payload)=>{
       let fromName = 'Jemand';
       try{ const { data } = await sb.from('profiles').select('username').eq('id', payload.new.from_user).maybeSingle(); if(data) fromName = data.username; }catch(e){}
-      showToast(`${fromName} hat dich in eine Gruppe eingeladen`, '📨');
+      let teamCode = null;
+      try{ const { data } = await sb.from('teams').select('code').eq('id', payload.new.team_id).maybeSingle(); if(data) teamCode = data.code; }catch(e){}
+      const inviteId = payload.new.id;
+      showToast(`${fromName} hat dich in eine Gruppe eingeladen — antippen zum Beitreten`, '📨', 5500, teamCode ? ()=>acceptTeamInvite(inviteId, teamCode) : null);
       if(document.getElementById('view-friends') && document.getElementById('view-friends').classList.contains('active')) renderPendingInvites();
     })
     .on('postgres_changes', { event:'INSERT', schema:'public', table:'friend_requests', filter:`to_user=eq.${currentUser.id}` }, async (payload)=>{
@@ -4863,6 +4879,11 @@ function renderTeamRoundSection(){
     const isNewRoundView = teamRoundCuedFor !== currentRound.id;
     if(isNewRoundView){ teamRoundCuedFor = currentRound.id; playStartCue(); }
     const maxJokers = maxJokerUses();
+    // Wer mit einer Joker-Sperre sabotiert wurde, soll das nicht erst per Fehlermeldung nach dem
+    // Klick erfahren — die Reroll-Buttons erscheinen für die betroffene Person direkt sichtbar
+    // deaktiviert und durchgestrichen.
+    const jokerLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
+    const jokerLockAttrs = 'disabled style="opacity:.45;text-decoration:line-through;cursor:not-allowed;" title="Joker-Sperre aktiv — diese Runde kein Reroll mehr"';
     let html = header + `<div class="panel-block${isNewRoundView?' round-fade-in':''}" style="margin-top:20px;">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
     html += renderJokerVoteBanner();
@@ -4879,7 +4900,10 @@ function renderTeamRoundSection(){
     // wie bei "Meine Challenges" (die betrifft ja nur die anfragende Person selbst).
     const heroJokerUsesTotal = (currentRound.hero_joker_used||[]).length;
     const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-      ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>` : '';
+      ? (jokerLocked
+          ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>`
+          : `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>`)
+      : '';
     const doneSet = new Set(currentRound.personally_done || []);
     const leftSet = new Set(currentRound.left_players || []);
     const others = teamMembers.filter(m=>m.user_id !== currentUser.id && !leftSet.has(m.user_id));
@@ -4895,7 +4919,10 @@ function renderTeamRoundSection(){
       html += renderVotableChallengeItems(roundItems.filter(it=>it.scope==='shared'));
       const teamJokerUses = currentRound.team_challenge_joker_uses || 0;
       const challengeJokerBtn = (teamJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-        ? `<button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>` : '';
+        ? (jokerLocked
+            ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>`
+            : `<button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>`)
+        : '';
       if(heroJokerBtn || challengeJokerBtn){
         html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
       }
@@ -4905,7 +4932,10 @@ function renderTeamRoundSection(){
       html += renderVotableChallengeItems(mine);
       const myChallengeJokerUses = (currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
       const challengeJokerBtn = (myChallengeJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-        ? `<button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>` : '';
+        ? (jokerLocked
+            ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>`
+            : `<button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>`)
+        : '';
       if(heroJokerBtn || challengeJokerBtn){
         html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
       }
