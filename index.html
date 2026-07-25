@@ -777,17 +777,15 @@
   <div class="bg-watermark">🚀</div>
   <div class="topbar">
     <button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
-    <div class="page-title"><span class="ico">🎮</span> Spiel starten</div>
+    <div class="page-title">Spiel starten</div>
   </div>
   <div class="content">
     <div class="section-lead"><div class="eyebrow">Wie wollt ihr spielen?</div><h2>Modus wählen</h2><p>Online mit einer Live-Lobby für Freunde, oder direkt loslegen auf diesem Gerät.</p></div>
     <div class="landing-actions" style="margin-top:10px;">
       <button class="landing-btn primary" onclick="goToOnlinePlay()">
-        <span class="landing-btn-icon">🌐</span>
         <span class="landing-btn-text"><span class="landing-btn-title">Online mit Freunden</span><span class="landing-btn-sub">Team-Lobby mit Live-Bereit-Status</span></span>
       </button>
       <button class="landing-btn" onclick="showView('local-choice')">
-        <span class="landing-btn-icon">🖥️</span>
         <span class="landing-btn-text"><span class="landing-btn-title">Lokal</span><span class="landing-btn-sub">Auf diesem Gerät, ohne Online-Gruppe</span></span>
       </button>
       <div id="start-choice-team-session"></div>
@@ -1658,7 +1656,7 @@ function saveTeamCampaignState(){
     localStorage.setItem(LS_TEAM_CAMPAIGN, JSON.stringify({
       teamId: myTeam.id, teamRoundScope, teamRoundGameChoice, teamRoundGameMode, teamRoundModeChoice,
       teamRoundSessionModeChoice, teamRoundDifficulty, teamRoundCount, teamRoundSelectedGames,
-      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment, teamRoundHeroLockMode,
+      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment, teamRoundHeroLockMode, teamSkippedGames,
     }));
   }catch(e){}
 }
@@ -1686,6 +1684,7 @@ function restoreTeamCampaignState(teamId){
   teamCampaignHistory = saved.teamCampaignHistory || teamCampaignHistory;
   teamRoundHeroAssignment = saved.teamRoundHeroAssignment || null;
   teamRoundHeroLockMode = saved.teamRoundHeroLockMode || teamRoundHeroLockMode;
+  teamSkippedGames = saved.teamSkippedGames || teamSkippedGames;
 }
 function saveSetupState(){ try{ localStorage.setItem(LS_SETUP, JSON.stringify({ setupState, stepIndex })); }catch(e){} }
 function loadSetupState(){ try{ const raw = localStorage.getItem(LS_SETUP); if(raw) return JSON.parse(raw); }catch(e){} return null; }
@@ -3057,7 +3056,7 @@ function handleRemovedFromTeam(){
   if(teamChannel){ sb.removeChannel(teamChannel); teamChannel = null; }
   stopTeamPolling();
   myTeam = null; teamMembers = []; currentRound = null; roundItems = []; roundVotes = {};
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
   updateContinueButton();
   showHome();
   showAlert('Du wurdest aus der Gruppe entfernt.');
@@ -3108,6 +3107,7 @@ let teamRoundHeroAssignment = null;
 // neuen Helden will, statt für die ganze Kampagne denselben.
 let teamRoundHeroLockMode = 'locked';
 let teamCampaignHistory = [];       // Host-lokal: Zusammenfassung jeder abgeschlossenen Runde dieser Kampagne (für die Endübersicht)
+let teamSkippedGames = [];          // Host-lokal: Spiele, die per Abstimmung übersprungen wurden — können später wieder ans Ende der Kampagne angehängt werden
 let teamCampaignSyncedFor = null;   // Round-ID, für die die Endübersicht zuletzt an den Server (teams.campaign_summary) geschickt wurde
 let teamRoundCuedFor = null;        // Round-ID, für die der Start-Sound/Vibration schon abgespielt wurde
 function stopTeamPolling(){ if(teamPollInterval){ clearInterval(teamPollInterval); teamPollInterval = null; } }
@@ -3327,7 +3327,7 @@ async function checkActiveRound(){
   // Reload oder erneutem Öffnen) soll eine längst abgeschlossene alte Runde aber NICHT wieder als
   // Ergebnis-Screen auftauchen — sonst landet man bei jedem Öffnen im letzten Endstand statt in der Lobby.
   const wasTrackingThisRound = !!(currentRound && data && currentRound.id === data.id);
-  const nextRound = (!error && data && (data.status === 'active' || data.status === 'voting' || (data.status === 'done' && wasTrackingThisRound))) ? data : null;
+  const nextRound = (!error && data && (data.status === 'active' || data.status === 'voting' || ((data.status === 'done' || data.status === 'skipped') && wasTrackingThisRound))) ? data : null;
   // Signatur der Felder, die die Anzeige für DIESES Gerät tatsächlich beeinflussen. Vorher wurde bei
   // JEDEM Polling-Tick (3s) und JEDER Realtime-Änderung (z. B. wenn ein Mitspieler seinen Helden
   // dreht) die komplette Seite neu aufgebaut — auch wenn sich für einen selbst (der z. B. noch auf
@@ -3336,6 +3336,7 @@ async function checkActiveRound(){
   const signature = nextRound ? JSON.stringify([
     nextRound.id, nextRound.status, nextRound.hero_revealed, nextRound.hero_assignment,
     nextRound.personally_done, nextRound.pending_joker, nextRound.hero_joker_used, nextRound.spied_pairs,
+    nextRound.pending_skip, nextRound.skip_votes,
   ]) : null;
   const changed = signature !== lastCheckedRoundSignature;
   lastCheckedRoundSignature = signature;
@@ -3687,6 +3688,7 @@ async function requestJoker(type, forSelf){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
   if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ showAlert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde geht kein Joker.'); return; }
   if(currentRound.pending_joker){ showAlert('Es läuft gerade schon eine Joker-Abstimmung.'); return; }
+  if(currentRound.pending_skip){ showAlert('Es läuft gerade eine Abstimmung zum Überspringen — die muss erst abgeschlossen sein.'); return; }
   const rerollCost = 3;
   if(shopBalance(currentUser.username) < rerollCost){ showAlert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`, '💸'); return; }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
@@ -3950,6 +3952,89 @@ async function maybeResolveJokerVote(){
   await loadRoundItems();
   renderTeamPage();
 }
+// Abstimmung, ob die aktuelle Runde/das aktuelle Match komplett übersprungen wird (z. B. weil ein
+// Spiel bei jemandem nicht startet oder die Gruppe es nicht schaffen will) — KEINE Punkte werden
+// gutgeschrieben. Nutzt dieselbe Mehrheits-Logik wie die Joker-Abstimmung (jokerVotesNeeded()).
+async function requestSkipVote(){
+  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  if(currentRound.pending_joker){ showAlert('Es läuft gerade eine Joker-Abstimmung — die muss erst abgeschlossen sein.'); return; }
+  if(currentRound.pending_skip){ showAlert('Es läuft schon eine Abstimmung zum Überspringen.'); return; }
+  const pending = { by: currentUser.id, byName: currentUser.username };
+  const initialVotes = { [currentUser.id]: true };
+  const { error } = await sb.from('game_rounds').update({ pending_skip: pending, skip_votes: initialVotes }).eq('id', currentRound.id);
+  if(error){ showAlert('Fehler: ' + error.message); return; }
+  currentRound.pending_skip = pending; currentRound.skip_votes = initialVotes;
+  renderTeamPage();
+  await maybeResolveSkipVote();
+}
+async function voteSkip(val){
+  if(!currentRound || !currentUser || !sb || !currentRound.pending_skip) return;
+  const votes = Object.assign({}, currentRound.skip_votes || {}, { [currentUser.id]: val });
+  currentRound.skip_votes = votes;
+  await sb.from('game_rounds').update({ skip_votes: votes }).eq('id', currentRound.id);
+  renderTeamPage();
+  await maybeResolveSkipVote();
+}
+async function maybeResolveSkipVote(){
+  if(!currentRound || !currentRound.pending_skip || !sb) return;
+  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
+  if(!isHost) return; // nur der Host löst final auf, damit es nicht doppelt passiert
+  const votes = currentRound.skip_votes || {};
+  const yes = Object.values(votes).filter(v=>v===true).length;
+  const no = Object.values(votes).filter(v=>v===false).length;
+  const total = Math.max(teamMembers.length, 1);
+  const needed = jokerVotesNeeded();
+  const impossible = no > (total - needed);
+  if(yes < needed && !impossible) return; // Abstimmung läuft noch weiter
+  if(yes >= needed){
+    await sb.from('game_rounds').update({ status:'skipped', pending_skip:null, skip_votes:{} }).eq('id', currentRound.id);
+    currentRound.status = 'skipped';
+    // Übersprungenes Spiel merken, damit es sich später wieder ans Ende der Kampagne anhängen lässt
+    // (nur bei "Spiele nacheinander" sinnvoll — bei "gleiches Spiel über mehrere Runden" gäb's nichts zum Wiedereinbauen).
+    if(currentRound.scope === 'games' && currentRound.game_id && !teamSkippedGames.includes(currentRound.game_id)){
+      teamSkippedGames.push(currentRound.game_id);
+    }
+    saveTeamCampaignState();
+  } else {
+    await sb.from('game_rounds').update({ pending_skip: null, skip_votes: {} }).eq('id', currentRound.id);
+  }
+  currentRound.pending_skip = null; currentRound.skip_votes = {};
+  await loadRoundItems();
+  renderTeamPage();
+}
+// Hängt ein zuvor übersprungenes Spiel wieder ans Ende der laufenden Online-Kampagne an (nur Host).
+function reAddSkippedGameTeam(gameId){
+  if(teamRoundScope!=='games') return;
+  teamRoundSelectedGames.push(gameId);
+  teamSkippedGames = teamSkippedGames.filter(g=>g!==gameId);
+  saveTeamCampaignState();
+  renderTeamPage();
+}
+function skippedGamesTeamChipsHTML(){
+  if(!teamSkippedGames.length) return '';
+  return `<div class="rules-note" style="margin-top:14px;">🚫 In dieser Kampagne übersprungen:</div>
+    <div class="player-chips" style="margin:6px 0 4px;">${teamSkippedGames.map(gid=>
+      `<button class="chip" style="cursor:pointer;border:none;" onclick="reAddSkippedGameTeam('${gid}')">${gameIconHTML(gid,16)} ${GAME_NAME[gid]} · 🔁 wieder einbauen</button>`
+    ).join('')}</div>`;
+}
+function renderSkipVoteBanner(){
+  if(!currentRound || !currentRound.pending_skip) return '';
+  const p = currentRound.pending_skip;
+  const votes = currentRound.skip_votes || {};
+  const yes = Object.values(votes).filter(v=>v===true).length;
+  const no = Object.values(votes).filter(v=>v===false).length;
+  const myVote = votes[currentUser.id];
+  const needed = jokerVotesNeeded();
+  return `<div class="settings-card" style="border-color:var(--lose);">
+    <div class="setup-step-head"><span class="setup-step-icon">🚫</span><div class="setup-step-title">Überspringen?</div></div>
+    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${unitWordThis(currentRound.scope)} komplett überspringen — es gibt dann keine Punkte dafür. Es braucht die absolute Mehrheit: ${needed} von ${teamMembers.length} Stimmen dafür.</p>
+    <div class="roll-zone" style="gap:10px;">
+      <button class="sb-btn${myVote===true?' active':''}" onclick="voteSkip(true)">✅ Dafür</button>
+      <button class="sb-btn${myVote===false?' active':''}" onclick="voteSkip(false)">❌ Dagegen</button>
+    </div>
+    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes}/${needed} benötigt · ❌ ${no}</div>
+  </div>`;
+}
 async function executeHeroJoker(forUserId){
   const pool = HERO_GAMES[currentRound.game_id];
   if(!pool || !sb) return;
@@ -4133,7 +4218,7 @@ function renderTeamRoundHeader(){
   const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : currentRound.scope==='games' ? '🎮 SPIEL' : '🔁 RUNDE';
   const uw = unitWord(currentRound.scope);
   const roundCounter = isHost ? ` · ${uw} ${teamCampaignIndex+1}/${campaignTotal()}` : '';
-  const hostMenu = (isHost && currentRound.status !== 'done') ? `<div class="header-menu">
+  const hostMenu = (isHost && currentRound.status !== 'done' && currentRound.status !== 'skipped') ? `<div class="header-menu">
     <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
     <div class="header-menu-panel" id="round-header-menu">
       <button onclick="extendTeamCampaign()">➕ ${uw} hinzufügen</button>
@@ -4206,7 +4291,7 @@ async function cancelTeamRound(){
   await sb.from('game_rounds').delete().eq('id', currentRound.id);
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
   saveTeamCampaignState();
   teamMembers.forEach(m=>{ m.ready = false; });
   await sb.from('team_members').update({ ready: false }).eq('team_id', myTeam.id);
@@ -4216,7 +4301,7 @@ function returnToLobbyFromDone(){
   unlockTeamRoundRender();
   currentRound = null; roundItems = []; roundVotes = {};
   teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
+  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
   saveTeamCampaignState();
   renderTeamPage();
 }
@@ -4256,6 +4341,34 @@ function renderTeamHeroBlock(){
     }
   });
   html += '</div>';
+  return html;
+}
+// Rendert eine Liste von Challenge-Items MIT Abstimm-Buttons (✅/❌ + Live-Stimmenzähler). Wird
+// sowohl während der laufenden Runde (status 'active' — schon während des Matches abhakbar) als
+// auch in der finalen Bewertungsphase (status 'voting' — dort dann für alle sichtbar/änderbar)
+// verwendet, damit während des Matches gesetzte Haken beim Abschluss einfach übernommen werden
+// statt am Ende alles neu rekonstruieren zu müssen. Stimmen bleiben bis finalizeTeamRound() jederzeit änderbar.
+function renderVotableChallengeItems(items){
+  let html = '';
+  sortByDifficulty(items).forEach(it=>{
+    const votesForItem = roundVotes[it.id] || {};
+    const yes = Object.values(votesForItem).filter(v=>v===true).length;
+    const no = Object.values(votesForItem).filter(v=>v===false).length;
+    const myVote = votesForItem[currentUser.id];
+    html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
+      <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
+      <div class="sb-challenge-text">${it.text}</div>
+      <div class="sb-points">${it.struck?'🗑️ gestrichen · ':it.result==='success'?'+':it.result==='fail'?'−':''}${it.points} Pkt</div>`;
+    if(!it.result){
+      html += `<div class="sb-actions">
+        <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
+        <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
+      </div>`;
+    } else {
+      html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
+    }
+    html += `</div>`;
+  });
   return html;
 }
 function renderTeamRoundSection(){
@@ -4327,6 +4440,10 @@ function renderTeamRoundSection(){
     let html = header + `<div class="panel-block round-fade-in" style="margin-top:20px;">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
     html += renderJokerVoteBanner();
+    html += renderSkipVoteBanner();
+    if(!currentRound.pending_joker && !currentRound.pending_skip){
+      html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin-bottom:4px;"><button class="sb-btn" onclick="requestSkipVote()">🚫 ${unitWordThis(currentRound.scope)} überspringen</button></div>`;
+    }
     // Loadout ("Vorteil einsetzen") steht bewusst ÜBER dem Helden-Bild/-Namen — für jeden Spieler,
     // egal ob Team- oder Jeder-gegen-Jeden-Modus.
     html += renderSabotagePanel();
@@ -4335,7 +4452,7 @@ function renderTeamRoundSection(){
     // Kontingent zählt deshalb teamweit (jede Nutzung durch irgendjemanden zählt), nicht pro Person
     // wie bei "Meine Challenges" (die betrifft ja nur die anfragende Person selbst).
     const heroJokerUsesTotal = (currentRound.hero_joker_used||[]).length;
-    const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker)
+    const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
       ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>` : '';
     const doneSet = new Set(currentRound.personally_done || []);
     const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
@@ -4347,19 +4464,20 @@ function renderTeamRoundSection(){
       ).join('') + `</div>`;
     }
     if(currentRound.mode === 'team'){
-      html += renderChallengeListPlain(roundItems.filter(it=>it.scope==='shared'));
+      html += `<div class="rules-note">✅/❌ zählt schon jetzt live mit — ihr könnt beim Abschluss noch alles ändern.</div>`;
+      html += renderVotableChallengeItems(roundItems.filter(it=>it.scope==='shared'));
       const teamJokerUses = currentRound.team_challenge_joker_uses || 0;
-      const challengeJokerBtn = (teamJokerUses < maxJokers && !currentRound.pending_joker)
+      const challengeJokerBtn = (teamJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
         ? `<button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>` : '';
       if(heroJokerBtn || challengeJokerBtn){
         html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
       }
     } else {
       const mine = roundItems.filter(it=>it.user_id===currentUser.id);
-      html += `<div class="rules-note">🔒 Nur du siehst diese Liste auf deinem Handy.</div>`;
-      html += renderChallengeListPlain(mine);
+      html += `<div class="rules-note">🔒 Nur du siehst diese Liste auf deinem Handy — ✅/❌ zählt schon jetzt live mit, beim Abschluss noch änderbar.</div>`;
+      html += renderVotableChallengeItems(mine);
       const myChallengeJokerUses = (currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
-      const challengeJokerBtn = (myChallengeJokerUses < maxJokers && !currentRound.pending_joker)
+      const challengeJokerBtn = (myChallengeJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
         ? `<button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>` : '';
       if(heroJokerBtn || challengeJokerBtn){
         html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
@@ -4392,30 +4510,12 @@ function renderTeamRoundSection(){
   if(currentRound.status === 'voting'){
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🗳️</span><div class="setup-step-title">Bewertung</div></div>`;
     if(currentRound.mode === 'team'){
-      html += `<p class="setup-info" style="margin-top:0;">Jeder stimmt für jede Regel ab. Es zählt die Mehrheit.</p>`;
-      sortByDifficulty(roundItems.filter(it=>it.scope==='shared')).forEach(it=>{
-        const votesForItem = roundVotes[it.id] || {};
-        const yes = Object.values(votesForItem).filter(v=>v===true).length;
-        const no = Object.values(votesForItem).filter(v=>v===false).length;
-        const myVote = votesForItem[currentUser.id];
-        html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
-          <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
-          <div class="sb-challenge-text">${it.text}</div>
-          <div class="sb-points">${it.struck?'🗑️ gestrichen · ':it.result==='success'?'+':it.result==='fail'?'−':''}${it.points} Pkt</div>`;
-        if(!it.result){
-          html += `<div class="sb-actions">
-            <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
-            <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
-          </div>`;
-        } else {
-          html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
-        }
-        html += `</div>`;
-      });
+      html += `<p class="setup-info" style="margin-top:0;">Jeder stimmt für jede Regel ab (schon während des Matches gesetzte Haken sind vorausgefüllt). Es zählt die Mehrheit.</p>`;
+      html += renderVotableChallengeItems(roundItems.filter(it=>it.scope==='shared'));
       if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
       else { html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die Bewertung abschließt…</div>`; }
     } else {
-      html += `<p class="setup-info" style="margin-top:0;">Jetzt sehen alle alle Challenges. Stimmt für jede einzeln ab.</p>`;
+      html += `<p class="setup-info" style="margin-top:0;">Jetzt sehen alle alle Challenges (schon während des Matches gesetzte Haken sind vorausgefüllt). Stimmt für jede einzeln ab.</p>`;
       const byPlayer = {};
       roundItems.filter(it=>it.scope==='personal').forEach(it=>{ (byPlayer[it.user_id] = byPlayer[it.user_id]||[]).push(it); });
       Object.values(byPlayer).forEach(items=>{
@@ -4423,28 +4523,33 @@ function renderTeamRoundSection(){
         const username = first.profiles ? first.profiles.username : '?';
         const avatar = withHatOverlay(username, renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18), 18);
         html += `<div class="player-block-label member-clickable" style="cursor:pointer;" onclick="showMemberProfile('${first.user_id}')">${playerCosmeticCardHTML(username, avatar)}</div>`;
-        sortByDifficulty(items).forEach(it=>{
-          const votesForItem = roundVotes[it.id] || {};
-          const yes = Object.values(votesForItem).filter(v=>v===true).length;
-          const no = Object.values(votesForItem).filter(v=>v===false).length;
-          const myVote = votesForItem[currentUser.id];
-          html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
-            <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
-            <div class="sb-challenge-text">${it.text}</div>
-            <div class="sb-points">${it.struck?'🗑️ gestrichen · ':''}${it.points} Pkt</div>`;
-          if(!it.result){
-            html += `<div class="sb-actions">
-              <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
-              <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
-            </div>`;
-          } else {
-            html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
-          }
-          html += `</div>`;
-        });
+        html += renderVotableChallengeItems(sortByDifficulty(items));
       });
       if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
       else { html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die Bewertung abschließt…</div>`; }
+    }
+    html += `</div>`;
+    return html;
+  }
+
+  if(currentRound.status === 'skipped'){
+    const total = campaignTotal();
+    const hasNext = isHost && (teamCampaignIndex + 1) < total;
+    const uwDone = unitWord(currentRound.scope);
+    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🚫</span><div class="setup-step-title">${uwDone} übersprungen</div></div>`;
+    html += `<p class="setup-info" style="margin-top:0;">Keine Punkte für ${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]} — war so von der Mehrheit entschieden.</p>`;
+    html += skippedGamesTeamChipsHTML();
+    if(hasNext){
+      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${teamCampaignIndex+2}/${total})</button></div>`;
+      html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
+    } else if(isHost){
+      html += `<p class="setup-info" style="margin-top:12px;">🏆 Kampagne abgeschlossen (${total}/${total} ${unitWordPlural(currentRound.scope)}, diese hier übersprungen).</p>`;
+      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
+      html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
+      if(teamSkippedGames.length) html += `<p class="setup-info" style="margin-top:12px;">Übersprungene Spiele oben lassen sich per "wieder einbauen" direkt weiterspielen, statt eine neue Kampagne zu starten.</p>`;
+    } else {
+      html += `<div class="empty-hint">Wartet, bis der Team-Ersteller entscheidet, wie's weitergeht…</div>`;
+      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
     }
     html += `</div>`;
     return html;
@@ -4629,7 +4734,7 @@ async function leaveTeam(){
   const leftId = myTeam.id;
   myTeams = myTeams.filter(t=>t.id !== leftId);
   teamMembers = [];
-  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false;
+  teamEntryMode = null; teamSettingsOpen = false; teamCampaignIndex = 0; teamRoundSelectedGames = []; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
   if(myTeams.length){
     // Noch in anderen Teams Mitglied — direkt eins davon als aktiv setzen, statt komplett rauszufliegen.
     myTeam = myTeams[myTeams.length-1];
@@ -7906,7 +8011,7 @@ function startSession(cfg){
     totalRounds: cfg.totalRounds, currentRound: 1, pointGoal: cfg.pointGoal || null, players: cfg.players,
     cumulativeTeam: cfg.mode==='team' ? 0 : undefined,
     cumulativePlayers: cfg.mode==='versus' ? Object.fromEntries(cfg.players.map(p=>[p,0])) : undefined,
-    finished: false, awaitingNextGameChoice: false, pendingGameIntro: false,
+    finished: false, awaitingNextGameChoice: false, pendingGameIntro: false, skippedGames: [], lastActionSkipped: false,
   };
   buildRound();
   saveSession(); renderScoreboard(); updateContinueButton();
@@ -7924,11 +8029,45 @@ function endRound(){
     if(session.mode==='team'){ goalReached = session.cumulativeTeam >= session.pointGoal; }
     else { goalReached = session.players.some(p=>session.cumulativePlayers[p] >= session.pointGoal); }
   }
+  session.lastActionSkipped = false;
   if(goalReached || session.currentRound >= session.totalRounds){ session.finished = true; }
   else { session.awaitingNextGameChoice = true; }
   saveSession(); renderScoreboard(); updateContinueButton();
 }
-function chooseSameGame(){ session.currentRound++; session.awaitingNextGameChoice = false; buildRound(); saveSession(); renderScoreboard(); }
+// Überspringt die aktuelle Runde/das aktuelle Match komplett — KEINE Punkte werden gutgeschrieben
+// (im Unterschied zu endRound()). Bei "Spiele nacheinander" wird das übersprungene Spiel gemerkt,
+// damit es sich später per reAddSkippedGame() wieder in die Session einbauen lässt.
+async function skipRound(){
+  if(!session) return;
+  const label = session.scope==='games' ? 'dieses Spiel' : (session.mode==='team' ? 'diese Runde' : 'dieses Match');
+  if(!(await confirmAction(`Seid ihr euch alle einig, ${label} zu überspringen? Es gibt dafür keine Punkte.`, '🚫'))) return;
+  if(session.scope==='games' && session.gameId){
+    session.skippedGames = session.skippedGames || [];
+    if(!session.skippedGames.includes(session.gameId)) session.skippedGames.push(session.gameId);
+  }
+  session.votingPhase = false;
+  session.lastActionSkipped = true;
+  if(session.currentRound >= session.totalRounds){ session.finished = true; }
+  else { session.awaitingNextGameChoice = true; }
+  saveSession(); renderScoreboard(); updateContinueButton();
+}
+// Baut ein zuvor übersprungenes Spiel wieder ans Ende der laufenden "Spiele nacheinander"-Session ein.
+function reAddSkippedGame(gameId){
+  if(!session || session.scope!=='games' || !session.gameSequence) return;
+  session.gameSequence.push(gameId);
+  session.totalRounds += 1;
+  session.skippedGames = (session.skippedGames||[]).filter(g=>g!==gameId);
+  if(session.finished){ session.finished = false; session.awaitingNextGameChoice = true; }
+  saveSession(); renderScoreboard(); updateContinueButton();
+}
+function skippedGamesChipsHTML(){
+  if(!session || !session.skippedGames || !session.skippedGames.length) return '';
+  return `<div class="rules-note" style="margin-top:14px;">🚫 Übersprungen in dieser Session:</div>
+    <div class="player-chips" style="margin:6px 0 4px;">${session.skippedGames.map(gid=>
+      `<button class="chip" style="cursor:pointer;border:none;" onclick="reAddSkippedGame('${gid}')">${gameIconHTML(gid,16)} ${GAME_NAME[gid]} · 🔁 wieder einbauen</button>`
+    ).join('')}</div>`;
+}
+function chooseSameGame(){ session.currentRound++; session.awaitingNextGameChoice = false; session.lastActionSkipped = false; buildRound(); saveSession(); renderScoreboard(); }
 function toggleGamePicker(){
   const el = document.getElementById('inline-game-picker');
   if(!el) return;
@@ -7939,12 +8078,14 @@ function continueSessionWithGame(gameId){
   session.gameMode = null; session.matchStyle = null;
   session.currentRound++;
   session.awaitingNextGameChoice = false;
+  session.lastActionSkipped = false;
   buildRound(); saveSession(); renderScoreboard();
 }
 function advanceGameSequence(){
   session.currentGameIndex++; session.currentRound++;
   session.gameId = session.gameSequence[session.currentGameIndex];
   session.awaitingNextGameChoice = false;
+  session.lastActionSkipped = false;
   session.pendingGameIntro = !HERO_GAMES[session.gameId];
   buildRound(); saveSession(); renderScoreboard();
 }
@@ -8164,10 +8305,11 @@ function renderScoreboard(){
 
   if(session.finished){
     html += `<div class="final-summary"><div class="big-emoji confetti-burst" id="local-done-confetti">🏁</div><h3>Session beendet</h3><p style="color:var(--text-muted);">${session.currentRound} Runde${session.currentRound>1?'n':''} gespielt</p></div>`;
-    html += roundScoreSummary();
+    html += session.lastActionSkipped ? `<div class="rules-note">🚫 Letzte Runde übersprungen — keine Punkte gezählt.</div>` : roundScoreSummary();
     let finishedTopName = null;
     if(session.mode==='team'){ html += `<div class="score-total">Endstand: <span>${session.cumulativeTeam}</span> Punkte</div>`; }
     else { const scored = session.players.map(p=>({name:p, score:session.cumulativePlayers[p]||0})).sort((a,b)=>b.score-a.score); html += renderLeaderboardTable(scored, null); finishedTopName = scored.length ? scored[0].name : null; }
+    html += skippedGamesChipsHTML();
     html += `<div class="round-prompt-actions"><button class="round-prompt-btn primary" onclick="newSessionFromScoreboard()">🚀 Neue Session</button></div>`;
     el.innerHTML = html; animateMiniGoalBars(el);
     const finKey = 'finished_'+session.currentRound;
@@ -8176,19 +8318,21 @@ function renderScoreboard(){
   }
 
   if(session.awaitingNextGameChoice){
+    const roundStatusBlock = session.lastActionSkipped ? `<div class="rules-note">🚫 Übersprungen — keine Punkte gezählt.</div>` : roundScoreSummary();
     if(session.scope === 'games'){
       const nextId = session.gameSequence[session.currentGameIndex+1];
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! <span>🎉</span></h3>
-        ${roundScoreSummary()}
+        <h3>${session.lastActionSkipped?'Spiel übersprungen':'Runde '+session.currentRound+' beendet!'} <span>${session.lastActionSkipped?'🚫':'🎉'}</span></h3>
+        ${roundStatusBlock}
         <p>Weiter geht's mit ${gameIconHTML(nextId,18)} ${GAME_NAME[nextId]} (Spiel ${session.currentGameIndex+2} von ${session.gameSequence.length}).</p>
+        ${skippedGamesChipsHTML()}
         <div class="round-prompt-actions"><button class="round-prompt-btn primary" onclick="advanceGameSequence()">▶️ Weiter</button></div>
       </div>`;
     } else {
       const otherGames = SESSION_GAMES.filter(id=> id!==session.gameId && allowedModesFor(id).includes(session.mode));
       html += `<div class="round-prompt">
-        <h3>Runde ${session.currentRound} beendet! <span>🎉</span></h3>
-        ${roundScoreSummary()}
+        <h3>${session.lastActionSkipped?'Übersprungen':'Runde '+session.currentRound+' beendet!'} <span>${session.lastActionSkipped?'🚫':'🎉'}</span></h3>
+        ${roundStatusBlock}
         <p>Noch ${session.totalRounds - session.currentRound} Runde${(session.totalRounds - session.currentRound)>1?'n':''} übrig. Weiterspielen mit demselben Spiel oder ein anderes wählen?</p>
         <div class="round-prompt-actions">
           <button class="round-prompt-btn primary" onclick="chooseSameGame()">🔁 Gleiches Spiel</button>
@@ -8212,7 +8356,7 @@ function renderScoreboard(){
     html += `<div class="score-sub">Davor gesammelt: ${session.cumulativeTeam||0} Pkt · diese Runde: ${scoreOf(session.sharedRules)} Pkt</div>`;
     html += `<div class="challenges-label">📜 Spielregeln</div>`;
     html += renderChallengeToggleList('team', session.sharedRules);
-    html += `<div class="roll-zone" style="margin-top:24px;"><button class="roll-btn" onclick="endRound()">🏁 Runde beenden</button></div>`;
+    html += `<div class="roll-zone" style="margin-top:24px;gap:8px;flex-wrap:wrap;"><button class="roll-btn" onclick="endRound()">🏁 Runde beenden</button><button class="sb-btn" onclick="skipRound()">🚫 Überspringen</button></div>`;
   } else {
     const sharedScore = scoreOf(session.sharedRules);
     const scored = session.players.map(p=>({name:p, score:(session.cumulativePlayers[p]||0) + scoreOf(session.personalChallenges[p]) + sharedScore})).sort((a,b)=>b.score-a.score);
@@ -8230,7 +8374,7 @@ function renderScoreboard(){
         if(session.heroAssignment) html += renderHeroRow([[p, session.heroAssignment[p]]]);
         html += renderChallengeToggleList(p, session.personalChallenges[p]);
       });
-      html += `<div class="roll-zone" style="margin-top:24px;"><button class="roll-btn" onclick="endRound()">🏁 Runde abschließen</button></div>`;
+      html += `<div class="roll-zone" style="margin-top:24px;gap:8px;flex-wrap:wrap;"><button class="roll-btn" onclick="endRound()">🏁 Runde abschließen</button><button class="sb-btn" onclick="skipRound()">🚫 Überspringen</button></div>`;
     } else {
       html += `<div class="rules-note">🔒 Jeder sieht nur die eigene Challenge — anzeigen, merken, verbergen, Handy weitergeben.</div>`;
       session.players.forEach(p=>{
@@ -8246,7 +8390,7 @@ function renderScoreboard(){
           html += `<div class="roll-zone" style="margin:8px 0 22px;"><button class="sb-btn" onclick="toggleReveal('${safeName}')">👁️ Nur für ${p} anzeigen</button></div>`;
         }
       });
-      html += `<div class="roll-zone" style="margin-top:24px;"><button class="roll-btn" onclick="enterVotingPhase()">🏁 Runde beenden & gemeinsam bewerten</button></div>`;
+      html += `<div class="roll-zone" style="margin-top:24px;gap:8px;flex-wrap:wrap;"><button class="roll-btn" onclick="enterVotingPhase()">🏁 Runde beenden & gemeinsam bewerten</button><button class="sb-btn" onclick="skipRound()">🚫 Überspringen</button></div>`;
     }
   }
 
