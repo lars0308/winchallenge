@@ -6779,6 +6779,7 @@ const ACHIEVEMENTS_DEF = [
   {id:'10_heroes', icon:'🦸', label:'10 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=10, reward:12},
   {id:'25_heroes', icon:'🦸‍♀️', label:'25 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=25, reward:18},
   {id:'all_ow_heroes', icon:'🛡️', label:'Alle Overwatch-Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('ow2:')).length>=(HERO_GAMES.ow2?HERO_GAMES.ow2.length:999), reward:40},
+  {id:'all_r6_operators', icon:'💣', label:'Alle Rainbow-Six-Operatoren gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('r6:')).length>=(HERO_GAMES.r6?HERO_GAMES.r6.length:999), reward:40},
 ];
 let achievementsSelectedPlayer = null;
 function renderAchievementsPage(){
