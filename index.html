@@ -941,6 +941,11 @@
   </div>
   <div class="content">
     <div class="section-lead"><div class="eyebrow">Öffentliches Profil</div><h2>Meine Angaben</h2><p>Diese Angaben sehen alle anderen Spieler online — z. B. in eurem Team.</p></div>
+    <div class="panel-block" id="profile-onboarding-intro" style="display:none;margin-bottom:16px;border-color:var(--turquoise);">
+      <div class="setup-step-head"><span class="setup-step-icon">🎉</span><div class="setup-step-title">Willkommen bei WIN CHALLENGE!</div></div>
+      <p class="setup-info" style="margin-top:0;">Legt kurz euer Profil fest, bevor's losgeht — Avatar, Anzeigename und ein paar optionale Angaben. Könnt ihr jederzeit später in den Einstellungen ändern.</p>
+      <div style="text-align:center;"><button class="empty-hint-link" onclick="profileOnboarding=false; showHome();">Überspringen, später ausfüllen →</button></div>
+    </div>
     <div class="player-manager" style="max-width:420px;">
       <div style="text-align:center; font-size:3rem; margin-bottom:6px;" id="profile-avatar-preview">😎</div>
       <div class="avatar-grid" id="profile-avatar-grid" style="margin-bottom:14px;"></div>
@@ -2545,7 +2550,8 @@ async function handleRegister(){
   await loadProfile(data.user.id);
   await restoreMyTeam();
   renderAuthBar();
-  showHome();
+  profileOnboarding = true;
+  openProfilePage();
 }
 async function handleLogin(){
   const errEl = document.getElementById('auth-error');
@@ -2767,6 +2773,7 @@ function renderAccountAvatarHTML(avatarVal, size){
 const PROFILE_AVATAR_EMOJI = ['😎','🔥','🎮','🐺','🦊','🐉','👾','🤖','💀','👑','🥷','🍀','⚡','🎯','🛡️','🚀'];
 let profileAvatarChoice = '😎';
 let profileFavGameChoice = '';
+let profileOnboarding = false; // true = direkt nach der Registrierung geöffnet (anderer Text, springt danach zur Startseite statt einfach "Gespeichert!" zu zeigen)
 function openProfilePage(){
   if(!currentUser) return;
   profileAvatarChoice = currentUser.avatar || '😎';
@@ -2780,6 +2787,10 @@ function openProfilePage(){
   document.getElementById('profile-error').textContent = '';
   renderProfileAvatarGrid();
   renderProfileHeroAvatarGroups();
+  const intro = document.getElementById('profile-onboarding-intro');
+  const saveBtn = document.getElementById('profile-save-btn');
+  if(intro) intro.style.display = profileOnboarding ? 'block' : 'none';
+  if(saveBtn) saveBtn.textContent = profileOnboarding ? '🚀 Los geht\'s' : '💾 Speichern';
   showView('profile');
 }
 function renderProfileFavGamePicker(){
@@ -2891,9 +2902,15 @@ async function saveProfile(){
   // (die alle avatarFor() nutzen) den alten Avatar, bis irgendwann ein Team-Refresh
   // die Daten neu von Supabase lädt. Betrifft v.a. das exklusive Blutmond-Emblem.
   avatarMap[username] = profileAvatarChoice; saveAvatars();
-  errEl.style.color = 'var(--win)'; errEl.textContent = 'Gespeichert!';
   renderAuthBar();
   if(myTeam) await refreshTeamMembers();
+  if(profileOnboarding){
+    profileOnboarding = false;
+    showHome();
+    showToast('Profil gespeichert — viel Spaß!', '🎉', 3200);
+    return;
+  }
+  errEl.style.color = 'var(--win)'; errEl.textContent = 'Gespeichert!';
 }
 
 /* ============================================================ TEAM / LOBBY ============================================================ */
