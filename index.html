@@ -5087,6 +5087,7 @@ const GAMES = [
   { id:'cs2', icon:'🎯', watermark:'🎯', name:'Counter-Strike 2', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#241a3a,#0d3b3a)' },
   { id:'val', icon:'🔺', watermark:'🔺', name:'Valorant', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#3a1a1a,#241a3a)' },
   { id:'finals', icon:'🏢', watermark:'🏢', name:'THE FINALS', tag:'Cash-Out-Shooter', grad:'linear-gradient(135deg,#241a1a,#2a2314)' },
+  { id:'r6', icon:'💣', watermark:'💣', name:'Rainbow Six Siege', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#1a2a1a,#241a1a)' },
   { id:'ow2', icon:'🛡️', watermark:'🛡️', name:'Overwatch', tag:'Hero-Shooter', grad:'linear-gradient(135deg,#0d3b3a,#241a3a)' },
   { id:'mr',  icon:'🦸', watermark:'🦸', name:'Marvel Rivals', tag:'Hero-Shooter', grad:'linear-gradient(135deg,#2a1740,#12122a)' },
   { id:'fp',  icon:'🔫', watermark:'🔫', name:'FragPunk', tag:'Hero-Shooter', grad:'linear-gradient(135deg,#12122a,#3a1a2a)' },
@@ -5098,6 +5099,7 @@ const GAMES = [
   { id:'wwm', icon:'💰', watermark:'💰', name:'Wer wird Millionär', tag:'Quiz-Show', grad:'linear-gradient(135deg,#241a3a,#2a2314)' },
   { id:'among', icon:'🛸', watermark:'🛸', name:'Among Us', tag:'Social-Deduction', grad:'linear-gradient(135deg,#8b1a1a,#1a1a2e)' },
   { id:'hff', icon:'🫠', watermark:'🫠', name:'Human: Fall Flat', tag:'Physik-Partyspiel', grad:'linear-gradient(135deg,#3a1a5c,#0d3b3a)' },
+  { id:'pico', icon:'🧩', watermark:'🧩', name:'Pico Park', tag:'Koop-Puzzle', grad:'linear-gradient(135deg,#0d3b3a,#3a1a5c)' },
   { id:'golf', icon:'⛳', watermark:'⛳', name:'Golf With Your Friends', tag:'Mini-Golf-Partyspiel', grad:'linear-gradient(135deg,#145a32,#154360)' },
   { id:'crab', icon:'🦀', watermark:'🦀', name:'Crab Game', tag:'Battle-Royale-Minispiele', grad:'linear-gradient(135deg,#922b21,#1c2833)' },
   { id:'rl', icon:'🚀', watermark:'🚀', name:'Rocket League', tag:'Fußball mit Autos', grad:'linear-gradient(135deg,#0d2b4a,#3a1a0d)' },
@@ -5182,7 +5184,7 @@ function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
   });
   return result;
 }
-const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'], wwm:['team'], hff:['team'], crab:['versus'] };
+const GAME_MODE_RESTRICTIONS = { fg:['versus'], ph:['team'], repo:['team'], lethal:['team'], cw:['team'], wwm:['team'], hff:['team'], crab:['versus'], pico:['team'] };
 const GAME_ROUND_PRESETS = { cs2:[6,9,12,16,24], val:[6,9,12,16,24], ow2:[2,3], mr:[2,3] };
 /* Ingame-Modi für Spiele mit echtem Rundensystem (Valorant, CS2). 'match' = ein komplettes
    Match hat viele interne Runden (bis 24) — hier soll 1 App-Runde = 1 komplettes Match sein,
@@ -5332,6 +5334,34 @@ const CS2_CHALLENGES = [
   C('Gewinnt ohne einen Spieler zu verlieren.','schwer','perfect'),
   C('Entschärft die Bombe in letzter Sekunde erfolgreich.','schwer','bomb-defuse'),
   C('Nur {player} darf im gesamten Match die AWP/das Scharfschützengewehr benutzen.','schwer','named-player-restriction'),
+];
+
+const R6_CHALLENGES = [
+  C('Gewinnt das Match.','leicht','win'),
+  C('Niemand darf denselben Operator zweimal hintereinander wählen.','leicht','operator-variety'),
+  C('Kein Spieler darf mehr als 8 Tode haben.','leicht','deaths'),
+  C('Alle spielen mindestens einmal auf der Angreifer-Seite.','leicht','side-play'),
+  C('Alle spielen mindestens einmal auf der Verteidiger-Seite.','leicht','side-play'),
+  C('Gewinnt eine Runde als Angreifer.','leicht','side-win'),
+  C('Gewinnt eine Runde als Verteidiger.','leicht','side-win'),
+  C('Setzt in jeder Runde mindestens eine Aufklärungsdrohne ein, bevor ihr den ersten Raum betretet.','mittel','recon'),
+  C('Verstärkt gemeinsam mindestens zwei Wände in der Vorbereitungsphase.','mittel','reinforce'),
+  C('Gewinnt eine Runde durch einen Wand- oder Deckendurchbruch statt durch die Tür.','mittel','breach'),
+  C('Mindestens zwei Headshots pro Spieler im Match.','mittel','headshots'),
+  C('Gewinnt eine Runde nur mit Sekundärwaffen (Pistolen).','mittel','weapon'),
+  C('Verteidigt das Bombenziel erfolgreich, ohne dass der Gegner den Zielraum betritt.','mittel','defense-tactic'),
+  C('Plant oder verteidigt die Bombe in mindestens drei Runden.','mittel','bomb-plant'),
+  C('Niemand darf während des Matches campen — bewegt euch aktiv.','mittel','playstyle'),
+  C('Gewinnt eine Runde im Geisel-Modus, ohne dass die Geisel verletzt wird.','mittel','hostage'),
+  C('Setzt in mindestens einer Runde ein Operator-Gadget entscheidend ein (Falle, Schild, Kamera o. Ä.).','mittel','gadget'),
+  C('Gewinnt eine Runde nur mit Schrotflinten oder Faustfeuerwaffen.','schwer','weapon'),
+  C('Gewinnt eine Runde, ohne ein einziges Gadget zu benutzen.','schwer','no-gadget'),
+  C('Gewinnt drei Runden in Folge.','schwer','streak'),
+  C('Gewinnt das Match, ohne dass ein Spieler stirbt (Perfect Match).','schwer','perfect'),
+  C('Entschärft die Bombe in den letzten 5 Sekunden der Zeit.','schwer','bomb-defuse'),
+  C('Gewinnt eine Runde als Verteidiger, obwohl bereits alle Wände durchbrochen wurden.','schwer','clutch-defense'),
+  C('Nur {player} darf im gesamten Match als Verteidiger spielen — der Rest übernimmt ausschließlich den Angriff.','schwer','named-player-restriction'),
+  C('Gewinnt eine Runde in einer 1-gegen-3-Unterzahl oder schlechter (Clutch).','schwer','clutch'),
 ];
 
 const VAL_CHALLENGES = [
@@ -5538,6 +5568,29 @@ const HFF_PERSONAL = [
   C('Erreicht als Einzige(r) einen geheimen/optionalen Bereich des Levels.','schwer','secret-area-race'),
   C('Rettet einen Mitspieler kurz vorm Absturz (Gruppenvotum für die beste Rettung).','schwer','save-race'),
 ];
+const PICO_CHALLENGES = [
+  C('Schließt ein Level gemeinsam ab, ohne dass jemand vom Bildschirmrand erfasst/geschluckt wird.','leicht','no-edge-death'),
+  C('Jeder muss mindestens einen Hebel oder Schalter betätigen, der dem Team hilft.','leicht','teamwork'),
+  C('Sprecht euch vor einem kniffligen Sprung-Abschnitt kurz ab, statt einfach loszulaufen.','leicht','planning'),
+  C('Schließt ein Level ab, ohne dass die Kamera durch einen zurückbleibenden Spieler blockiert.','mittel','stay-together'),
+  C('Baut euch gemeinsam eine Sprung-/Kletterhilfe, um eine schwer erreichbare Plattform zu erreichen.','mittel','human-chain'),
+  C('Löst ein Rätsel, bei dem mindestens zwei Spieler exakt gleichzeitig einen Schalter halten müssen.','mittel','sync-switch'),
+  C('Schließt ein Level ab, ohne dass ein Spieler länger als 10 Sekunden vom Rest getrennt hängen bleibt.','mittel','no-separation'),
+  C('Schließt ein Level komplett ohne Sprachchat ab — nur Gesten/Zeichen erlaubt.','schwer','silent-run'),
+  C('Schließt ein Level ab, ohne dass ein einziger Spieler stirbt/zurückgesetzt wird.','schwer','flawless'),
+  C('Löst ein Level, bei dem alle Spieler gleichzeitig das Ziel erreichen müssen.','schwer','sync-finish'),
+  C('{player} darf im gesamten Level keinen einzigen Schalter/Hebel selbst betätigen — nur die anderen dürfen.','schwer','named-player-restriction'),
+  C('Schließt zwei Level hintereinander ab, mit insgesamt maximal 2 Fehlversuchen/Resets.','schwer','multi-level'),
+];
+const PICO_PERSONAL = [
+  C('Löst als Erste(r) einen Teil-Abschnitt oder Schalter im Level.','leicht','first-solve-race'),
+  C('Wenigste eigene Fehlversuche/Stürze.','leicht','mistake-race'),
+  C('Trägt oder steuert das entscheidende Objekt (Schlüssel, Kiste) am längsten.','mittel','carry-race'),
+  C('Findet als Erste(r) den Weg zu einem versteckten Bonusbereich (falls vorhanden).','mittel','secret-race'),
+  C('Hält einen Schalter/Knopf am längsten durchgehend gedrückt.','mittel','hold-race'),
+  C('Erreicht als Erste(r) das Levelziel (bei nicht-synchronen Zielen).','schwer','first-finish-race'),
+  C('Löst die meisten Level-Abschnitte im Alleingang, während der Rest wartet.','schwer','solo-carry-race'),
+];
 const GOLF_CHALLENGES = [
   C('Spielt eine komplette Runde im klassischen Mini-Golf-Modus.','leicht','classic-round'),
   C('Jeder muss mindestens einmal ein Power-Up gegen einen Mitspieler einsetzen.','leicht','powerup'),
@@ -5672,9 +5725,9 @@ function personalPoolFor(gameId, gameMode){
   return custom.length ? (base||[]).concat(custom) : base;
 }
 const CHALLENGE_SOURCES = {
-  cs2: CS2_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
+  cs2: CS2_CHALLENGES, r6: R6_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
   fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES, wwm: WWM_CHALLENGES,
-  among: AMONG_CHALLENGES, hff: HFF_CHALLENGES, golf: GOLF_CHALLENGES, crab: CRAB_CHALLENGES, rl: RL_CHALLENGES, gb: GB_CHALLENGES,
+  among: AMONG_CHALLENGES, hff: HFF_CHALLENGES, pico: PICO_CHALLENGES, golf: GOLF_CHALLENGES, crab: CRAB_CHALLENGES, rl: RL_CHALLENGES, gb: GB_CHALLENGES,
 };
 
 /* ============================================================ PERSONAL POOLS (Gegeneinander, competitive per player) ============================================================ */
@@ -5693,6 +5746,22 @@ const CS2_PERSONAL = [
   C('Erste Bomben-Entschärfung des Matches.','schwer','bomb-defuse-race'),
   C('Die längste Killserie (Streak) des Matches.','schwer','streak-race'),
   C('Erster Ace des Matches.','schwer','ace-race'),
+];
+const R6_PERSONAL = [
+  C('Wenigste Tode im Match.','leicht','deaths-race'),
+  C('Meiste Assists im Match.','leicht','assist-race'),
+  C('Erste Elimination des Matches.','leicht','first-kill-race'),
+  C('Meiste Kills im Match.','mittel','kills-race'),
+  C('Meiste Headshots im Match.','mittel','headshots-race'),
+  C('Höchster Schaden im Match.','mittel','damage-race'),
+  C('Meiste Entry-Frags (erster Kill der Runde) über das gesamte Match.','mittel','entry-race'),
+  C('Meiste erfolgreiche Drohnen-Spots/Markierungen.','mittel','recon-race'),
+  C('Erster Bomben-Plant des Matches.','mittel','bomb-plant-race'),
+  C('Meiste erfolgreiche Wanddurchbrüche (Breaches).','mittel','breach-race'),
+  C('Höchste Killstreak im Match.','schwer','streak-race'),
+  C('Erste Bomben-Entschärfung des Matches.','schwer','bomb-defuse-race'),
+  C('Gewinnt einen 1-gegen-2-Clutch oder größer.','schwer','clutch-race'),
+  C('Erster Ace des Matches (gesamtes gegnerisches Team alleine eliminiert).','schwer','ace-race'),
 ];
 const VAL_PERSONAL = [
   C('Die wenigsten Tode im Match.','leicht','deaths-race', ['Duelist','Initiator','Controller','Sentinel']),
@@ -5803,9 +5872,9 @@ const FINALS_PERSONAL = [
   C('Bester Einzelspieler des Matches (Gruppenvotum).','schwer','mvp-race', ['Light','Medium','Heavy']),
 ];
 const PERSONAL_SOURCES = {
-  cs2: CS2_PERSONAL, ow2: OW2_PERSONAL, mr: MR_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
+  cs2: CS2_PERSONAL, r6: R6_PERSONAL, ow2: OW2_PERSONAL, mr: MR_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
   fg: FG_PERSONAL, ph: PH_PERSONAL, repo: REPO_PERSONAL, lethal: LETHAL_PERSONAL, cw: CW_PERSONAL,
-  among: AMONG_PERSONAL, hff: HFF_PERSONAL, golf: GOLF_PERSONAL, crab: CRAB_PERSONAL, rl: RL_PERSONAL, gb: GB_PERSONAL,
+  among: AMONG_PERSONAL, hff: HFF_PERSONAL, pico: PICO_PERSONAL, golf: GOLF_PERSONAL, crab: CRAB_PERSONAL, rl: RL_PERSONAL, gb: GB_PERSONAL,
 };
 
 const DIFF_ORDER = { leicht: 0, mittel: 1, schwer: 2 };
