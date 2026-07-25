@@ -144,6 +144,8 @@
   .scoreboard-actions{ display:flex; gap:8px; flex:none; flex-wrap:wrap; justify-content:flex-end; }
   .sb-btn{ background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); padding:8px 14px; border-radius:999px; font-size:0.82rem; font-weight:700; }
   .sb-btn:hover{ border-color:var(--turquoise); }
+  .sb-btn:disabled, .sb-btn.joker-disabled{ opacity:.42; filter:grayscale(1); cursor:not-allowed; border-color:var(--border); color:var(--muted); }
+  .sb-btn:disabled:hover, .sb-btn.joker-disabled:hover{ border-color:var(--border); color:var(--muted); }
   .sb-btn.danger:hover{ border-color:var(--lose); color:var(--lose); }
   .score-total{ text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.35rem; margin:4px 0 6px; }
   .score-total span{ color:var(--turquoise-bright); }
@@ -3526,8 +3528,8 @@ async function checkActiveRound(){
   // Warten auf Mitspieler während der Helden-Auslosung.
   const signature = nextRound ? JSON.stringify([
     nextRound.id, nextRound.status, nextRound.hero_revealed, nextRound.hero_assignment,
-    nextRound.personally_done, nextRound.pending_joker, nextRound.hero_joker_used, nextRound.spied_pairs,
-    nextRound.pending_skip, nextRound.skip_votes,
+    nextRound.personally_done, nextRound.pending_joker, nextRound.hero_joker_used, nextRound.challenge_joker_used,
+    nextRound.sabotaged_no_joker, nextRound.spied_pairs, nextRound.pending_skip, nextRound.skip_votes,
   ]) : null;
   const changed = signature !== lastCheckedRoundSignature;
   lastCheckedRoundSignature = signature;
@@ -3916,17 +3918,18 @@ async function requestJoker(type, forSelf){
   if(currentRound.pending_skip){ showAlert('Es läuft gerade eine Abstimmung zum Überspringen — die muss erst abgeschlossen sein.'); return; }
   const rerollCost = 3;
   if(shopBalance(currentUser.username) < rerollCost){ showAlert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`, '💸'); return; }
-  // Jeder-gegen-Jeden ist ein persönlicher Wettbewerb: Der Challenge-Reroll wird sofort
-  // ausgeführt und nie als Abstimmung in die gemeinsame Runde geschrieben. Damit bleibt er
-  // für die anderen Spieler vollständig unsichtbar.
-  if(currentRound.mode==='versus' && type==='personal_challenge'){
-    const used=(currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
+  // Jeder-gegen-Jeden ist ein persönlicher Wettbewerb: Jeder Joker wirkt sofort nur für die
+  // anfragende Person. Es gibt keine Abstimmung und keine sichtbare Aktion für das Gegenüber.
+  if(currentRound.mode==='versus' && (type==='personal_challenge' || type==='hero')){
+    const usedKey = type==='hero' ? 'hero_joker_used' : 'challenge_joker_used';
+    const used=(currentRound[usedKey]||[]).filter(id=>id===currentUser.id).length;
     if(used>=maxJokerUses()){ showAlert(`Du hast für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Rerolls verbraucht.`, '🃏'); return; }
     const payer=statsStore[currentUser.username];
     if(payer){ payer.spent=(payer.spent||0)+rerollCost; saveStats(); }
-    await executePersonalChallengeJoker(currentUser.id);
+    if(type==='hero') await executePersonalHeroJoker(currentUser.id);
+    else await executePersonalChallengeJoker(currentUser.id);
     await loadRoundItems(); renderTeamPage();
-    showToast('Deine Challenges wurden neu gewürfelt.', '🃏');
+    showToast(type==='hero' ? 'Dein Held wurde neu ausgelost.' : 'Deine Challenges wurden neu gewürfelt.', '🃏');
     return;
   }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
