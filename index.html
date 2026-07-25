@@ -44,8 +44,7 @@
   .back-btn svg{ width:18px; height:18px; }
   .page-title{ font-size:1.35rem; font-weight:700; display:flex; align-items:center; justify-content:center; text-align:center; gap:10px; flex:1; min-width:0; overflow:hidden; }
   #team-page-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .page-title .ico{ font-size:1.5rem; display:inline-flex; }
-  .page-title .ico svg{ width:24px; height:24px; }
+  .page-title .ico{ display:none; }
   .content{ position:relative; z-index:1; max-width:1000px; margin:0 auto; padding:20px 24px 100px; }
 
   .home-header{ text-align:center; padding:56px 20px 12px; position:relative; z-index:1; }
@@ -695,6 +694,10 @@
      (Motto, Lieblingsspiel, bevorzugte Rolle/Modus, Erfahrung) aus den Benutzer-Einstellungen. */
   .chip.member-clickable{ cursor:pointer; transition:border-color 0.2s ease, transform 0.15s ease; }
   .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
+  .chip.friend-chip{ border-radius:20px; row-gap:6px; }
+  @media (max-width:520px){
+    .chip.friend-chip{ padding:10px 12px; gap:6px; }
+  }
   .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:24px; }
   .toast-item{ pointer-events:auto; max-width:420px; width:max-content; margin:0 auto; display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.45); border-radius:14px; padding:12px 16px; font-size:0.92rem; font-weight:600; color:var(--text); animation: toast-in-kf 0.25s ease-out; }
@@ -1903,11 +1906,10 @@ async function renderFriendsPage(){
         // Leere gelaufen ("geht nicht" bei Freunden aus derselben Gruppe).
         const alreadyIn = myTeam && memberIds.has(p.id);
         const canInvite = myTeam && !alreadyIn;
-        html += `<div class="chip readonly member-clickable${bannerClassFor(friendBanner)}" style="width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;${friendBanner?bannerStyleFor(friendBanner):''}" onclick="showFriendProfile('${p.id}')" title="Profil von ${p.username} ansehen">
+        html += `<div class="chip readonly member-clickable friend-chip${bannerClassFor(friendBanner)}" style="width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;${friendBanner?bannerStyleFor(friendBanner):''}" onclick="showFriendProfile('${p.id}')" title="Profil von ${p.username} ansehen">
           ${bannerImgTagHTML(friendBanner)}
           <span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;">${renderAccountAvatarHTML(p.avatar,20)} ${badgeIconHTML(friendBadge)}${glowNameHTML(p.username,p.username)} ${onlineDotHTML(p.last_active, true)}</span>
           <span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;">
-            <span style="color:var(--text-muted);">👤 Profil</span>
             ${canInvite?`<button class="sb-btn" style="padding:5px 8px;" onclick="event.stopPropagation(); inviteFriendToTeam('${p.id}','${p.username}')">📨 Einladen</button>`:(alreadyIn?'<span style="color:var(--text-faint);">schon dabei</span>':'')}
             <button onclick="event.stopPropagation(); removeFriend('${p.id}','${p.username}')" title="Freund entfernen">✕</button>
           </span>
@@ -6570,9 +6572,83 @@ const VAL_DEATHMATCH_PERSONAL = [
   C('Höchste Killstreak im Match.','schwer','streak-race'),
   C('Erster mit 30 Kills.','schwer','first-to-race'),
 ];
+const FN_BUILD_CHALLENGES = [
+  C('Gewinnt eine Victory Royale.','leicht','win'),
+  C('Baut innerhalb der ersten 10 Sekunden nach der Landung eine Rampe.','leicht','build'),
+  C('Alle müssen mindestens einmal eine 1x1-Box bauen und sich darin heilen.','leicht','build'),
+  C('Sammelt gemeinsam mindestens 500 Materialien, bevor sich der erste Sturmring schließt.','leicht','build'),
+  C('Niemand darf in der ersten Minute nach der Landung schießen.','leicht','playstyle'),
+  C('Alle müssen mindestens eine legendäre oder mythische Waffe aufheben.','leicht','loot'),
+  C('Nutzt mindestens einmal ein Fahrzeug.','leicht','vehicle'),
+  C('Baut eine Verteidigungsstruktur mit mindestens 4 Wänden, bevor euch der Sturm erreicht.','mittel','build'),
+  C('Gewinnt einen Boxfight (1x1-Gebäude-Duell) gegen einen Gegner.','mittel','build'),
+  C('Baut eine Rampe bis in die nächste Sturmzone, bevor sich der Ring schließt.','mittel','build'),
+  C('Erzielt eine Elimination, während ihr auf einer selbst gebauten Rampe steht.','mittel','build'),
+  C('Editet erfolgreich ein Fenster oder eine Tür, um damit einen Gegner zu eliminieren.','mittel','edit'),
+  C('Baut eine komplette Festung (4 Wände + Dach) in der Top-10-Zone.','mittel','build'),
+  C('Erzielt eine Elimination mit einer Schrotflinte.','mittel','weapon'),
+  C('Gewinnt einen Ramp-Rush (Wettrennen auf einer Rampe nach oben) gegen einen Gegner.','schwer','build'),
+  C('Erzielt eine Elimination durch eine editierte Piece-Kombo (z. B. Doppel-Edit).','schwer','edit'),
+  C('Baut in der letzten Zone eine komplette Festung und verteidigt sie erfolgreich bis zum Sieg.','schwer','build'),
+  C('Zerstört gezielt die Bau-Struktur eines Gegners, um an ihn heranzukommen.','schwer','build'),
+  C('Gewinnt, ohne dass jemand aus eurer Gruppe eliminiert wird (Flawless Victory).','schwer','flawless'),
+  C('Nur {player} darf im gesamten Match bauen — alle anderen spielen ganz ohne Baumöglichkeit.','schwer','named-player-restriction'),
+  C('Mindestens 10 Eliminierungen als gesamte Gruppe.','schwer','kills'),
+];
+const FN_BUILD_PERSONAL = [
+  C('Wenigste Tode/frühestes Ausscheiden — überlebt am längsten.','leicht','survive-race'),
+  C('Erste gebaute Struktur des Matches.','leicht','build-race'),
+  C('Meiste gesammelte Materialien im Match.','leicht','materials-race'),
+  C('Erste Elimination des Matches.','leicht','first-kill-race'),
+  C('Meiste Eliminierungen im Match.','mittel','kills-race'),
+  C('Höchster Schaden im Match.','mittel','damage-race'),
+  C('Gewinnt den ersten Boxfight des Matches.','mittel','boxfight-race'),
+  C('Höchste gebaute Struktur (meiste Etagen übereinander).','mittel','build-race'),
+  C('Schnellste 90°-Rampen-Kombo (Turtle) im Match.','schwer','build-skill-race'),
+  C('Höchste Platzierung, ohne eine einzige Elimination zu holen.','schwer','placement-race'),
+  C('Holt die entscheidende letzte Elimination für die Victory Royale.','schwer','clutch-race'),
+  C('Längste Überlebenszeit im gesamten Match.','schwer','survive-race'),
+];
+const FN_ZEROBUILD_CHALLENGES = [
+  C('Gewinnt eine Victory Royale.','leicht','win'),
+  C('Alle müssen an einem benannten Ort landen (z. B. Tilted Towers, Retail Row).','leicht','landing'),
+  C('Niemand darf in der ersten Minute nach der Landung schießen.','leicht','playstyle'),
+  C('Alle müssen mindestens eine Truhe öffnen.','leicht','loot'),
+  C('Nutzt mindestens einmal ein Fahrzeug.','leicht','vehicle'),
+  C('Niemand darf denselben Landeort wie im letzten Match wählen.','leicht','landing'),
+  C('Erzielt eine Elimination mit einer Schrotflinte.','mittel','weapon'),
+  C('Erzielt eine Elimination auf mindestens 50 Meter Entfernung.','mittel','weapon'),
+  C('Nutzt aktiv Deckung hinter Umgebungsobjekten, um einen Gegner zu eliminieren, ohne selbst getroffen zu werden.','mittel','playstyle'),
+  C('Alle müssen mindestens eine legendäre oder mythische Waffe aufheben.','mittel','loot'),
+  C('Gewinnt eine Fahrzeug-Verfolgungsjagd (Gegner aus einem Fahrzeug heraus eliminiert).','mittel','vehicle'),
+  C('Nutzt ein Mobilitäts-Item (z. B. Greifhaken, Schockwelle), um eine Elimination vorzubereiten.','mittel','mobility'),
+  C('Erreicht gemeinsam die letzten 2 Zonen (Top 5), ohne dass jemand aus eurem Team eliminiert wurde.','schwer','teamplay'),
+  C('Gewinnt, ohne einen einzigen Heiltrank oder Verband zu benutzen.','schwer','heal'),
+  C('Mindestens 10 Eliminierungen als gesamte Gruppe.','schwer','kills'),
+  C('Nur {player} darf im gesamten Match ein Scharfschützengewehr benutzen — alle anderen verzichten.','schwer','named-player-restriction'),
+  C('Gewinnt, ohne dass jemand aus eurer Gruppe eliminiert wird (Flawless Victory).','schwer','flawless'),
+  C('Erzielt eine Elimination durch eine Falle oder Umgebungsschaden.','schwer','environmental-kill'),
+  C('Gewinnt einen Fight zahlenmäßig unterlegen (1 gegen mindestens 2 Gegner gleichzeitig).','schwer','clutch'),
+];
+const FN_ZEROBUILD_PERSONAL = [
+  C('Wenigste Tode — überlebt am längsten.','leicht','survive-race'),
+  C('Erste Elimination des Matches.','leicht','first-kill-race'),
+  C('Erste geöffnete Truhe des Matches.','leicht','loot-race'),
+  C('Höchster Schaden im Match.','mittel','damage-race'),
+  C('Meiste Eliminierungen im Match.','mittel','kills-race'),
+  C('Weiteste Distanz zurückgelegt (zu Fuß oder im Fahrzeug).','mittel','distance-race'),
+  C('Meiste Heilung durch Verbände/Tränke im Match.','mittel','healing-race'),
+  C('Erster im Team, der eine legendäre/mythische Waffe findet.','mittel','loot-race'),
+  C('Höchste Platzierung, ohne eine einzige Elimination zu holen.','schwer','placement-race'),
+  C('Längste Überlebenszeit im gesamten Match.','schwer','survive-race'),
+  C('Holt die entscheidende letzte Elimination für die Victory Royale.','schwer','clutch-race'),
+  C('Meiste Distanz-Eliminierungen (über 50 Meter) im Match.','schwer','weapon-race'),
+];
 const MODE_CHALLENGE_OVERRIDES = {
   cs2_deathmatch: { rules: CS2_DEATHMATCH_CHALLENGES, personal: CS2_DEATHMATCH_PERSONAL },
   val_deathmatch: { rules: VAL_DEATHMATCH_CHALLENGES, personal: VAL_DEATHMATCH_PERSONAL },
+  fn_build: { rules: FN_BUILD_CHALLENGES, personal: FN_BUILD_PERSONAL },
+  fn_zerobuild: { rules: FN_ZEROBUILD_CHALLENGES, personal: FN_ZEROBUILD_PERSONAL },
 };
 // Spielunabhängige "Persönlichkeits-Regeln" — bringen Chaos/Humor rein, unabhängig vom Spiel
 // selbst. Werden generisch in JEDEN Spiel-Pool gemischt (siehe rulesPoolFor), damit sie nicht 20x
@@ -9217,20 +9293,6 @@ function setupHeroRandomizer(prefix, heroes, roles, challengePool, challengeRang
     }
   });
 }
-[
-  ['ow2', OW2_HEROES, ['Tank','Damage','Support'], OW2_CHALLENGES, [2,3], 'Zusatz-Challenges'],
-  ['mr', MR_HEROES, ['Tank','Damage','Support'], MR_CHALLENGES, [2,3], 'Zusatz-Challenges'],
-  ['fp', FP_HEROES, ['Attack','Support'], FP_CHALLENGES, [3,5], 'Match-Challenges'],
-  ['val', VAL_AGENTS, ['Duelist','Initiator','Controller','Sentinel'], VAL_CHALLENGES, [3,5], 'Match-Challenges'],
-  ['finals', FINALS_CLASSES, ['Light','Medium','Heavy'], FINALS_CHALLENGES, [2,3], 'Match-Challenges'],
-].forEach(args=>{
-  try{ setupHeroRandomizer.apply(null, args); }
-  catch(e){
-    console.error('setupHeroRandomizer Setup-Fehler für', args[0], e);
-    const btn = document.getElementById(args[0]+'-roll');
-    if(btn){ btn.disabled = true; btn.title = 'Fehler beim Laden: ' + e.message; }
-  }
-});
 
 /* ============================================================ SIMPLE CHALLENGE GENERATORS (Free Play) ============================================================ */
 function setupChallengeGenerator(btnId, containerId, pool, min, max){
