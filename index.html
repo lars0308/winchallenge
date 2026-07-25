@@ -184,6 +184,16 @@
      Helden die Roulette-Auslosung übersprungen wird und direkt die neuen Challenges erscheinen. */
   .round-fade-in{ animation:round-fade-in-kf 0.4s ease-out; }
   @keyframes round-fade-in-kf{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  /* Übergangs-Karte zwischen zwei Spielen im "Spiele nacheinander"-Ablauf, für Spiele ohne
+     Helden-Roulette — sorgt für einen weicheren, spürbaren Wechsel statt eines abrupten Sprungs
+     direkt in die neuen Challenges. */
+  .game-intro-card{ text-align:center; padding:38px 20px 30px; border-radius:20px; border:1px solid var(--border-soft); overflow:hidden; position:relative; animation:game-intro-in-kf 0.5s cubic-bezier(0.16,1,0.3,1); }
+  .game-intro-icon{ font-size:3.4rem; line-height:1; margin-bottom:14px; display:inline-block; animation:game-intro-icon-kf 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35)); }
+  .game-intro-eyebrow{ text-transform:uppercase; letter-spacing:0.08em; font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; }
+  .game-intro-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.6rem; margin:0 0 4px; }
+  .game-intro-tag{ color:var(--text-muted); font-size:0.88rem; margin-bottom:22px; }
+  @keyframes game-intro-in-kf{ from{ opacity:0; transform:scale(0.94) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
+  @keyframes game-intro-icon-kf{ 0%{ opacity:0; transform:scale(0.4) rotate(-8deg); } 60%{ opacity:1; transform:scale(1.12) rotate(2deg); } 100%{ transform:scale(1) rotate(0deg); } }
   .confetti-piece{ position:absolute; top:50%; left:50%; font-size:2.1rem; opacity:0; pointer-events:none; z-index:5; animation: confetti-pop-kf 2.4s ease-out forwards; }
   @keyframes confetti-pop-kf{
     0%{ transform:translate(-50%,-50%) scale(0.4) rotate(0deg); opacity:0; }
@@ -1449,6 +1459,20 @@
   </div>
 </section>
 
+<!-- ===================== RAINBOW SIX SIEGE ===================== -->
+<section id="view-r6" class="view">
+  <div class="bg-watermark">💣</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-r6">💣</span> Rainbow Six Siege</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Wer wird dein Operator?</h2><p>Angriff/Verteidigung filtern, Team- oder Einzel-Modus wählen. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="filter-row" id="r6-filters" style="margin-bottom:18px;"></div>
+    <div class="mode-row" id="r6-modes"></div>
+    <div class="roll-zone"><button class="roll-btn" id="r6-roll"><span class="dice">🎲</span> Operator auslosen</button></div>
+    <div class="reveal-wrap" id="r6-hero"></div>
+    <div id="r6-challenges"></div>
+  </div>
+</section>
+
 <!-- ===================== FRAGPUNK ===================== -->
 <section id="view-fp" class="view">
   <div class="bg-watermark">🔫</div>
@@ -1529,6 +1553,83 @@
     <div class="spotlight-wrap"><div class="spotlight-beam" id="wwm-beam"></div></div>
     <div class="reveal-wrap" id="wwm-player"></div>
     <div id="wwm-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== AMONG US ===================== -->
+<section id="view-among" class="view">
+  <div class="bg-watermark">🛸</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-among">🛸</span> Among Us</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert eure Runde</h2><p>3–5 zufällige Zusatzregeln für die nächste Runde. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="among-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="among-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== HUMAN: FALL FLAT ===================== -->
+<section id="view-hff" class="view">
+  <div class="bg-watermark">🫠</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-hff">🫠</span> Human: Fall Flat</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert euer Level</h2><p>3–5 zufällige Zusatzregeln für den nächsten Durchlauf. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="hff-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="hff-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== PICO PARK ===================== -->
+<section id="view-pico" class="view">
+  <div class="bg-watermark">🧩</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-pico">🧩</span> Pico Park</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert euer Level</h2><p>3–5 zufällige Zusatzregeln für das nächste Rätsel. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="pico-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="pico-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== GOLF WITH YOUR FRIENDS ===================== -->
+<section id="view-golf" class="view">
+  <div class="bg-watermark">⛳</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-golf">⛳</span> Golf With Your Friends</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert eure Runde</h2><p>3–5 zufällige Zusatzregeln für die nächste Runde. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="golf-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="golf-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== CRAB GAME ===================== -->
+<section id="view-crab" class="view">
+  <div class="bg-watermark">🦀</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-crab">🦀</span> Crab Game</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert eure Runde</h2><p>3–5 zufällige Zusatzregeln für die nächste Runde. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="crab-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="crab-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== ROCKET LEAGUE ===================== -->
+<section id="view-rl" class="view">
+  <div class="bg-watermark">🚀</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-rl">🚀</span> Rocket League</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert euer Match</h2><p>3–5 zufällige Zusatzregeln für das nächste Match. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="rl-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="rl-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== GANG BEASTS ===================== -->
+<section id="view-gb" class="view">
+  <div class="bg-watermark">🥊</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-gb">🥊</span> Gang Beasts</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert eure Runde</h2><p>3–5 zufällige Zusatzregeln für die nächste Runde. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="gb-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="gb-challenges"></div>
   </div>
 </section>
 
@@ -3495,7 +3596,9 @@ async function startTeamRound(skipReadyCheck){
   }
   // Nur merken, wenn der Held für diese Kampagne überhaupt fest bleiben soll.
   teamRoundHeroAssignment = (heroPool && heroLockActive) ? heroAssignmentById : null;
-  const isMatchStyle = teamRoundScope==='match' && sessionMode !== 'chaos';
+  // Gleiche Logik wie lokal: "Spiele nacheinander" = 1 App-Runde pro komplettem Match, daher
+  // größeres Challenge-Set wie beim Match-Style statt der kleinen Standard-Composition.
+  const isMatchStyle = (teamRoundScope==='match' || teamRoundScope==='games') && sessionMode !== 'chaos';
   // Wurde der Held gesperrt und für diese Runde unverändert aus der Kampagne übernommen
   // (canReuseLockedHeroes), soll NICHT nochmal die Roulette-Auslosung laufen — alle Mitglieder
   // gelten dann von Anfang an als "haben ihren Helden schon gesehen", und es geht direkt und
@@ -3852,7 +3955,8 @@ async function executePersonalChallengeJoker(forUserId){
   if(!sb) return;
   await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', forUserId).eq('scope','personal');
   const difficulty = currentRound.difficulty || 'Mittel';
-  const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [forUserId], currentRound.hero_assignment, null, personalPoolFor(currentRound.game_id, currentRound.game_mode));
+  const forcedComp = currentRound.is_match_style ? MATCH_STYLE_COMPOSITION[difficulty] : null;
+  const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [forUserId], currentRound.hero_assignment, forcedComp, personalPoolFor(currentRound.game_id, currentRound.game_mode));
   const newItems = (singleSet[forUserId]||[]).map(c=>({ round_id: currentRound.id, user_id: forUserId, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_PERSONAL_DIFF_POINTS[c.diff] }));
   await sb.from('round_items').insert(newItems);
   const used = (currentRound.challenge_joker_used || []).slice();
@@ -5139,6 +5243,16 @@ const FP_HEROES = [
   ['Zephyr','Attack'],['Spider','Attack'],['Axon','Attack'],
   ['Nitro','Support'],['Serket','Support'],['Pathojen','Support'],['Kismet','Support'],['Sonar','Support'],
 ];
+const R6_OPERATORS = [
+  ['Ash','Angriff'],['Thermite','Angriff'],['Thatcher','Angriff'],['Sledge','Angriff'],['Twitch','Angriff'],
+  ['Blitz','Angriff'],['IQ','Angriff'],['Fuze','Angriff'],['Glaz','Angriff'],['Buck','Angriff'],
+  ['Blackbeard','Angriff'],['Capitão','Angriff'],['Hibana','Angriff'],['Jackal','Angriff'],['Zofia','Angriff'],
+  ['Ying','Angriff'],['Dokkaebi','Angriff'],['Nomad','Angriff'],['Iana','Angriff'],['Ace','Angriff'],
+  ['Rook','Verteidigung'],['Smoke','Verteidigung'],['Mute','Verteidigung'],['Bandit','Verteidigung'],['Kapkan','Verteidigung'],
+  ['Frost','Verteidigung'],['Valkyrie','Verteidigung'],['Caveira','Verteidigung'],['Echo','Verteidigung'],['Mira','Verteidigung'],
+  ['Jäger','Verteidigung'],['Vigil','Verteidigung'],['Alibi','Verteidigung'],['Maestro','Verteidigung'],['Clash','Verteidigung'],
+  ['Melusi','Verteidigung'],['Aruni','Verteidigung'],['Azami','Verteidigung'],['Wamai','Verteidigung'],['Thorn','Verteidigung'],
+];
 const VAL_AGENTS = [
   ['Iso','Duelist'],['Jett','Duelist'],['Neon','Duelist'],['Phoenix','Duelist'],['Raze','Duelist'],['Reyna','Duelist'],['Waylay','Duelist'],['Yoru','Duelist'],
   ['Breach','Initiator'],['Fade','Initiator'],['Gekko','Initiator'],['KAY/O','Initiator'],['Skye','Initiator'],['Sova','Initiator'],['Tejo','Initiator'],
@@ -5146,8 +5260,8 @@ const VAL_AGENTS = [
   ['Chamber','Sentinel'],['Cypher','Sentinel'],['Deadlock','Sentinel'],['Killjoy','Sentinel'],['Sage','Sentinel'],['Veto','Sentinel'],['Vyse','Sentinel'],
 ];
 const FINALS_CLASSES = [ ['Light','Light'], ['Medium','Medium'], ['Heavy','Heavy'] ];
-const HERO_GAMES = { ow2: OW2_HEROES, mr: MR_HEROES, fp: FP_HEROES, val: VAL_AGENTS, finals: FINALS_CLASSES };
-const ROLE_WEIGHTS = { ow2:{Tank:1,Damage:2,Support:2}, mr:{Tank:1,Damage:2,Support:2}, fp:{Attack:3,Support:2}, val:{Duelist:1,Initiator:1,Controller:1,Sentinel:1}, finals:{Light:1,Medium:1,Heavy:2} };
+const HERO_GAMES = { ow2: OW2_HEROES, mr: MR_HEROES, fp: FP_HEROES, val: VAL_AGENTS, finals: FINALS_CLASSES, r6: R6_OPERATORS };
+const ROLE_WEIGHTS = { ow2:{Tank:1,Damage:2,Support:2}, mr:{Tank:1,Damage:2,Support:2}, fp:{Attack:3,Support:2}, val:{Duelist:1,Initiator:1,Controller:1,Sentinel:1}, finals:{Light:1,Medium:1,Heavy:2}, r6:{Angriff:1,Verteidigung:1} };
 function rolesForGame(gameId){ const w = ROLE_WEIGHTS[gameId]; return w ? Object.keys(w) : null; }
 /* Held-Pool ggf. auf eine einzelne Rolle einschränken (für den Rollen-Filter oder für einen
    Joker-Reroll, der konsistent innerhalb derselben Rolle bleiben soll). */
@@ -5247,6 +5361,7 @@ const ROLE_META = {
   Duelist:{icon:'⚔️', color:'#f87171'}, Initiator:{icon:'🎯', color:'var(--turquoise)'},
   Controller:{icon:'🌀', color:'var(--purple)'}, Sentinel:{icon:'🛡️', color:'#34d399'},
   Light:{icon:'🏃', color:'var(--turquoise)'}, Medium:{icon:'💊', color:'var(--gold)'}, Heavy:{icon:'🛡️', color:'var(--purple)'},
+  Angriff:{icon:'💥', color:'var(--damage)'}, Verteidigung:{icon:'🧱', color:'var(--tank)'},
 };
 
 /* ============================================================ RULES POOLS (shared, team-wide) ============================================================ */
@@ -7332,7 +7447,7 @@ function renderSetupPage(){
   }
 
   const heroHint = document.getElementById('setup-hero-hint');
-  if(setupState.scope === 'games') heroHint.textContent = 'Bei Spielen mit Helden (z. B. Overwatch, Marvel Rivals, FragPunk, Valorant) wird pro Runde automatisch ein Held ausgelost.';
+  if(setupState.scope === 'games') heroHint.textContent = 'Bei Spielen mit Helden (z. B. Overwatch, Marvel Rivals, FragPunk, Valorant, Rainbow Six Siege) wird pro Runde automatisch ein Held ausgelost.';
   if(setupState.scope === 'match') heroHint.textContent = 'Bei Spielen mit Helden bleibt der Held fürs ganze Match gleich.';
   else if(setupState.gameId && !HERO_GAMES[setupState.gameId]) heroHint.textContent = 'Dieses Spiel hat keine Helden — es werden nur Regeln/Challenges verlost.';
   else if(setupState.gameId) heroHint.textContent = 'Zusätzlich wird für jeden Spieler ein Held ausgelost.';
@@ -7616,7 +7731,10 @@ function buildRound(){
   const rulesPool = rulesPoolFor(session.gameId, session.gameMode);
   session.revealedPlayer = null;
   session.votingPhase = false;
-  const isMatchStyle = session.matchStyle === 'match' && session.sessionMode !== 'chaos';
+  // Im "Spiele nacheinander"-Scope deckt eine App-Runde jeweils ein komplettes Match des Spiels ab
+  // (nicht nur eine kurze Ingame-Runde) — daher genau wie beim expliziten Match-Style ein größeres
+  // Challenge-Set statt der kleinen Standard-Composition.
+  const isMatchStyle = (session.matchStyle === 'match' || session.scope === 'games') && session.sessionMode !== 'chaos';
   const forcedComp = isMatchStyle ? MATCH_STYLE_COMPOSITION[session.difficultyKey] : null;
   if(session.mode === 'team'){
     session.sharedRules = generateChallengesForRound(rulesPool, session.difficultyKey, session.sessionMode, forcedComp, session.players);
@@ -7640,7 +7758,7 @@ function startSession(cfg){
     totalRounds: cfg.totalRounds, currentRound: 1, pointGoal: cfg.pointGoal || null, players: cfg.players,
     cumulativeTeam: cfg.mode==='team' ? 0 : undefined,
     cumulativePlayers: cfg.mode==='versus' ? Object.fromEntries(cfg.players.map(p=>[p,0])) : undefined,
-    finished: false, awaitingNextGameChoice: false,
+    finished: false, awaitingNextGameChoice: false, pendingGameIntro: false,
   };
   buildRound();
   saveSession(); renderScoreboard(); updateContinueButton();
@@ -7679,6 +7797,7 @@ function advanceGameSequence(){
   session.currentGameIndex++; session.currentRound++;
   session.gameId = session.gameSequence[session.currentGameIndex];
   session.awaitingNextGameChoice = false;
+  session.pendingGameIntro = !HERO_GAMES[session.gameId];
   buildRound(); saveSession(); renderScoreboard();
 }
 function extendSession(){
@@ -7755,6 +7874,19 @@ function renderHeroRow(entries, avatarResolver){
       </div></div>`;
   });
   html += '</div>'; return html;
+}
+function renderGameIntro(el, headHtml){
+  const g = GAMES.find(x=>x.id===session.gameId);
+  el.innerHTML = headHtml + `
+    <div class="game-intro-card" style="background:${g?g.grad:'var(--bg-card)'};">
+      <div class="game-intro-eyebrow">Nächstes Spiel</div>
+      <div class="game-intro-icon">${g?g.icon:'🎮'}</div>
+      <div class="game-intro-name">${GAME_NAME[session.gameId]}</div>
+      <div class="game-intro-tag">${g?g.tag:''}</div>
+      <button class="round-prompt-btn primary" id="game-intro-go">▶️ Los geht's</button>
+    </div>`;
+  const btn = document.getElementById('game-intro-go');
+  if(btn) btn.onclick = ()=>{ session.pendingGameIntro = false; saveSession(); renderScoreboard(); };
 }
 function renderSessionHeroReveal(el, headHtml){
   const player = session.players[session.heroRevealIndex];
@@ -7844,6 +7976,12 @@ function renderScoreboard(){
       </div>
       <div class="scoreboard-actions"><button class="sb-btn" onclick="extendSession()">➕ Verlängerung</button><button class="sb-btn danger" onclick="endSession()">✕ Beenden</button></div>
     </div>`;
+
+  if(session.pendingGameIntro){
+    el.innerHTML = html;
+    renderGameIntro(el, html);
+    return;
+  }
 
   if(session.heroAssignment && !session.heroRevealDone){
     el.innerHTML = html;
@@ -8226,6 +8364,13 @@ setupChallengeGenerator('ph-roll', 'ph-challenges', PH_CHALLENGES, 3, 5);
 setupChallengeGenerator('repo-roll', 'repo-challenges', REPO_CHALLENGES, 3, 5);
 setupChallengeGenerator('lethal-roll', 'lethal-challenges', LETHAL_CHALLENGES, 3, 5);
 setupChallengeGenerator('cw-roll', 'cw-challenges', CW_CHALLENGES, 3, 5);
+setupChallengeGenerator('among-roll', 'among-challenges', AMONG_CHALLENGES, 3, 5);
+setupChallengeGenerator('hff-roll', 'hff-challenges', HFF_CHALLENGES, 3, 5);
+setupChallengeGenerator('pico-roll', 'pico-challenges', PICO_CHALLENGES, 3, 5);
+setupChallengeGenerator('golf-roll', 'golf-challenges', GOLF_CHALLENGES, 3, 5);
+setupChallengeGenerator('crab-roll', 'crab-challenges', CRAB_CHALLENGES, 3, 5);
+setupChallengeGenerator('rl-roll', 'rl-challenges', RL_CHALLENGES, 3, 5);
+setupChallengeGenerator('gb-roll', 'gb-challenges', GB_CHALLENGES, 3, 5);
 
 /* ============================================================ WER WIRD MILLIONÄR ============================================================ */
 document.getElementById('wwm-roll').addEventListener('click', ()=>{
@@ -8254,6 +8399,7 @@ try{ setupHeroRandomizer('mr', MR_HEROES, Object.keys(ROLE_WEIGHTS.mr), MR_CHALL
 try{ setupHeroRandomizer('val', VAL_AGENTS, Object.keys(ROLE_WEIGHTS.val), VAL_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('val Roulette-Setup Fehler:', e); }
 try{ setupHeroRandomizer('finals', FINALS_CLASSES, Object.keys(ROLE_WEIGHTS.finals), FINALS_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('finals Roulette-Setup Fehler:', e); }
 try{ setupHeroRandomizer('fp', FP_HEROES, Object.keys(ROLE_WEIGHTS.fp), FP_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('fp Roulette-Setup Fehler:', e); }
+try{ setupHeroRandomizer('r6', R6_OPERATORS, Object.keys(ROLE_WEIGHTS.r6), R6_CHALLENGES, [3,5], 'Team-Challenges'); }catch(e){ console.error('r6 Roulette-Setup Fehler:', e); }
 function checkPasswordRecoveryRedirect(){
   if(window.location.hash.indexOf('type=recovery') !== -1){
     showView('reset-password');
