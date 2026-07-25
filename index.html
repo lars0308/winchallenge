@@ -324,6 +324,8 @@
 
   .solo-hero-list{ display:flex; flex-direction:column; gap:12px; max-width:520px; margin:0 auto 8px; }
   .solo-hero-item{ display:flex; flex-direction:column; gap:10px; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:14px 18px; opacity:0; transform:translateY(10px); animation:chip-in 0.4s ease forwards; }
+  .hero-block-compact{ font-size:0.8em; opacity:0.85; margin-top:14px; }
+  .hero-block-compact .solo-hero-item{ padding:8px 12px; border-radius:12px; }
   .solo-avatar{ position:relative; flex:none; width:64px; height:64px; border-radius:17px; display:flex; align-items:center; justify-content:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.15rem; color:#08080d; }
   .avatar-badge{ position:absolute; bottom:-5px; right:-5px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.72rem; border:2px solid var(--bg-card); }
   .online-dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--win); box-shadow:0 0 0 2px rgba(52,211,153,0.25), 0 0 8px -1px var(--win); flex:none; }
@@ -1856,7 +1858,7 @@ async function renderFriendsPage(){
         // Leere gelaufen ("geht nicht" bei Freunden aus derselben Gruppe).
         const alreadyIn = myTeam && memberIds.has(p.id);
         const canInvite = myTeam && !alreadyIn;
-        html += `<div class="chip readonly${canInvite?' member-clickable':''}${bannerClassFor(friendBanner)}" style="width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap;${friendBanner?bannerStyleFor(friendBanner):''}" ${canInvite?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
+        html += `<div class="chip readonly${canInvite?' member-clickable':''}${bannerClassFor(friendBanner)}" style="width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;${friendBanner?bannerStyleFor(friendBanner):''}" ${canInvite?`onclick="inviteFriendToTeam('${p.id}','${p.username}')"`:''}>
           ${bannerImgTagHTML(friendBanner)}
           <span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;">${renderAccountAvatarHTML(p.avatar,20)} ${badgeIconHTML(friendBadge)}${glowNameHTML(p.username,p.username)} ${onlineDotHTML(p.last_active, true)}</span>
           <span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;">
@@ -3792,6 +3794,16 @@ function toggleLoadoutItem(itemId){
 /* Lobby-Panel: hier (VOR dem Bereit-Drücken) wählt man, welche gekauften Vorteile man in die
    nächste Runde mitnimmt. Während einer laufenden Runde sind nur diese mitgenommenen Items
    einsetzbar — frisch gekaufte zählen erst ab der nächsten Runde. */
+// Aus der Lobby heraus soll "Zum Punkte-Shop" (wenn man noch keine Vorteile besitzt) direkt zur
+// Sabotage/Vorteile-Sektion springen, nicht einfach nur die Shop-Startseite mit allen Kategorien
+// (Abzeichen, Mützen, Banner, Leuchtnamen, Rahmen …) zeigen.
+function goToShopSabotage(){
+  showView('shop');
+  setTimeout(()=>{
+    const el = document.getElementById('shop-sabotage-card');
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  }, 50);
+}
 function renderLoadoutPicker(){
   if(!currentUser) return '';
   const s = statsStore[currentUser.username];
@@ -3803,7 +3815,7 @@ function renderLoadoutPicker(){
     return `<div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteile für die nächste Runde</div></div>
       <p class="setup-info" style="margin-top:0;">Noch keine Vorteile im Besitz — kauft sie im Punkte-Shop mit Punkten, die ihr durchs Spielen verdient. Sobald ihr etwas besitzt, könnt ihr es hier vor dem Rundenstart auswählen.</p>
-      <button class="settings-row-btn" onclick="showView('shop')" style="margin-top:2px;">
+      <button class="settings-row-btn" onclick="goToShopSabotage()" style="margin-top:2px;">
         <span class="settings-row-icon">🛒</span>
         <span class="settings-row-text"><span class="settings-row-title">Zum Punkte-Shop</span><span class="settings-row-sub">Guthaben: ${shopBalance(currentUser.username)} Punkte</span></span>
         <span class="settings-row-chev">›</span>
@@ -4630,18 +4642,20 @@ function renderTeamRoundSection(){
     const doneTitle = isHost ? `${uwDone} ${teamCampaignIndex+1}/${total} abgeschlossen` : `${uwDone} abgeschlossen`;
     let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon confetti-burst" id="team-done-confetti">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
     if(hasNext){
-      html += heroBlock;
+      // Punkte oben & groß, gespielter Held darunter kompakt — vorher andersrum, aber die Punkte
+      // sind das eigentlich Wichtige am Rundenabschluss, nicht der (schon bekannte) Held.
       html += renderLeaderboardTable(results, null, (username)=>{
         const member = teamMembers.find(m=>m.username===username);
         return renderAccountAvatarHTML(member ? member.avatar : null, 20);
       });
+      html += `<div class="hero-block-compact">${heroBlock}</div>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${teamCampaignIndex+2}/${total})</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
     } else if(isHost){
       if(teamCampaignSyncedFor !== currentRound.id){ teamCampaignSyncedFor = currentRound.id; syncCampaignSummary(); }
       html += renderCampaignFinalSummary(teamCampaignHistory);
-      html += heroBlock;
+      html += `<div class="hero-block-compact">${heroBlock}</div>`;
       html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen (${total}/${total} ${unitWordPlural(currentRound.scope)} gespielt).</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
       html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
@@ -4649,17 +4663,17 @@ function renderTeamRoundSection(){
       html += renderCampaignSummaryBlock(teamCampaignHistory);
     } else if(campaignDoneForMember){
       html += renderCampaignFinalSummary(syncedSummary.history);
-      html += heroBlock;
+      html += `<div class="hero-block-compact">${heroBlock}</div>`;
       html += `<p class="setup-info" style="margin-top:0;">🏆 Kampagne abgeschlossen — wartet auf den Team-Ersteller (👑) für eine neue Runde.</p>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
       html += renderCampaignSummaryBlock(syncedSummary.history);
     } else {
-      html += heroBlock;
       html += renderLeaderboardTable(results, null, (username)=>{
         const member = teamMembers.find(m=>m.username===username);
         return renderAccountAvatarHTML(member ? member.avatar : null, 20);
       });
+      html += `<div class="hero-block-compact">${heroBlock}</div>`;
       html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die nächste Runde startet…</div>`;
       html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
       html += `</div>`;
@@ -6159,21 +6173,21 @@ const MODE_CHALLENGE_OVERRIDES = {
 };
 // Spielunabhängige "Persönlichkeits-Regeln" — bringen Chaos/Humor rein, unabhängig vom Spiel
 // selbst. Werden generisch in JEDEN Spiel-Pool gemischt (siehe rulesPoolFor), damit sie nicht 20x
-// dupliziert werden müssen. Genau wie alle anderen Team-Regeln laufen sie über das bestehende
-// Ehrensystem (✅/❌-Abstimmung) — das gilt z.B. auch für "nicht vom Stuhl aufstehen", das lässt
-// sich technisch nicht anders prüfen als "nur flüstern" o.ä.
+// dupliziert werden müssen. WICHTIG: bewusst nur Regeln, die auch bei Online-Mitspielern (die man
+// nicht sehen kann, nur hören/im Spiel beobachten) tatsächlich kontrollierbar sind — rein visuelle
+// Dinge wie "Hand heben" oder "nicht aufstehen" wurden deshalb rausgenommen.
 const PERSONALITY_CHALLENGES = [
-  C('Bewegt euch die ganze Runde nur rückwärts, wenn ihr aufstehen müsst.','leicht','walk-backwards'),
   C('Sprecht die ganze Runde nur im Flüsterton miteinander.','leicht','whisper-only'),
   C('Sprecht euch die ganze Runde nur mit Gamer-Tag an, nie mit echtem Namen.','leicht','gamer-tag-only'),
   C('Jeder muss vor jedem Satz erst laut den eigenen Namen sagen.','leicht','name-before-speak'),
   C('Jeder muss zu Rundenbeginn ein kurzes Kampf-/Motivationszitat aufsagen.','leicht','motivation-quote'),
   C('Die Gruppe einigt sich auf ein Codewort — wer es versehentlich sagt, kriegt einen Punkt Abzug.','leicht','codeword'),
-  C('Wer reden will, muss dabei die Hand heben — sonst zählt es nicht.','mittel','hand-raise'),
+  C('Sprecht komplett ohne Füllwörter wie „äh" oder „ähm".','mittel','no-filler-words'),
   C('Sprecht die ganze Runde nur in Frageform miteinander.','mittel','question-form'),
   C('Sprecht die ganze Runde mit einem selbstgewählten Akzent.','mittel','accent'),
   C('Sprecht die ganze Runde nur in der dritten Person über euch selbst.','mittel','third-person'),
-  C('Niemand darf während des Matches von seinem Platz aufstehen oder den Stuhl verlassen.','mittel','no-standing'),
+  C('Bei jedem Sieg/Kill muss die Person hörbar jubeln.','mittel','victory-cheer'),
+  C('Wer flucht, muss danach sofort ein Kompliment an einen Mitspieler aussprechen.','mittel','curse-compliment'),
   C('Niemand darf während der Runde lachen — bei Fehlverhalten gibt es 1 Minute Sprechverbot.','schwer','no-laughing'),
 ];
 function rulesPoolFor(gameId, gameMode){
