@@ -4079,6 +4079,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
   if(item && item.mode && currentRound.mode !== item.mode){ showAlert(`"${item.label}" funktioniert nur im ${item.mode==='team'?'Team-Modus':'Jeder-gegen-Jeden-Modus'}.`, '🎯'); return; }
   const target = teamMembers.find(m=>m.user_id===targetUserId);
   if(!item || !target) return;
+  let transferredPoints = 0;
   const confirmMsg = item.selfOnly ? `"${item.label}" einsetzen? Wird dabei aus eurem Bestand verbraucht.` : `"${item.label}" gegen ${target.username} einsetzen? Wird dabei aus eurem Bestand verbraucht.`;
   if(!(await confirmAction(confirmMsg))) return;
   try{
@@ -4153,18 +4154,19 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       await sb.from('game_rounds').update({ spied_pairs: Array.from(list) }).eq('id', currentRound.id);
       currentRound.spied_pairs = Array.from(list);
     } else if(itemId==='point_thief'){
-      const theirOpen = roundItems.filter(it=>it.scope==='personal' && it.user_id===targetUserId && !it.result);
-      if(!theirOpen.length){ showAlert('Zielspieler hat keine offene Challenge zum Klauen.', '🦝'); return; }
-      const steal = theirOpen[randInt(0, theirOpen.length-1)];
-      // Der Punkte-Dieb darf sich nur dann verbrauchen, wenn die Challenge wirklich den Besitzer
-      // gewechselt hat. Vorher wurde ein Supabase-/RLS-Fehler ignoriert und das Item trotzdem
-      // abgezogen, wodurch es wie „geht nicht“ wirkte.
-      const { data: stolenRows, error: stealError } = await sb.from('round_items')
-        .update({ user_id: currentUser.id, text: '🦝 GEKLAUT: '+steal.text })
-        .eq('id', steal.id)
-        .eq('user_id', targetUserId)
-        .select('id');
-      if(stealError || !stolenRows || stolenRows.length!==1) throw new Error('Punkte-Dieb konnte die Challenge nicht übertragen'+(stealError?': '+stealError.message:'; prüfe die UPDATE-Policy für round_items in Supabase.'));
+      // Es wird keine Challenge mehr verschoben. Der Dieb kann nur Punkte klauen, die das Ziel
+      // in DIESER Runde bereits durch bestätigte Challenges besitzt — also nie mehr als vorhanden.
+      const targetRoundScore = roundItems.filter(it=>it.scope==='personal' && it.user_id===targetUserId)
+        .reduce((sum,it)=>sum + (it.result==='success'?it.points:it.result==='fail'?-it.points:0), 0);
+      const maximum = Math.min(10, Math.max(0, targetRoundScore));
+      if(maximum < 1){ showAlert('Dem Zielspieler können erst Punkte gestohlen werden, wenn er in dieser Runde bestätigte Punkte hat.', '🦝'); return; }
+      transferredPoints = randInt(1, maximum);
+      const transferItems = [
+        { round_id:currentRound.id, user_id:targetUserId, scope:'personal', text:`🦝 Punkte-Dieb: −${transferredPoints} Punkte`, diff:'leicht', points:transferredPoints, result:'fail', struck:true },
+        { round_id:currentRound.id, user_id:currentUser.id, scope:'personal', text:`🦝 Punkte-Dieb: +${transferredPoints} Punkte`, diff:'leicht', points:transferredPoints, result:'success', struck:true },
+      ];
+      const { error: transferError } = await sb.from('round_items').insert(transferItems);
+      if(transferError) throw new Error('Punkte-Dieb konnte die Punkte nicht übertragen: '+transferError.message);
     } else if(itemId==='delete_challenge'){
       if(!extraId) return;
       const target = roundItems.find(it=>it.id===extraId);
@@ -4181,7 +4183,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     showToast(ownAction, item.icon);
     if(!item.selfOnly && targetUserId !== currentUser.id){
       const targetMessage = itemId==='point_thief'
-        ? `${currentUser.username} hat dir eine offene Challenge geklaut.`
+        ? `${currentUser.username} hat dir ${transferredPoints} Punkte gestohlen.`
         : `${currentUser.username} hat „${item.label}“ gegen dich eingesetzt.`;
       // Die Aktion selbst bleibt erfolgreich, falls die Benachrichtigungs-Tabelle noch nicht
       // eingerichtet ist; der Fehler wird nur protokolliert und die nötige SQL steht in der Datei.
@@ -4864,7 +4866,11 @@ function renderTeamRoundSection(){
     recordMyLocalStatsForRound();
     const results = computeTeamRoundResults(currentRound, roundItems);
     const total = campaignTotal();
-    const hasNext = isHost && (teamCampaignIndex + 1) < total;
+    // „hasNext“ steuert nur den Host-Button. Für die Abschlussanimation brauchen wir dagegen
+    // den tatsächlichen Kampagnenstand — sonst war hasNext bei allen Nicht-Hosts immer false und
+    // Feuerwerk lief fälschlich nach jeder Zwischenrunde.
+    const campaignHasNext = (teamCampaignIndex + 1) < total;
+    const hasNext = isHost && campaignHasNext;
     const syncedSummary = myTeam.campaign_summary && myTeam.campaign_summary.roundId === currentRound.id ? myTeam.campaign_summary : null;
     const campaignDoneForMember = !isHost && !!syncedSummary;
     const uwDone = unitWord(currentRound.scope);
@@ -4908,9 +4914,9 @@ function renderTeamRoundSection(){
       html += `</div>`;
     }
     // Konfetti/Feuerwerk (bzw. UFO) soll nur beim Abschluss der GESAMTEN Kampagne kommen (alle
-    // Runden/Matches gespielt), nicht zwischen einzelnen Runden — "hasNext" heißt: es gibt noch
-    // eine weitere Runde, also ist die Kampagne noch nicht fertig.
-    if(!hasNext && teamCelebratedFor !== currentRound.id){
+    // Runden/Matches gespielt), nicht zwischen einzelnen Runden. campaignHasNext ist für alle
+    // Geräte gleich; hasNext gilt dagegen nur für den Host und darf hier nicht benutzt werden.
+    if(!campaignHasNext && teamCelebratedFor !== currentRound.id){
       teamCelebratedFor = currentRound.id;
       // Nur im Jeder-gegen-Jeden-Modus gibt es einen echten Top-Spieler (im Team-Modus ist das
       // Ergebnis geteilt) — nur dann kann das UFO-Flyby statt des normalen Feuerwerks greifen.
@@ -5009,6 +5015,12 @@ function renderCampaignSummaryBlock(history){
 }
 function nextCampaignRound(){
   unlockTeamRoundRender();
+  // Bei „gleicher Held“ ist die aktuelle Server-Zuordnung die Quelle der Wahrheit. So bleibt ein
+  // Helden-Klau auch in allen folgenden Runden der Kampagne bestehen, statt vom alten Cache wieder
+  // überschrieben zu werden.
+  if(currentRound && currentRound.scope==='rounds' && teamRoundHeroLockMode==='locked' && currentRound.session_mode!=='chaos' && currentRound.hero_assignment){
+    teamRoundHeroAssignment = currentRound.hero_assignment;
+  }
   teamCampaignIndex++;
   if(teamRoundScope==='games') teamRoundGameChoice = teamRoundSelectedGames[teamCampaignIndex];
   currentRound = null; roundItems = []; roundVotes = {};
@@ -7681,7 +7693,7 @@ const SHOP_SABOTAGE = [
   {id:'team_shield', icon:'🛡️', label:'Team-Schild', desc:'Nur im Team-Modus: Eine gemeinsame Team-Regel eurer Wahl zählt automatisch als geschafft.', cost:260, selfOnly:true, mode:'team'},
   {id:'team_spirit', icon:'🤝', label:'Team-Geist', desc:'Nur im Team-Modus: Eine zusätzliche leichte Team-Regel für Bonus-Punkte kommt dazu.', cost:160, selfOnly:true, mode:'team'},
   {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'Nur bei Jeder gegen Jeden: Deckt sofort die geheimen Challenges des Zielspielers für dich auf.', cost:200, mode:'versus'},
-  {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Eine zufällige offene Challenge des Zielspielers wandert zu dir rüber (du kannst sie stattdessen schaffen).', cost:280, mode:'versus'},
+  {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Stiehlt dem Zielspieler zufällig 1–10 seiner bereits erspielten Rundenpunkte und schreibt sie dir gut.', cost:280, mode:'versus'},
 ];
 let shopSelectedPlayer = null;
 function shopBalance(name){
