@@ -645,6 +645,8 @@
     .content{ padding:16px 8px 80px; } .landing-actions, .home-actions{ padding:0 8px; }
     .admin-block, .panel-block{ padding:16px 12px; }
     .settings-card{ padding:14px 10px 16px; }
+    .home-menu{ top:calc(10px + env(safe-area-inset-top)); right:calc(10px + env(safe-area-inset-right)); gap:10px; }
+    .header-menu-btn{ width:42px; height:42px; touch-action:manipulation; }
   }
   /* Desktop/PC: die App ist mobil-first gebaut (schmale, zentrierte Karten) — ab hier bekommt
      alles spürbar mehr Breite, damit es auf großen Bildschirmen nicht wie ein schmaler Handy-Streifen
@@ -693,7 +695,7 @@
      (Motto, Lieblingsspiel, bevorzugte Rolle/Modus, Erfahrung) aus den Benutzer-Einstellungen. */
   .chip.member-clickable{ cursor:pointer; transition:border-color 0.2s ease, transform 0.15s ease; }
   .chip.member-clickable:hover{ border-color:var(--turquoise); transform:translateY(-1px); }
-  .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .member-modal-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(8,8,13,0.72); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .custom-alert-backdrop{ position:fixed; inset:0; z-index:300; background:rgba(8,8,13,0.75); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:24px; }
   .toast-item{ pointer-events:auto; max-width:420px; width:max-content; margin:0 auto; display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border); box-shadow:0 8px 24px rgba(0,0,0,0.45); border-radius:14px; padding:12px 16px; font-size:0.92rem; font-weight:600; color:var(--text); animation: toast-in-kf 0.25s ease-out; }
   .toast-item.toast-leaving{ animation: toast-out-kf 0.25s ease-in forwards; }
@@ -712,7 +714,7 @@
   [class*="-banner-fx"]{ isolation:isolate; }
   .filter-pill[class*="-banner-fx"] > span{ position:relative; z-index:10; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7); }
   .member-modal-card > *{ position:relative; z-index:2; }
-  .member-modal-card{ position:relative; isolation:isolate; overflow:hidden; width:100%; max-width:380px; background:rgba(27,27,38,0.88); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
+  .member-modal-card{ position:relative; isolation:isolate; overflow:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; width:100%; max-width:380px; max-height:calc(100vh - 40px); margin:auto 0; background:rgba(27,27,38,0.88); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
   .member-modal-avatar{ font-size:3.2rem; margin-bottom:8px; }
   .member-modal-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.4rem; display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -1465,6 +1467,17 @@
     <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Erschwert eure Runde</h2><p>3–5 zufällige Regeln fürs nächste Match. Für Punkte: Session Setup nutzen.</p></div>
     <div class="roll-zone"><button class="roll-btn" id="cs2-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
     <div id="cs2-challenges"></div>
+  </div>
+</section>
+
+<!-- ===================== FORTNITE ===================== -->
+<section id="view-fn" class="view">
+  <div class="bg-watermark">🪂</div>
+  <div class="topbar"><button class="back-btn" onclick="goBack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button><div class="page-title"><span class="ico" id="ico-fn">🪂</span> Fortnite</div></div>
+  <div class="content">
+    <div class="section-lead"><div class="eyebrow">Free Play</div><h2>Auf zur Victory Royale</h2><p>3–5 zufällige Regeln fürs nächste Match. Für Punkte: Session Setup nutzen.</p></div>
+    <div class="roll-zone"><button class="roll-btn" id="fn-roll"><span class="dice">🎲</span> Challenge generieren</button></div>
+    <div id="fn-challenges"></div>
   </div>
 </section>
 
@@ -3520,7 +3533,10 @@ async function checkActiveRound(){
   // Reload oder erneutem Öffnen) soll eine längst abgeschlossene alte Runde aber NICHT wieder als
   // Ergebnis-Screen auftauchen — sonst landet man bei jedem Öffnen im letzten Endstand statt in der Lobby.
   const wasTrackingThisRound = !!(currentRound && data && currentRound.id === data.id);
-  const nextRound = (!error && data && (data.status === 'active' || data.status === 'voting' || ((data.status === 'done' || data.status === 'skipped') && wasTrackingThisRound))) ? data : null;
+  // Hat dieser Nutzer die Runde selbst über leaveTeamRound() verlassen, gilt sie für ihn ab sofort
+  // (auch nach Reload/auf anderen Geräten) als nicht mehr aktiv — die Gruppe spielt unabhängig davon weiter.
+  const iLeftThisRound = !!(data && currentUser && Array.isArray(data.left_players) && data.left_players.includes(currentUser.id));
+  const nextRound = (!error && data && !iLeftThisRound && (data.status === 'active' || data.status === 'voting' || ((data.status === 'done' || data.status === 'skipped') && wasTrackingThisRound))) ? data : null;
   // Signatur der Felder, die die Anzeige für DIESES Gerät tatsächlich beeinflussen. Vorher wurde bei
   // JEDEM Polling-Tick (3s) und JEDER Realtime-Änderung (z. B. wenn ein Mitspieler seinen Helden
   // dreht) die komplette Seite neu aufgebaut — auch wenn sich für einen selbst (der z. B. noch auf
@@ -3529,7 +3545,7 @@ async function checkActiveRound(){
   const signature = nextRound ? JSON.stringify([
     nextRound.id, nextRound.status, nextRound.hero_revealed, nextRound.hero_assignment,
     nextRound.personally_done, nextRound.pending_joker, nextRound.hero_joker_used, nextRound.challenge_joker_used,
-    nextRound.sabotaged_no_joker, nextRound.spied_pairs, nextRound.pending_skip, nextRound.skip_votes,
+    nextRound.sabotaged_no_joker, nextRound.spied_pairs, nextRound.pending_skip, nextRound.skip_votes, nextRound.left_players,
   ]) : null;
   const changed = signature !== lastCheckedRoundSignature;
   lastCheckedRoundSignature = signature;
@@ -4031,7 +4047,14 @@ function renderSabotagePanel(){
   if(!available.length){
     return '';
   }
+  // Wer mit einer Joker-Sperre belegt wurde, darf diese Runde gar keine Vorteile/Sabotagen mehr
+  // einsetzen — die Buttons bleiben sichtbar, aber sichtbar deaktiviert, statt einfach zu verschwinden.
+  const isLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
+  const dis = isLocked ? 'disabled style="opacity:.4;cursor:not-allowed;"' : '';
   let html = `<details class="hero-avatar-group" style="margin-top:0;margin-bottom:14px;border-color:var(--lose);"><summary style="font-size:0.95rem;padding:10px 14px;">🎯 Vorteil einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:0 12px 12px;">`;
+  if(isLocked){
+    html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;color:var(--lose);">🙅 Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.</p>`;
+  }
   available.forEach(item=>{
     if(item.selfOnly){
       html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} — ${item.desc}</p>`;
@@ -4042,7 +4065,7 @@ function renderSabotagePanel(){
         } else {
           html += `<div class="filter-row" style="margin-bottom:8px;">`;
           myItems.forEach(it=>{
-            html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
+            html += `<button class="filter-pill" ${dis} onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
           });
           html += `</div>`;
         }
@@ -4053,19 +4076,19 @@ function renderSabotagePanel(){
         } else {
           html += `<div class="filter-row" style="margin-bottom:8px;">`;
           openShared.forEach(it=>{
-            html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
+            html += `<button class="filter-pill" ${dis} onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
           });
           html += `</div>`;
         }
       } else {
-        html += `<div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" onclick="useSabotageItem('${item.id}','${currentUser.id}')">${item.icon} Einsetzen</button></div>`;
+        html += `<div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" ${dis} onclick="useSabotageItem('${item.id}','${currentUser.id}')">${item.icon} Einsetzen</button></div>`;
       }
       return;
     }
     if(!others.length) return;
     html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} — Ziel wählen:</p><div class="filter-row" style="margin-bottom:8px;">`;
     others.forEach(m=>{
-      html += `<button class="filter-pill" onclick="useSabotageItem('${item.id}','${m.user_id}')">${m.username}</button>`;
+      html += `<button class="filter-pill" ${dis} onclick="useSabotageItem('${item.id}','${m.user_id}')">${m.username}</button>`;
     });
     html += `</div>`;
   });
@@ -4074,6 +4097,7 @@ function renderSabotagePanel(){
 }
 async function useSabotageItem(itemId, targetUserId, extraId){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ showAlert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.', '🙅'); return; }
   const s = statsStore[currentUser.username];
   const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage[itemId]) || 0;
   if(owned < 1) return;
@@ -4101,7 +4125,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       const { error: stealHeroError } = await sb.from('game_rounds')
         .update({ hero_assignment: newAssignment, hero_revealed: revealedList })
         .eq('id', currentRound.id);
-      if(stealHeroError) throw new Error('Helden-Klau konnte nicht gespeichert werden: '+stealHeroError.message);
+      if(stealHeroError) throw new Error('Helden-Tausch konnte nicht gespeichert werden: '+stealHeroError.message);
       currentRound.hero_assignment = newAssignment;
       currentRound.hero_revealed = revealedList;
     } else if(itemId==='force_reroll'){
@@ -4157,19 +4181,33 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       await sb.from('game_rounds').update({ spied_pairs: Array.from(list) }).eq('id', currentRound.id);
       currentRound.spied_pairs = Array.from(list);
     } else if(itemId==='point_thief'){
-      // Es wird keine Challenge mehr verschoben. Der Dieb kann nur Punkte klauen, die das Ziel
-      // in DIESER Runde bereits durch bestätigte Challenges besitzt — also nie mehr als vorhanden.
+      // Der Dieb greift zuerst auf die in DIESER Runde schon bestätigten Punkte des Ziels zu.
+      // Reicht das nicht (z.B. direkt nach Rundenstart), wird zusätzlich auf das bereits fest
+      // verbuchte Guthaben aus vorigen Runden der Kampagne zugegriffen — so funktioniert der
+      // Punkte-Dieb auch zwischen zwei Runden, statt nur innerhalb der laufenden.
       const targetRoundScore = roundItems.filter(it=>it.scope==='personal' && it.user_id===targetUserId)
         .reduce((sum,it)=>sum + (it.result==='success'?it.points:it.result==='fail'?-it.points:0), 0);
-      const maximum = Math.min(10, Math.max(0, targetRoundScore));
-      if(maximum < 1){ showAlert('Dem Zielspieler können erst Punkte gestohlen werden, wenn er in dieser Runde bestätigte Punkte hat.', '🦝'); return; }
+      const targetStats = statsStore[target.username];
+      const targetBanked = targetStats ? shopBalance(target.username) : 0;
+      const maximum = Math.min(10, Math.max(0, targetRoundScore) + Math.max(0, targetBanked));
+      if(maximum < 1){ showAlert('Dem Zielspieler können keine Punkte gestohlen werden — weder in dieser Runde noch insgesamt ist genug Guthaben vorhanden.', '🦝'); return; }
       transferredPoints = randInt(1, maximum);
+      const fromRound = Math.min(transferredPoints, Math.max(0, targetRoundScore));
+      const fromBanked = transferredPoints - fromRound;
       const transferItems = [
-        { round_id:currentRound.id, user_id:targetUserId, scope:'personal', text:`🦝 Punkte-Dieb: −${transferredPoints} Punkte`, diff:'leicht', points:transferredPoints, result:'fail', struck:true },
         { round_id:currentRound.id, user_id:currentUser.id, scope:'personal', text:`🦝 Punkte-Dieb: +${transferredPoints} Punkte`, diff:'leicht', points:transferredPoints, result:'success', struck:true },
       ];
+      if(fromRound > 0){
+        transferItems.push({ round_id:currentRound.id, user_id:targetUserId, scope:'personal', text:`🦝 Punkte-Dieb: −${fromRound} Punkte`, diff:'leicht', points:fromRound, result:'fail', struck:true });
+      }
       const { error: transferError } = await sb.from('round_items').insert(transferItems);
       if(transferError) throw new Error('Punkte-Dieb konnte die Punkte nicht übertragen: '+transferError.message);
+      if(fromBanked > 0 && targetStats){
+        // Erhöht "spent" statt totalPoints zu verringern — reduziert nur das ausgebbare Guthaben,
+        // die Lebenszeit-Statistik des Ziels bleibt unangetastet.
+        targetStats.spent = (targetStats.spent||0) + fromBanked;
+        saveStats();
+      }
     } else if(itemId==='delete_challenge'){
       if(!extraId) return;
       const target = roundItems.find(it=>it.id===extraId);
@@ -4186,17 +4224,22 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     showToast(ownAction, item.icon);
     if(!item.selfOnly && targetUserId !== currentUser.id){
       const targetMessage = itemId==='point_thief'
-        ? `${currentUser.username} hat dir ${transferredPoints} Punkte gestohlen.`
-        : `${currentUser.username} hat „${item.label}“ gegen dich eingesetzt.`;
+        ? `${currentUser.username} hat ${target.username} ${transferredPoints} Punkte gestohlen.`
+        : `${currentUser.username} hat „${item.label}“ gegen ${target.username} eingesetzt.`;
+      // Nicht nur das direkte Ziel, sondern die gesamte Gruppe (außer dem Auslöser selbst) soll
+      // mitbekommen, wenn jemand etwas gegen einen anderen einsetzt.
+      const notifyIds = teamMembers.map(m=>m.user_id).filter(id=>id !== currentUser.id);
       // Die Aktion selbst bleibt erfolgreich, falls die Benachrichtigungs-Tabelle noch nicht
       // eingerichtet ist; der Fehler wird nur protokolliert und die nötige SQL steht in der Datei.
-      const { error: notificationError } = await sb.from('player_notifications').insert({
-        target_user_id: targetUserId,
-        from_user_id: currentUser.id,
-        round_id: currentRound.id,
-        icon: item.icon,
-        message: targetMessage,
-      });
+      const { error: notificationError } = await sb.from('player_notifications').insert(
+        notifyIds.map(id=>({
+          target_user_id: id,
+          from_user_id: currentUser.id,
+          round_id: currentRound.id,
+          icon: item.icon,
+          message: id === targetUserId ? (itemId==='point_thief' ? `${currentUser.username} hat dir ${transferredPoints} Punkte gestohlen.` : `${currentUser.username} hat „${item.label}“ gegen dich eingesetzt.`) : targetMessage,
+        }))
+      );
       if(notificationError){
         console.warn('Sabotage-Benachrichtigung konnte nicht gespeichert werden:', notificationError.message);
         showAlert('Die Aktion wurde ausgeführt, aber die Ziel-Benachrichtigung konnte nicht gespeichert werden. Bitte das Supabase-Skript für player_notifications ausführen: '+notificationError.message, '⚠️');
@@ -4522,6 +4565,7 @@ function renderTeamRoundHeader(){
   const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : currentRound.scope==='games' ? '🎮 SPIEL' : '🔁 RUNDE';
   const uw = unitWord(currentRound.scope);
   const roundCounter = isHost ? ` · ${uw} ${teamCampaignIndex+1}/${campaignTotal()}` : '';
+  const canLeaveNow = currentRound.status === 'active' || currentRound.status === 'voting';
   const hostMenu = (isHost && currentRound.status !== 'done' && currentRound.status !== 'skipped') ? `<div class="header-menu">
     <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
     <div class="header-menu-panel" id="round-header-menu">
@@ -4530,10 +4574,19 @@ function renderTeamRoundHeader(){
       <button class="danger" onclick="cancelTeamRound()">❌ Abbrechen</button>
     </div>
   </div>` : '';
+  // Nicht-Host-Mitglieder konnten eine laufende Runde/Match bisher gar nicht verlassen — nur der
+  // Host konnte sie für alle beenden/abbrechen. Jetzt kann jede/r einzeln aussteigen; die Runde
+  // läuft für den Rest der Gruppe unverändert weiter.
+  const memberLeaveMenu = (!isHost && canLeaveNow) ? `<div class="header-menu">
+    <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
+    <div class="header-menu-panel" id="round-header-menu">
+      <button class="danger" onclick="leaveTeamRound()">🚪 ${uw} verlassen</button>
+    </div>
+  </div>` : '';
   return `<div class="team-unit-banner">${unitLabel}</div>
   <div class="scoreboard-head" style="margin-bottom:14px;">
     <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
-    <div class="scoreboard-actions">${hostMenu}</div>
+    <div class="scoreboard-actions">${hostMenu}${memberLeaveMenu}</div>
   </div>`;
 }
 function extendTeamCampaign(){
@@ -4587,6 +4640,26 @@ function toggleRoundMenu(ev){
     const closeOnOutside = ()=>{ panel.classList.remove('open'); document.removeEventListener('click', closeOnOutside); };
     setTimeout(()=>document.addEventListener('click', closeOnOutside), 0);
   }
+}
+// Lässt ein NICHT-Host-Mitglied die laufende Runde/Match individuell verlassen, ohne sie für den
+// Rest der Gruppe zu beenden. Der eigene Nutzer wird serverseitig in "left_players" vermerkt —
+// checkActiveRound() blendet die Runde dadurch auf ALLEN Geräten dieses Nutzers aus (auch nach
+// einem Reload), während sie für die übrige Gruppe unverändert weiterläuft.
+// ERFORDERT die Spalte "left_players" (jsonb, Default '[]') auf game_rounds in Supabase — analog
+// zu den bestehenden Spalten wie sabotaged_no_joker/spied_pairs.
+async function leaveTeamRound(){
+  if(!currentRound || !myTeam || !currentUser || !sb) return;
+  const isHost = myTeam.host_id === currentUser.id;
+  if(isHost){ showAlert('Als Team-Ersteller (👑) kannst du die Runde nur für die ganze Gruppe beenden oder abbrechen, nicht einzeln verlassen.'); return; }
+  if(!(await confirmAction(`${unitWord(currentRound.scope)} wirklich verlassen? Die anderen spielen ohne dich weiter — ihr könnt jederzeit gemeinsam eine neue Runde starten.`, '🚪'))) return;
+  const list = new Set(currentRound.left_players || []);
+  list.add(currentUser.id);
+  const { error } = await sb.from('game_rounds').update({ left_players: Array.from(list) }).eq('id', currentRound.id);
+  if(error){ showAlert('Verlassen fehlgeschlagen: '+error.message+' — vermutlich fehlt die Spalte "left_players" (jsonb, Default []) auf game_rounds in Supabase.'); return; }
+  unlockTeamRoundRender();
+  currentRound = null; roundItems = []; roundVotes = {};
+  teamPersonallyDoneFor = null;
+  renderTeamPage();
 }
 async function cancelTeamRound(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
@@ -4764,7 +4837,8 @@ function renderTeamRoundSection(){
     const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
       ? `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>` : '';
     const doneSet = new Set(currentRound.personally_done || []);
-    const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
+    const leftSet = new Set(currentRound.left_players || []);
+    const others = teamMembers.filter(m=>m.user_id !== currentUser.id && !leftSet.has(m.user_id));
     const missing = others.filter(m=>!doneSet.has(m.user_id));
     if(others.length){
       html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
@@ -5019,7 +5093,7 @@ function renderCampaignSummaryBlock(history){
 function nextCampaignRound(){
   unlockTeamRoundRender();
   // Bei „gleicher Held“ ist die aktuelle Server-Zuordnung die Quelle der Wahrheit. So bleibt ein
-  // Helden-Klau auch in allen folgenden Runden der Kampagne bestehen, statt vom alten Cache wieder
+  // Helden-Tausch auch in allen folgenden Runden der Kampagne bestehen, statt vom alten Cache wieder
   // überschrieben zu werden.
   if(currentRound && currentRound.scope==='rounds' && teamRoundHeroLockMode==='locked' && currentRound.session_mode!=='chaos' && currentRound.hero_assignment){
     teamRoundHeroAssignment = currentRound.hero_assignment;
@@ -5745,6 +5819,7 @@ document.getElementById('admin-hero-zip-input').addEventListener('change', async
 /* ============================================================ GAMES ============================================================ */
 const GAMES = [
   { id:'cs2', icon:'🎯', watermark:'🎯', name:'Counter-Strike 2', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#241a3a,#0d3b3a)' },
+  { id:'fn', icon:'🪂', watermark:'🪂', name:'Fortnite', tag:'Battle Royale', grad:'linear-gradient(135deg,#1a2a4a,#3a1a5c)' },
   { id:'val', icon:'🔺', watermark:'🔺', name:'Valorant', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#3a1a1a,#241a3a)' },
   { id:'finals', icon:'🏢', watermark:'🏢', name:'THE FINALS', tag:'Cash-Out-Shooter', grad:'linear-gradient(135deg,#241a1a,#2a2314)' },
   { id:'r6', icon:'💣', watermark:'💣', name:'Rainbow Six Siege', tag:'Taktik-Shooter', grad:'linear-gradient(135deg,#1a2a1a,#241a1a)' },
@@ -5985,6 +6060,30 @@ const MR_CHALLENGES = [
   C('Zerstört gezielt mindestens ein Umgebungsobjekt zu eurem taktischen Vorteil (Destruction).','schwer','destruction'),
 ];
 
+const FN_CHALLENGES = [
+  C('Gewinnt eine Victory Royale.','leicht','win'),
+  C('Alle müssen an einem benannten Ort landen (z. B. Tilted Towers, Retail Row).','leicht','landing'),
+  C('Niemand darf in der ersten Minute nach der Landung schießen.','leicht','playstyle'),
+  C('Alle müssen mindestens eine Truhe öffnen.','leicht','loot'),
+  C('Nutzt mindestens einmal ein Fahrzeug.','leicht','vehicle'),
+  C('Niemand darf denselben Landeort wie im letzten Match wählen.','leicht','landing'),
+  C('Sammelt gemeinsam mindestens 500 Materialien, bevor sich der erste Sturmring schließt.','mittel','build'),
+  C('Alle müssen mindestens eine legendäre oder mythische Waffe aufheben.','mittel','loot'),
+  C('Baut eine Verteidigungsstruktur mit mindestens 4 Wänden, bevor euch der Sturm erreicht.','mittel','build'),
+  C('Erzielt eine Elimination mit einer Schrotflinte.','mittel','weapon'),
+  C('Erzielt eine Elimination auf mindestens 50 Meter Entfernung.','mittel','weapon'),
+  C('Überlebt bis in die Top 10, ohne einen Gegner zu eliminieren.','mittel','playstyle'),
+  C('Gewinnt eine Fahrzeug-Verfolgungsjagd (mindestens einen Gegner aus einem Fahrzeug heraus eliminiert).','mittel','vehicle'),
+  C('Nutzt ein Boss-/Mythic-Loot-Gebiet, ohne dass jemand aus eurer Gruppe eliminiert wird.','mittel','loot'),
+  C('Erreicht gemeinsam die letzten 2 Zonen (Top 5), ohne dass jemand aus eurem Team eliminiert wurde.','schwer','teamplay'),
+  C('Gewinnt, ohne einen einzigen Heiltrank oder Verband zu benutzen.','schwer','heal'),
+  C('Mindestens 10 Eliminierungen als gesamte Gruppe.','schwer','kills'),
+  C('Gewinnt eine Runde im Zero-Build-Modus (keine Baumöglichkeit).','schwer','mode-variety'),
+  C('Nur {player} darf im gesamten Match einen Heiltrank/Med-Mist benutzen — alle anderen verzichten.','schwer','named-player-restriction'),
+  C('Gewinnt, ohne dass jemand aus eurer Gruppe eliminiert wird (Flawless Victory).','schwer','flawless'),
+  C('Erzielt eine Elimination mit einer Falle oder Umgebungsschaden.','schwer','environmental-kill'),
+  C('Baut in der letzten Zone eine komplette Festung (Boxfight-Struktur) und verteidigt sie erfolgreich.','schwer','build'),
+];
 const CS2_CHALLENGES = [
   C('Gewinnt das Match.','leicht','win'),
   C('Niemand darf die AWP kaufen.','leicht','weapon'),
@@ -6464,6 +6563,7 @@ const CHALLENGE_SOURCES = {
   cs2: CS2_CHALLENGES, r6: R6_CHALLENGES, ow2: OW2_CHALLENGES, mr: MR_CHALLENGES, fp: FP_CHALLENGES, val: VAL_CHALLENGES, finals: FINALS_CHALLENGES,
   fg: FG_CHALLENGES, ph: PH_CHALLENGES, repo: REPO_CHALLENGES, lethal: LETHAL_CHALLENGES, cw: CW_CHALLENGES, wwm: WWM_CHALLENGES,
   among: AMONG_CHALLENGES, hff: HFF_CHALLENGES, pico: PICO_CHALLENGES, golf: GOLF_CHALLENGES, crab: CRAB_CHALLENGES, rl: RL_CHALLENGES, gb: GB_CHALLENGES,
+  fn: FN_CHALLENGES,
 };
 
 /* ============================================================ PERSONAL POOLS (Gegeneinander, competitive per player) ============================================================ */
@@ -6482,6 +6582,20 @@ const CS2_PERSONAL = [
   C('Erste Bomben-Entschärfung des Matches.','schwer','bomb-defuse-race'),
   C('Die längste Killserie (Streak) des Matches.','schwer','streak-race'),
   C('Erster Ace des Matches.','schwer','ace-race'),
+];
+const FN_PERSONAL = [
+  C('Wenigste Tode/Ausscheiden vor Runde X — überlebt am längsten.','leicht','survive-race'),
+  C('Erste Elimination des Matches.','leicht','first-kill-race'),
+  C('Meiste gesammelte Materialien im Match.','leicht','materials-race'),
+  C('Erste geöffnete Truhe des Matches.','leicht','loot-race'),
+  C('Meiste Eliminierungen im Match.','mittel','kills-race'),
+  C('Höchster Schaden im Match.','mittel','damage-race'),
+  C('Erster im Team, der eine legendäre/mythische Waffe findet.','mittel','loot-race'),
+  C('Weiteste Distanz zurückgelegt (zu Fuß oder im Fahrzeug).','mittel','distance-race'),
+  C('Meiste Heilung durch Verbände/Tränke im Match.','mittel','healing-race'),
+  C('Höchste Platzierung, ohne eine einzige Elimination zu holen.','schwer','placement-race'),
+  C('Längste Überlebenszeit im gesamten Match.','schwer','survive-race'),
+  C('Holt die entscheidende letzte Elimination für die Victory Royale.','schwer','clutch-race'),
 ];
 const R6_PERSONAL = [
   C('Wenigste Tode im Match.','leicht','deaths-race'),
@@ -6611,6 +6725,7 @@ const PERSONAL_SOURCES = {
   cs2: CS2_PERSONAL, r6: R6_PERSONAL, ow2: OW2_PERSONAL, mr: MR_PERSONAL, fp: FP_PERSONAL, val: VAL_PERSONAL, finals: FINALS_PERSONAL,
   fg: FG_PERSONAL, ph: PH_PERSONAL, repo: REPO_PERSONAL, lethal: LETHAL_PERSONAL, cw: CW_PERSONAL,
   among: AMONG_PERSONAL, hff: HFF_PERSONAL, pico: PICO_PERSONAL, golf: GOLF_PERSONAL, crab: CRAB_PERSONAL, rl: RL_PERSONAL, gb: GB_PERSONAL,
+  fn: FN_PERSONAL,
 };
 
 /* Bibliothek: Die vorhandenen Pools bleiben die einzige Quelle der Wahrheit. Die Kategorien
@@ -7686,8 +7801,8 @@ function frameStyleFor(frame){
 // Sabotage/Vorteils-Material: einmalig einsetzbar (wird beim Benutzen verbraucht), pro Item bis zu
 // 10 Stück auf Lager, bewusst teuer. Nur online, nur während der Helden-Auslosungsphase einsetzbar.
 const SHOP_SABOTAGE = [
-  {id:'lock_joker', icon:'🙅', label:'Joker-Sperre', desc:'Zielspieler kann diese Runde keinen Joker (Held/Challenges) mehr anfragen.', cost:180},
-  {id:'hero_steal', icon:'🔀', label:'Helden-Klau', desc:'Tauscht sofort deinen Helden mit dem Zielspieler. Das Ziel sieht danach seinen neuen Helden erneut im Roulette.', cost:250},
+  {id:'lock_joker', icon:'🙅', label:'Joker-Sperre', desc:'Zielspieler kann diese Runde keinen Joker/Reroll mehr anfragen und keine Vorteile oder Sabotagen mehr einsetzen.', cost:300},
+  {id:'hero_steal', icon:'🔀', label:'Helden-Tausch', desc:'Tauscht sofort deinen Helden mit dem Zielspieler. Das Ziel sieht danach seinen neuen Helden erneut im Roulette.', cost:250},
   {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort eine zusätzliche schwere Challenge dazu.', cost:220},
   {id:'force_reroll', icon:'🎲', label:'Zwangs-Reroll', desc:'Der Held des Zielspielers wird sofort neu ausgelost — ohne Abstimmung.', cost:200},
   {id:'lucky', icon:'🍀', label:'Glückspilz', desc:'Ersetzt alle deine persönlichen Challenges durch 5 leichte.', cost:200, selfOnly:true},
@@ -7696,7 +7811,7 @@ const SHOP_SABOTAGE = [
   {id:'team_shield', icon:'🛡️', label:'Team-Schild', desc:'Nur im Team-Modus: Eine gemeinsame Team-Regel eurer Wahl zählt automatisch als geschafft.', cost:260, selfOnly:true, mode:'team'},
   {id:'team_spirit', icon:'🤝', label:'Team-Geist', desc:'Nur im Team-Modus: Eine zusätzliche leichte Team-Regel für Bonus-Punkte kommt dazu.', cost:160, selfOnly:true, mode:'team'},
   {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'Nur bei Jeder gegen Jeden: Deckt sofort die geheimen Challenges des Zielspielers für dich auf.', cost:200, mode:'versus'},
-  {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Stiehlt dem Zielspieler zufällig 1–10 seiner bereits erspielten Rundenpunkte und schreibt sie dir gut.', cost:280, mode:'versus'},
+  {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Stiehlt dem Zielspieler zufällig 1–10 Punkte — aus dieser Runde oder, falls nötig, aus seinem bereits verbuchten Guthaben aus vorigen Runden — und schreibt sie dir gut.', cost:280, mode:'versus'},
 ];
 let shopSelectedPlayer = null;
 function shopBalance(name){
@@ -9073,6 +9188,7 @@ function setupChallengeGenerator(btnId, containerId, pool, min, max){
   btn.addEventListener('click', ()=>{ rollButton(btn, ()=>{ const items = pickNUnique(pool, randInt(min,max)); renderChallengeList(container, items, 'Eure Challenges'); }); });
 }
 setupChallengeGenerator('cs2-roll', 'cs2-challenges', CS2_CHALLENGES, 3, 5);
+setupChallengeGenerator('fn-roll', 'fn-challenges', FN_CHALLENGES, 3, 5);
 setupChallengeGenerator('fg-roll', 'fg-challenges', FG_CHALLENGES, 3, 5);
 setupChallengeGenerator('ph-roll', 'ph-challenges', PH_CHALLENGES, 3, 5);
 setupChallengeGenerator('repo-roll', 'repo-challenges', REPO_CHALLENGES, 3, 5);
