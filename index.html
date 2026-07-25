@@ -188,6 +188,9 @@
      Helden-Roulette — sorgt für einen weicheren, spürbaren Wechsel statt eines abrupten Sprungs
      direkt in die neuen Challenges. */
   .game-intro-card{ text-align:center; padding:38px 20px 30px; border-radius:20px; border:1px solid var(--border-soft); overflow:hidden; position:relative; animation:game-intro-in-kf 0.5s cubic-bezier(0.16,1,0.3,1); }
+  .game-intro-card.has-cover{ background-size:cover; background-position:center; }
+  .game-intro-card.has-cover::before{ content:""; position:absolute; inset:0; background:rgba(8,8,13,0.6); z-index:0; }
+  .game-intro-card.has-cover > *{ position:relative; z-index:1; }
   .game-intro-icon{ font-size:3.4rem; line-height:1; margin-bottom:14px; display:inline-block; animation:game-intro-icon-kf 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35)); }
   .game-intro-eyebrow{ text-transform:uppercase; letter-spacing:0.08em; font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; }
   .game-intro-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.6rem; margin:0 0 4px; }
@@ -3137,8 +3140,8 @@ async function subscribeTeam(teamId){
     .on('postgres_changes', { event:'*', schema:'public', table:'team_members', filter:`team_id=eq.${teamId}` }, ()=>{ refreshTeamMembers(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'teams', filter:`id=eq.${teamId}` }, ()=>{ refreshTeamDraftSettings(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'game_rounds', filter:`team_id=eq.${teamId}` }, ()=>{ checkActiveRound(); })
-    .on('postgres_changes', { event:'*', schema:'public', table:'round_items' }, ()=>{ if(currentRound) loadRoundItems().then(renderTeamPage); })
-    .on('postgres_changes', { event:'*', schema:'public', table:'round_votes' }, ()=>{ if(currentRound) loadRoundItems().then(renderTeamPage); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'round_items' }, ()=>{ debouncedRoundItemsRefresh(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'round_votes' }, ()=>{ debouncedRoundItemsRefresh(); })
     .subscribe((status)=>{
       if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
         console.warn('Team-Realtime nicht verbunden (Status: '+status+'). Prüfe in Supabase unter Database → Replication. Live-Updates laufen währenddessen per Polling weiter.');
@@ -3603,6 +3606,19 @@ function allMembersReady(){
   return others.every(m=>m.ready);
 }
 let teamRoundTransitioning = false;
+// round_items/round_votes lösen bei JEDEM einzelnen Klick (eigenem oder fremdem) ein Realtime-Event
+// aus. Ohne Entprellung führte das — zusammen mit dem eigenen optimistischen Render in castVote() —
+// zu mehreren übereinanderliegenden Voll-Renderings pro Klick und damit sichtbarem Flackern, vor
+// allem jetzt, wo während des ganzen Matches laufend live abgestimmt wird statt nur einmal am Ende.
+let roundItemsRefreshTimer = null;
+function debouncedRoundItemsRefresh(){
+  if(!currentRound) return;
+  if(roundItemsRefreshTimer) clearTimeout(roundItemsRefreshTimer);
+  roundItemsRefreshTimer = setTimeout(()=>{
+    roundItemsRefreshTimer = null;
+    if(currentRound) loadRoundItems().then(renderTeamPage);
+  }, 400);
+}
 let teamPendingGameIntro = false; // Zeigt lokal beim Host kurz die Spiel-Intro-Karte, bevor die nächste Online-Runde gestartet wird (nur bei Spielen ohne Helden-Roulette, scope 'games')
 async function startTeamRound(skipReadyCheck){
   if(!teamRoundGameChoice){ showAlert('Bitte zuerst ein Spiel auswählen.'); return; }
@@ -4124,8 +4140,10 @@ async function castVote(itemId, success){
     console.error('Stimme konnte nicht gespeichert werden:', e);
     roundVotes[itemId][currentUser.id] = prev; renderTeamPage(); return;
   }
-  await loadRoundItems();
-  renderTeamPage();
+  // Kein sofortiges zweites Voll-Rendering mehr hier — der optimistische Stand oben ist schon
+  // korrekt, und das ausgelöste Realtime-Event (round_votes) rendert ohnehin entprellt nach
+  // (debouncedRoundItemsRefresh). Das doppelte Rendering direkt hintereinander war die Hauptursache
+  // fürs Flackern beim Klicken.
 }
 async function setSharedResult(itemId, result){
   if(!currentUser || !myTeam || myTeam.host_id !== currentUser.id || !sb) return;
@@ -4692,10 +4710,11 @@ function nextCampaignRound(){
   currentRound = null; roundItems = []; roundVotes = {};
   teamHeroRevealedFor = null; teamIdleReelCacheFor = null; teamPersonallyDoneFor = null;
   saveTeamCampaignState();
-  // Bei Spielen ohne Helden-Roulette gibt's sonst keinerlei spürbaren Übergang zwischen zwei
-  // Spielen im "Spiele nacheinander"-Ablauf — hier kurz die Spiel-Intro-Karte zeigen (analog zum
-  // lokalen Modus), bevor die nächste Online-Runde tatsächlich erstellt wird.
-  if(teamRoundScope==='games' && !HERO_GAMES[teamRoundGameChoice]){
+  // Zwischen zwei Spielen im "Spiele nacheinander"-Ablauf kurz die Spiel-Intro-Karte zeigen — für
+  // JEDES Spiel, nicht nur ohne Helden-Roulette (vorher fehlte der Übergang bei Helden-Spielen
+  // komplett). Kein doppelter Screen: nach "Los geht's" geht's normal weiter — bei Helden-Spielen
+  // direkt in die schon vorhandene Auslosung, sonst direkt in die Challenges.
+  if(teamRoundScope==='games'){
     teamPendingGameIntro = true;
     renderTeamPage();
     return;
@@ -4973,9 +4992,11 @@ function renderTeamPage(){
     setTeamPageChrome('🎮','Nächstes Spiel','','','');
     if(leaveBtn) leaveBtn.style.display = 'none';
     const g = GAMES.find(x=>x.id===teamRoundGameChoice);
-    el.innerHTML = `<div class="game-intro-card" style="background:${g?g.grad:'var(--bg-card)'};">
+    const cover = gameCoverCache[teamRoundGameChoice];
+    const cardStyle = cover ? `background-image:url('${cover.replace(/'/g,"%27")}');` : `background:${g?g.grad:'var(--bg-card)'};`;
+    el.innerHTML = `<div class="game-intro-card${cover?' has-cover':''}" style="${cardStyle}">
       <div class="game-intro-eyebrow">Nächstes Spiel</div>
-      <div class="game-intro-icon">${g?g.icon:'🎮'}</div>
+      ${cover?'':`<div class="game-intro-icon">${g?g.icon:'🎮'}</div>`}
       <div class="game-intro-name">${GAME_NAME[teamRoundGameChoice]||''}</div>
       <div class="game-intro-tag">${g?g.tag:''}</div>
       <button class="round-prompt-btn primary" onclick="confirmTeamGameIntro()">▶️ Los geht's</button>
@@ -8086,7 +8107,7 @@ function advanceGameSequence(){
   session.gameId = session.gameSequence[session.currentGameIndex];
   session.awaitingNextGameChoice = false;
   session.lastActionSkipped = false;
-  session.pendingGameIntro = !HERO_GAMES[session.gameId];
+  session.pendingGameIntro = true;
   buildRound(); saveSession(); renderScoreboard();
 }
 function extendSession(){
@@ -8166,10 +8187,12 @@ function renderHeroRow(entries, avatarResolver){
 }
 function renderGameIntro(el, headHtml){
   const g = GAMES.find(x=>x.id===session.gameId);
+  const cover = gameCoverCache[session.gameId];
+  const cardStyle = cover ? `background-image:url('${cover.replace(/'/g,"%27")}');` : `background:${g?g.grad:'var(--bg-card)'};`;
   el.innerHTML = headHtml + `
-    <div class="game-intro-card" style="background:${g?g.grad:'var(--bg-card)'};">
+    <div class="game-intro-card${cover?' has-cover':''}" style="${cardStyle}">
       <div class="game-intro-eyebrow">Nächstes Spiel</div>
-      <div class="game-intro-icon">${g?g.icon:'🎮'}</div>
+      ${cover?'':`<div class="game-intro-icon">${g?g.icon:'🎮'}</div>`}
       <div class="game-intro-name">${GAME_NAME[session.gameId]}</div>
       <div class="game-intro-tag">${g?g.tag:''}</div>
       <button class="round-prompt-btn primary" id="game-intro-go">▶️ Los geht's</button>
