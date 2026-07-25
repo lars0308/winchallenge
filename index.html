@@ -1162,12 +1162,23 @@
         <span class="settings-row-text"><span class="settings-row-title">Spruch auf Namenskarte</span><span class="settings-row-sub">„Ich höre dich schon verlieren…“ bei 100% Achievements ein-/ausblenden</span></span>
         <span class="settings-row-chev" id="pref-toggle-showUniqueQuote"></span>
       </div>
+      <button class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="showView('challenge-library')">
+        <span class="settings-row-icon">📚</span><span class="settings-row-text"><span class="settings-row-title">Challenge-Bibliothek</span><span class="settings-row-sub">Nach Spiel, Kategorie und Spielmodus durchsuchen</span></span><span class="settings-row-chev">›</span>
+      </button>
     </div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">🏠</span><div class="setup-step-title">Startseite</div></div>
       <p class="setup-info" style="margin-top:0;">Was soll beim Öffnen der App zuerst kommen?</p>
       <div class="filter-row" id="pref-defaulttab-picker"></div>
     </div>
+  </div>
+</section>
+
+<!-- ===================== CHALLENGE-BIBLIOTHEK ===================== -->
+<section id="view-challenge-library" class="view">
+  <div class="bg-watermark">📚</div><div class="topbar"><button class="back-btn" onclick="goBack()">← Zurück</button><div class="page-title"><span class="ico">📚</span> Challenge-Bibliothek</div></div>
+  <div class="content"><div class="section-lead"><div class="eyebrow">Nachschlagen</div><h2>Alle Challenges</h2><p>Suche nach Text, Spiel oder Kategorie. Modusgebundene Challenges werden markiert.</p></div>
+    <div class="settings-card"><input id="library-search" type="search" placeholder="Challenges durchsuchen …" oninput="renderChallengeLibrary()" style="width:100%;box-sizing:border-box;"><div class="filter-row" id="library-game-filter" style="margin-top:12px;"></div><div class="filter-row" id="library-category-filter" style="margin-top:10px;"></div></div><div id="library-results"></div>
   </div>
 </section>
 
@@ -3195,7 +3206,12 @@ function syncDraftSettings(){
   if(!myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
   clearTimeout(draftSyncTimer);
   draftSyncTimer = setTimeout(async ()=>{
-    try{ await sb.from('teams').update({ draft_settings: { text: campaignSummaryText(), at: Date.now() } }).eq('id', myTeam.id); }
+    try{ await sb.from('teams').update({ draft_settings: {
+      text: campaignSummaryText(), at: Date.now(), scope:teamRoundScope, gameId:teamRoundGameChoice,
+      gameMode:teamRoundGameMode, mode:teamRoundModeChoice, sessionMode:teamRoundSessionModeChoice,
+      difficulty:teamRoundDifficulty, count:teamRoundCount, selectedGames:teamRoundSelectedGames,
+      heroLockMode:teamRoundHeroLockMode, confirmed:!teamSettingsOpen
+    } }).eq('id', myTeam.id); }
     catch(e){ console.error(e); }
   }, 500);
 }
@@ -3212,6 +3228,14 @@ async function refreshTeamDraftSettings(){
     if(data){
       myTeam.draft_settings = data.draft_settings;
       myTeam.campaign_summary = data.campaign_summary;
+      const d = data.draft_settings;
+      if(d && myTeam.host_id!==currentUser.id && !currentRound){
+        teamRoundScope=d.scope||teamRoundScope; teamRoundGameChoice=d.gameId||teamRoundGameChoice;
+        teamRoundGameMode=d.gameMode||null; teamRoundModeChoice=d.mode||teamRoundModeChoice;
+        teamRoundSessionModeChoice=d.sessionMode||teamRoundSessionModeChoice; teamRoundDifficulty=d.difficulty||teamRoundDifficulty;
+        teamRoundCount=d.count||teamRoundCount; teamRoundSelectedGames=d.selectedGames||teamRoundSelectedGames;
+        teamRoundHeroLockMode=d.heroLockMode||teamRoundHeroLockMode;
+      }
       if(!currentRound && !teamSettingsOpen) renderTeamPage();
     }
   }catch(e){ console.error(e); }
@@ -3543,7 +3567,12 @@ function renderTeamRoundPicker(){
       const btn = document.createElement('button');
       btn.className = 'filter-pill'+(it.key===teamRoundModeChoice?' active':'');
       btn.textContent = it.label;
-      btn.addEventListener('click', ()=>{ teamRoundModeChoice = it.key; renderTeamRoundPicker(); });
+      btn.addEventListener('click', ()=>{
+        teamRoundModeChoice = it.key;
+        // Modusgebundene Vorteile nicht versehentlich in den falschen Ablauf mitnehmen.
+        Object.keys(sabotageLoadout).forEach(id=>{ const item=SHOP_SABOTAGE.find(x=>x.id===id); if(item&&item.mode&&item.mode!==it.key) sabotageLoadout[id]=0; });
+        saveLoadout(); renderTeamRoundPicker(); renderTeamPage();
+      });
       modeRow.appendChild(btn);
     });
   }
@@ -3614,7 +3643,7 @@ function confirmTeamSettings(){
   saveTeamCampaignState();
   if(sb && myTeam){
     const gid = (teamRoundScope==='rounds' || teamRoundScope==='match') ? teamRoundGameChoice : null;
-    sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
+    sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, scope:teamRoundScope, gameMode:teamRoundGameMode, mode:teamRoundModeChoice, sessionMode:teamRoundSessionModeChoice, difficulty:teamRoundDifficulty, count:teamRoundCount, selectedGames:teamRoundSelectedGames, heroLockMode:teamRoundHeroLockMode, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
   }
   renderTeamPage();
 }
@@ -3749,6 +3778,19 @@ async function requestJoker(type, forSelf){
   if(currentRound.pending_skip){ showAlert('Es läuft gerade eine Abstimmung zum Überspringen — die muss erst abgeschlossen sein.'); return; }
   const rerollCost = 3;
   if(shopBalance(currentUser.username) < rerollCost){ showAlert(`Ein Reroll kostet ${rerollCost} Punkte Guthaben — davon habt ihr aktuell nicht genug.`, '💸'); return; }
+  // Jeder-gegen-Jeden ist ein persönlicher Wettbewerb: Der Challenge-Reroll wird sofort
+  // ausgeführt und nie als Abstimmung in die gemeinsame Runde geschrieben. Damit bleibt er
+  // für die anderen Spieler vollständig unsichtbar.
+  if(currentRound.mode==='versus' && type==='personal_challenge'){
+    const used=(currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
+    if(used>=maxJokerUses()){ showAlert(`Du hast für ${unitWordThis(currentRound.scope)} schon alle ${maxJokerUses()} Rerolls verbraucht.`, '🃏'); return; }
+    const payer=statsStore[currentUser.username];
+    if(payer){ payer.spent=(payer.spent||0)+rerollCost; saveStats(); }
+    await executePersonalChallengeJoker(currentUser.id);
+    await loadRoundItems(); renderTeamPage();
+    showToast('Deine Challenges wurden neu gewürfelt.', '🃏');
+    return;
+  }
   const usedKey = type==='hero' ? 'hero_joker_used' : type==='personal_challenge' ? 'challenge_joker_used' : null;
   if(usedKey){
     const used = currentRound[usedKey] || [];
@@ -3782,6 +3824,8 @@ function toggleLoadoutItem(itemId){
   const s = statsStore[currentUser && currentUser.username];
   const ownedCount = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage[itemId]) || 0;
   const cur = sabotageLoadout[itemId] || 0;
+  const item = SHOP_SABOTAGE.find(x=>x.id===itemId);
+  if(item && item.mode && item.mode!==teamRoundModeChoice){ showAlert(`„${item.label}“ ist nur im ${item.mode==='team'?'Team-Modus':'Jeder-gegen-Jeden-Modus'} nutzbar.`, '🎯'); return; }
   if(cur > 0){ sabotageLoadout[itemId] = 0; }
   else {
     if(loadoutTotal() >= LOADOUT_MAX_TOTAL){ showAlert(`Maximal ${LOADOUT_MAX_TOTAL} Vorteile pro Runde/Match.`, '🎯'); return; }
@@ -3827,10 +3871,11 @@ function renderLoadoutPicker(){
     <p class="setup-info" style="margin-top:0;">Wählt hier VOR dem Start, welche Vorteile ihr mitnehmt (max. ${LOADOUT_MAX_TOTAL}, je 1x pro Item). Während der Runde gekaufte Items zählen erst ab der nächsten Runde.</p>
     <div class="filter-row">`;
   ownedItems.forEach(item=>{
+    if(item.mode && item.mode!==teamRoundModeChoice) return;
     const inLoadout = (sabotageLoadout[item.id]||0) > 0;
     html += `<button class="filter-pill${inLoadout?' active':''}" onclick="toggleLoadoutItem('${item.id}')">${item.icon} ${item.label} (${owned[item.id]}x)</button>`;
   });
-  html += `</div><p class="setup-info" style="margin:8px 0 0;">Mitgenommen: ${loadoutTotal()}/${LOADOUT_MAX_TOTAL}</p></div>`;
+  html += `</div><p class="setup-info" style="margin:8px 0 0;">Mitgenommen: ${loadoutTotal()}/${LOADOUT_MAX_TOTAL}</p><button class="settings-row-btn" onclick="goToShopSabotage()" style="margin-top:10px;"><span class="settings-row-icon">🛒</span><span class="settings-row-text"><span class="settings-row-title">Weitere Vorteile kaufen</span><span class="settings-row-sub">Du kannst auch vorhandene Vorteile bis zu 10× stapeln.</span></span><span class="settings-row-chev">›</span></button></div>`;
   return html;
 }
 function renderSabotagePanel(){
@@ -3979,6 +4024,9 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     saveStats();
     await loadRoundItems();
     renderTeamPage();
+    const ownAction = item.selfOnly ? `Du hast „${item.label}“ benutzt.` : `${item.label} gegen ${target.username} eingesetzt.`;
+    showToast(ownAction, item.icon);
+    if(itemId==='force_reroll' && targetUserId===currentUser.id) showToast('⚠️ Du wurdest sabotiert! Dein Held wurde neu ausgewürfelt.', '⚠️');
   }catch(e){
     showAlert('Fehler beim Einsetzen: ' + e.message);
   }
@@ -4209,14 +4257,18 @@ function computeTeamRoundResults(round, items){
     const total = shared.reduce((s,it)=> s + (it.result==='success'?it.points:(it.result==='fail'?-it.points:0)), 0);
     return [{ name:'Team-Ergebnis', score: total }];
   }
-  const byPlayer = {};
+  // Nie die optionale profiles-Relation als Identität verwenden: je nach RLS/Realtime-Event
+  // kann sie leer sein. Die user_id ist die stabile Quelle; damit erscheint niemand als "?"
+  // und es werden keine Ergebnisse verschiedener Spieler zusammengelegt.
+  const byPlayer = Object.fromEntries(teamMembers.map(m=>[m.user_id,{ name:m.username, userId:m.user_id, score:0 }]));
   items.filter(it=>it.scope==='personal').forEach(it=>{
-    const username = it.profiles ? it.profiles.username : '?';
-    byPlayer[username] = byPlayer[username] || 0;
-    if(it.result==='success') byPlayer[username] += it.points;
-    else if(it.result==='fail') byPlayer[username] -= it.points;
+    if(!it.user_id) return;
+    const member = teamMembers.find(m=>m.user_id===it.user_id);
+    const entry = byPlayer[it.user_id] || (byPlayer[it.user_id] = { name:member?member.username:'Unbekannt', userId:it.user_id, score:0 });
+    if(it.result==='success') entry.score += it.points;
+    else if(it.result==='fail') entry.score -= it.points;
   });
-  return Object.entries(byPlayer).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  return Object.values(byPlayer).sort((a,b)=>b.score-a.score || a.name.localeCompare(b.name));
 }
 async function finalizeTeamRound(){
   if(!currentRound || !sb) return;
@@ -4709,8 +4761,8 @@ function renderCampaignFinalSummary(history){
     </div>`;
   }
   const totals = {};
-  history.forEach(r=>{ r.results.forEach(x=>{ totals[x.name] = (totals[x.name]||0) + x.score; }); });
-  const ranked = Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  history.forEach(r=>{ r.results.forEach(x=>{ const key=x.userId||x.name; const ex=totals[key]||{name:x.name,userId:x.userId,score:0}; ex.score+=Number(x.score)||0; totals[key]=ex; }); });
+  const ranked = Object.values(totals).sort((a,b)=>b.score-a.score || a.name.localeCompare(b.name));
   return renderPodium(ranked);
 }
 function renderPodium(ranked){
@@ -4725,7 +4777,7 @@ function renderPodium(ranked){
   visualOrder.forEach(idx=>{
     const p = top3[idx];
     if(!p){ html += `<div class="podium-col"></div>`; return; }
-    const member = teamMembers.find(m=>m.username===p.name);
+    const member = teamMembers.find(m=>m.user_id===p.userId) || teamMembers.find(m=>m.username===p.name);
     html += `<div class="podium-col">
       <div class="podium-avatar">${withHatOverlay(p.name, renderAccountAvatarHTML(member?member.avatar:null,36), 36)}</div>
       <div class="podium-name">${badgeIconHTML(cosmeticsFor(p.name).badge)}${glowNameHTML(p.name,p.name)}</div>
@@ -6355,6 +6407,37 @@ const PERSONAL_SOURCES = {
   among: AMONG_PERSONAL, hff: HFF_PERSONAL, pico: PICO_PERSONAL, golf: GOLF_PERSONAL, crab: CRAB_PERSONAL, rl: RL_PERSONAL, gb: GB_PERSONAL,
 };
 
+/* Bibliothek: Die vorhandenen Pools bleiben die einzige Quelle der Wahrheit. Die Kategorien
+   werden absichtlich aus den Themen abgeleitet, damit auch neue bzw. eigene Challenges ohne
+   zweite, fehleranfällige Datenpflege auffindbar sind. */
+let libraryGameFilter = 'all', libraryCategoryFilter = 'all';
+const LIBRARY_CATEGORIES = ['Allgemein','Helden','Spielmodus','Teamplay','Kills','Fähigkeiten','Schwierigkeit'];
+function libraryCategory(c){
+  const t = String(c.theme||'').toLowerCase(), x = String(c.text||'').toLowerCase();
+  if(/hero|operator|agent|rolle|ult|fähigkeit|gadget/.test(t+' '+x)) return /ult|fähigkeit|gadget/.test(t+' '+x) ? 'Fähigkeiten' : 'Helden';
+  if(/kill|elimination|headshot|ace|deaths|tode/.test(t+' '+x)) return 'Kills';
+  if(/team|gemeinsam|alle |miteinander|support/.test(t+' '+x)) return 'Teamplay';
+  if(/mode|side|angreifer|verteidiger|bomb|escort|kontroll|push|flashpoint/.test(t+' '+x)) return 'Spielmodus';
+  if(c.diff==='schwer') return 'Schwierigkeit';
+  return 'Allgemein';
+}
+function renderChallengeLibrary(){
+  const gamesRow=document.getElementById('library-game-filter'), catRow=document.getElementById('library-category-filter'), out=document.getElementById('library-results');
+  if(!gamesRow||!catRow||!out) return;
+  const make=(row, items, active, set)=>{ row.innerHTML=''; items.forEach(([key,label])=>{ const b=document.createElement('button'); b.className='filter-pill'+(key===active?' active':''); b.textContent=label; b.onclick=()=>{set(key); renderChallengeLibrary();}; row.appendChild(b); }); };
+  make(gamesRow, [['all','Alle Spiele'], ...Object.keys(CHALLENGE_SOURCES).map(id=>[id,GAME_NAME[id]||id])], libraryGameFilter, k=>libraryGameFilter=k);
+  make(catRow, [['all','Alle Kategorien'], ...LIBRARY_CATEGORIES.map(c=>[c,c])], libraryCategoryFilter, k=>libraryCategoryFilter=k);
+  const q=(document.getElementById('library-search').value||'').trim().toLowerCase(); let html='', count=0;
+  Object.entries(CHALLENGE_SOURCES).forEach(([gid,pool])=>{
+    if(libraryGameFilter!=='all' && libraryGameFilter!==gid) return;
+    const items=(pool||[]).filter(c=>(libraryCategoryFilter==='all'||libraryCategory(c)===libraryCategoryFilter)&&(!q||c.text.toLowerCase().includes(q)||libraryCategory(c).toLowerCase().includes(q)));
+    if(!items.length) return; count+=items.length;
+    html+=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">${gameIconHTML(gid,20)}</span><div class="setup-step-title">${GAME_NAME[gid]||gid}</div></div>`;
+    items.forEach(c=>{ const cat=libraryCategory(c); html+=`<div class="sb-challenge-item"><div class="sb-diff-badge" style="background:${DIFF_COLOR[c.diff]}">${DIFF_LABEL[c.diff]}</div><div class="sb-challenge-text">${c.text}<div style="font-size:.72rem;color:var(--text-faint);margin-top:4px;">${cat}${cat==='Spielmodus'?' · modusgebunden':''}</div></div></div>`; }); html+='</div>';
+  });
+  out.innerHTML=html||'<div class="empty-hint">Keine passenden Challenges gefunden.</div>';
+}
+
 const DIFF_ORDER = { leicht: 0, mittel: 1, schwer: 2 };
 function sortByDifficulty(arr){ return arr.slice().sort((a,b)=> (DIFF_ORDER[a.diff]??1) - (DIFF_ORDER[b.diff]??1)); }
 const DIFF_POINTS = { leicht: 10, mittel: 20, schwer: 35 };
@@ -6608,6 +6691,7 @@ function showView(id, skipHistory){
   if(id==='custom-challenges') renderCustomChallengesPage();
   if(id==='friends'){ renderFriendsPage(); startFriendsPolling(); } else { stopFriendsPolling(); }
   if(id==='user-settings') renderUserSettingsPage();
+  if(id==='challenge-library') renderChallengeLibrary();
 }
 function goBack(){
   try{
