@@ -4110,7 +4110,7 @@ function renderTeamPage(){
   const hostChoices=isHost&&hostTransferOpen ? `<div class="filter-row" style="margin-top:10px;">${teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>`<button class="filter-pill" onclick="transferHost('${m.user_id}','${m.username.replace(/'/g,"\\'")}')">An ${m.username} übergeben</button>`).join('')||'<span class="setup-info">Keine weiteren Mitglieder vorhanden.</span>'}</div>` : '';
   const inviteButton=`<div class="roll-zone" style="margin-top:12px;"><button class="sb-btn" onclick="openFriendInviteModal()">Freund direkt einladen</button></div>`;
   if(currentRound){
-    el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Runde läuft gerade</div></div><p class="setup-info">${currentRound.game_id ? (GAME_NAME[currentRound.game_id]||currentRound.game_id) : 'Aktive Runde'} · ${campaignProgressLabel()}</p><div class="roll-zone"><button class="roll-btn" onclick="showView('session')">Zur aktuellen Runde</button></div></div>`;
+    el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Runde läuft gerade</div></div><p class="setup-info">${currentRound.game_id ? (GAME_NAME[currentRound.game_id]||currentRound.game_id) : 'Aktive Runde'} · ${campaignProgressLabel()}</p><div class="roll-zone"><button class="roll-btn" onclick="showView('session')">Zur aktuellen Runde</button></div></div>${renderMiniGamesPanel()}`;
     return;
   }
   const readyLabel=mine&&mine.ready?'Bereitschaft zurücknehmen':'Ich bin bereit';
@@ -4525,6 +4525,7 @@ function debouncedRoundItemsRefresh(){
 async function refreshLiveRoundItems(){
   if(!currentRound) return;
   await loadRoundItems();
+  await loadRoundMiniGames();
   const signature = JSON.stringify([
     roundItems.map(it=>[it.id,it.user_id,it.text,it.result,it.struck]),
     Object.entries(roundVotes).sort(([a],[b])=>a.localeCompare(b)),
@@ -4801,6 +4802,56 @@ function renderSabotagePanel(){
   });
   html += `</div></details>`;
   return html;
+}
+let roundMiniGames = [];
+async function loadRoundMiniGames(){
+  if(!currentRound || !sb) return [];
+  try{ const {data,error}=await sb.from('round_minigames').select('*').eq('round_id',currentRound.id).order('created_at',{ascending:false}); if(error) throw error; roundMiniGames=data||[]; }catch(e){ roundMiniGames=[]; }
+  return roundMiniGames;
+}
+async function consumeMiniGame(id){
+  const s=statsStore[currentUser.username], owned=s&&s.shopOwned&&s.shopOwned.sabotage;
+  if(!owned || !(owned[id]>0) || !(sabotageLoadout[id]>0)) return false;
+  owned[id]--; sabotageLoadout[id]--; saveLoadout(); saveStats(); return true;
+}
+function miniTargetItems(userId){
+  const own=currentRound.mode==='team' ? roundItems.filter(i=>i.scope==='shared'&&!i.result) : roundItems.filter(i=>i.scope==='personal'&&i.user_id===userId&&!i.result);
+  return own;
+}
+async function startMiniGame(kind){
+  if(!currentRound || !currentUser || !sb) return;
+  if(!(await consumeMiniGame(kind))){ showAlert('Dieses Minispiel muss vorher gekauft und für die Runde mitgenommen werden.'); return; }
+  const payload=kind==='reaction_duel' ? {deadline:Date.now()+8000} : kind==='risk_card' ? {win:Math.random()<0.5} : {secret:randInt(1,10)};
+  const status=kind==='risk_card' ? 'resolved' : 'active';
+  const {data:event,error}=await sb.from('round_minigames').insert({round_id:currentRound.id,kind,initiator_id:currentUser.id,status,payload}).select().single();
+  if(error){ showAlert('Minispiel konnte nicht gestartet werden: '+error.message); return; }
+  if(kind==='risk_card'){
+    const targets=miniTargetItems(currentUser.id);
+    if(payload.win){ for(const it of targets){ await sb.from('round_items').update({points:(it.points||0)*2}).eq('id',it.id); } showLiveItemCard(`${currentUser.username}: Risiko-Karte gewonnen – Punkte verdoppelt!`,'🎲'); }
+    else { const pool=(personalPoolFor(currentRound.game_id,currentRound.game_mode)||[]).filter(c=>c.diff==='leicht'); const c=pool[randInt(0,Math.max(0,pool.length-1))]; if(c){ await sb.from('round_items').insert({round_id:currentRound.id,user_id:currentRound.mode==='team'?null:currentUser.id,scope:currentRound.mode==='team'?'shared':'personal',text:c.text,diff:'leicht',points:1}); } showLiveItemCard(`${currentUser.username}: Risiko-Karte verloren – Zusatz-Challenge!`,'🎲'); }
+  }else showLiveItemCard(`${currentUser.username} hat ${kind==='reaction_duel'?'ein Reaktionsduell':'Zahlenraten'} gestartet.`,'⚡');
+  await loadRoundMiniGames(); await loadRoundItems(); renderTeamPage();
+}
+async function playMiniGame(eventId,value){
+  const event=roundMiniGames.find(e=>e.id===eventId); if(!event||event.status!=='active'||!currentUser||!sb) return;
+  const {error}=await sb.from('round_minigame_actions').insert({minigame_id:eventId,user_id:currentUser.id,value:String(value)}); if(error){ showAlert('Deine Aktion wurde schon gezählt oder konnte nicht gespeichert werden.'); return; }
+  if(event.kind==='reaction_duel'){
+    const {data:actions}=await sb.from('round_minigame_actions').select('*').eq('minigame_id',eventId).order('created_at',{ascending:true}).limit(1);
+    if(actions&&actions[0]&&actions[0].user_id===currentUser.id){ const light=miniTargetItems(currentUser.id).find(i=>i.diff==='leicht'); if(light) await sb.from('round_items').delete().eq('id',light.id); await sb.from('round_minigames').update({status:'resolved',winner_id:currentUser.id}).eq('id',eventId).eq('status','active'); }
+  }else if(event.kind==='number_guess'){
+    const won=Number(value)===Number(event.payload&&event.payload.secret); if(won){ const item=miniTargetItems(currentUser.id)[0]; if(item) await sb.from('round_items').update({points:(item.points||0)+3}).eq('id',item.id); } await sb.from('round_minigames').update({status:'resolved',winner_id:won?currentUser.id:null,payload:Object.assign({},event.payload,{guess:Number(value),won})}).eq('id',eventId).eq('status','active');
+  }
+  await loadRoundMiniGames(); await loadRoundItems(); renderTeamPage();
+}
+function renderMiniGamesPanel(){
+  if(!currentRound||!currentUser) return '';
+  const s=statsStore[currentUser.username]||{}, owned=(s.shopOwned&&s.shopOwned.sabotage)||{};
+  const can=id=>(owned[id]||0)>0&&(sabotageLoadout[id]||0)>0;
+  const open=roundMiniGames.filter(e=>e.status==='active');
+  let html='<details class="round-benefits-panel" style="margin:0 0 14px;"><summary>Minispiele</summary><div style="padding:12px 14px 14px;"><p class="setup-info" style="margin-top:0;">Kaufbare Live-Vorteile für diese Runde.</p><div class="filter-row">';
+  [['reaction_duel','⚡ Reaktionsduell'],['risk_card','🎲 Risiko-Karte'],['number_guess','🔢 Zahlenraten']].forEach(([id,label])=>{ html+=`<button class="filter-pill" ${can(id)?'':'disabled'} onclick="startMiniGame('${id}')">${label}</button>`; }); html+='</div>';
+  open.forEach(e=>{ if(e.kind==='reaction_duel') html+=`<div class="settings-row-btn" style="margin-top:10px;"><span class="settings-row-text"><span class="settings-row-title">Reaktionsduell läuft</span><span class="settings-row-sub">Schnellster Klick streicht eine leichte Challenge.</span></span><button class="roll-btn" onclick="playMiniGame('${e.id}','click')">JETZT!</button></div>`; else if(e.kind==='number_guess') html+=`<div class="settings-row-btn" style="margin-top:10px;"><span class="settings-row-text"><span class="settings-row-title">Zahlenraten läuft</span><span class="settings-row-sub">Rate eine Zahl von 1 bis 10.</span></span><span class="filter-row">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="filter-pill" onclick="playMiniGame('${e.id}',${n})">${n}</button>`).join('')}</span></div>`; });
+  return html+'</div></details>';
 }
 function renderSpySwapPanel(){
   if(!currentRound || !currentUser || currentRound.mode!=='versus') return '';
@@ -7636,6 +7687,9 @@ const SHOP_SABOTAGE = [
   {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'Nur bei Jeder gegen Jeden: Deckt die Challenges des Ziels auf. Danach darfst du eine eigene gegen eine gleichwertige gegnerische Challenge tauschen.', cost:150, mode:'versus'},
   {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Stiehlt dem Zielspieler zufällig 1–10 Punkte — aus dieser Runde oder, falls nötig, aus seinem bereits verbuchten Guthaben aus vorigen Runden — und schreibt sie dir gut.', cost:230, mode:'versus'},
   {id:'mirror', icon:'🪞', label:'Spiegel', desc:'Passiv: Nehmt ihr diesen mit, trifft eine gegen euch eingesetzte Sabotage stattdessen automatisch den Angreifer — kein Knopf zum Einsetzen. Wird dabei verbraucht. Maximal 1 auf Lager.', cost:500, passive:true, maxOwned:1},
+  {id:'reaction_duel', icon:'⚡', label:'Reaktionsduell', desc:'Startet ein Live-Duell: Der schnellste Klick erhält eine leichte Challenge weniger.', cost:120, selfOnly:true, minigame:true},
+  {id:'risk_card', icon:'🎲', label:'Risiko-Karte', desc:'Würfelt live: doppelte Punkte für diese Runde oder eine zusätzliche Challenge.', cost:100, selfOnly:true, minigame:true},
+  {id:'number_guess', icon:'🔢', label:'Zahlenraten', desc:'Rate die geheime Zahl. Ein Treffer gibt einen kleinen Punktebonus.', cost:80, selfOnly:true, minigame:true},
 ];
 let shopSelectedPlayer = null;
 function shopBalance(name){
