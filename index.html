@@ -383,6 +383,8 @@
   .reel-done-list{ margin-top:22px; }
 
   .settings-card{ background:var(--bg-elevated); border:1px solid var(--border-soft); border-radius:16px; padding:16px 16px 18px; margin-bottom:14px; }
+  body.compact-layout .settings-card{ padding:12px 13px 14px; margin-bottom:10px; }
+  body.compact-layout .content{ padding-bottom:58px; }
   .settings-card .setup-step-head{ margin-bottom:12px; }
   .settings-card:last-of-type{ margin-bottom:0; }
   /* Shop-Kategorien nutzen auf breiten Bildschirmen den verfügbaren Platz statt
@@ -400,6 +402,15 @@
   #view-shop .content{ max-width:1500px; }
   #view-shop .shop-catalog{ grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }
   #view-shop .shop-catalog .settings-card{ min-height:100%; }
+  #view-shop .shop-category-glow{ order:3; }
+  #view-shop .shop-category-frame{ order:4; }
+  #view-shop .shop-category-banner{ order:5; grid-column:1 / -1; }
+  #view-shop .shop-category-banner .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  .shop-luck-machine{ margin:16px 0; background:linear-gradient(135deg,rgba(77,44,120,.42),rgba(17,86,108,.32)); border-color:rgba(121,92,255,.52); }
+  .shop-luck-machine .luck-machine-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
+  .shop-luck-machine input{ width:92px; text-align:center; font:700 1rem Rajdhani,sans-serif; }
+  .shop-mode-tag{ display:inline-flex; align-items:center; margin:4px 0 0; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--text-muted); font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .shop-mode-tag.team{ border-color:rgba(34,211,209,.5); color:var(--turquoise-bright); }.shop-mode-tag.versus{ border-color:rgba(168,85,247,.6); color:#d6b4ff; }
   .loadout-picker{ background:linear-gradient(145deg,rgba(31,31,46,.96),rgba(17,17,27,.96)); border-color:rgba(34,211,209,.24); }
   .loadout-picker .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:9px; }
   .loadout-picker .filter-pill{ min-height:48px; text-align:left; padding:10px 12px; }
@@ -414,6 +425,7 @@
     .team-settings-screen .scope-grid{ grid-template-columns:1fr; }
     #view-shop .content{ padding-left:14px; padding-right:14px; }
     #view-shop .shop-catalog{ grid-template-columns:1fr; gap:12px; }
+    #view-shop .shop-category-banner{ grid-column:auto; }
     .loadout-picker .filter-row{ grid-template-columns:1fr; }
   }
   .choice-card-row{ display:flex; flex-direction:column; gap:12px; max-width:460px; margin:0 auto; }
@@ -1337,6 +1349,11 @@
         <span class="settings-row-text"><span class="settings-row-title">Spruch auf Namenskarte</span><span class="settings-row-sub">„Ich höre dich schon verlieren…“ bei 100% Achievements ein-/ausblenden</span></span>
         <span class="settings-row-chev" id="pref-toggle-showUniqueQuote"></span>
       </div>
+      <div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="togglePref('compactLayout')">
+        <span class="settings-row-icon">▣</span>
+        <span class="settings-row-text"><span class="settings-row-title">Kompaktes Layout</span><span class="settings-row-sub">Kleinere Abstände für mehr Übersicht auf Handy und Desktop</span></span>
+        <span class="settings-row-chev" id="pref-toggle-compactLayout"></span>
+      </div>
       <button class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="showView('challenge-library')">
         <span class="settings-row-icon">📚</span><span class="settings-row-text"><span class="settings-row-title">Challenge-Bibliothek</span><span class="settings-row-sub">Nach Spiel, Kategorie und Spielmodus durchsuchen</span></span><span class="settings-row-chev">›</span>
       </button>
@@ -1409,6 +1426,13 @@
       <p class="setup-info" style="margin-top:0;">Praktisch, bevor ihr die App an Freunde weitergebt. Betrifft nur dieses Gerät, nicht euer Online-Konto.</p>
       <div class="roll-zone" style="margin-bottom:10px;"><button class="sb-btn danger" onclick="resetStatsOnly()">🗑️ Statistiken &amp; Shop zurücksetzen (Punkte, Guthaben, Mützen, Abzeichen, Banner …)</button></div>
       <div class="roll-zone" style="margin-bottom:0;"><button class="sb-btn danger" onclick="resetAllLocalData()">🧨 Alles auf Standard (zusätzlich Mitspieler &amp; Avatare)</button></div>
+    </div>
+    <div class="panel-block admin-tab-panel" id="admin-tab-system" style="max-width:none; display:none;">
+      <div class="setup-step-head"><span class="setup-step-icon">⚙️</span><div class="setup-step-title">System &amp; Live-Daten</div></div>
+      <p class="setup-info" style="margin-top:0;">Prüft die Verbindung und ladet gemeinsam genutzte Bilder oder Teamdaten neu, ohne Spielstände zurückzusetzen.</p>
+      <div class="roll-zone" style="margin-bottom:8px;"><button class="roll-btn" onclick="adminTestConnection()">Verbindung testen</button></div>
+      <div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" onclick="adminRefreshLiveData()">Live-Daten neu laden</button></div>
+      <div class="setup-warning" id="admin-system-status" style="color:var(--turquoise-bright);"></div>
     </div>
     <div class="panel-block admin-tab-panel" id="admin-tab-pending_challenges" style="max-width:none; display:none;">
       <div class="setup-step-head"><span class="setup-step-icon">⏳</span><div class="setup-step-title">Eigene Challenges freigeben</div></div>
@@ -2373,7 +2397,8 @@ function togglePref(key){
   renderUserSettingsPage();
 }
 function renderUserSettingsPage(){
-  ['confirmDialogs','animations','soundVibration','showTierStatus','showUniqueQuote'].forEach(key=>{
+  document.body.classList.toggle('compact-layout', !!userPrefs.compactLayout);
+  ['confirmDialogs','animations','soundVibration','showTierStatus','showUniqueQuote','compactLayout'].forEach(key=>{
     const el = document.getElementById('pref-toggle-'+key);
     if(el) el.textContent = userPrefs[key] ? '✅ An' : '⬜ Aus';
   });
@@ -2400,7 +2425,7 @@ function submitCustomChallenge(){
 const LS_PREFS = 'winchallenge_prefs_v1';
 function savePrefs(){ try{ localStorage.setItem(LS_PREFS, JSON.stringify(userPrefs)); }catch(e){} }
 function loadPrefs(){
-  const defaults = { confirmDialogs:true, animations:true, soundVibration:true, defaultTab:'home', showTierStatus:true, showUniqueQuote:true };
+  const defaults = { confirmDialogs:true, animations:true, soundVibration:true, defaultTab:'home', showTierStatus:true, showUniqueQuote:true, compactLayout:false };
   try{ const raw = localStorage.getItem(LS_PREFS); if(raw) return Object.assign(defaults, JSON.parse(raw)); }catch(e){}
   return defaults;
 }
@@ -2769,24 +2794,33 @@ async function handleLogin(){
   const errEl = document.getElementById('auth-error');
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
+  const submit = document.getElementById('auth-submit-btn');
   errEl.textContent = '';
   if(!sb){ errEl.textContent = 'Verbindung zum Server nicht verfügbar.'; return; }
   if(!email || !password){ errEl.textContent = 'Bitte E-Mail und Passwort eingeben.'; return; }
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ errEl.textContent = 'Login fehlgeschlagen: ' + error.message; return; }
-  const profileLoaded = await loadProfile(data.user.id, data.user);
-  if(!profileLoaded || !currentUser){
-    errEl.textContent = 'Login war erfolgreich, aber dein Profil konnte nicht geladen werden. Bitte später erneut versuchen.';
-    return;
+  if(submit){ submit.disabled = true; submit.textContent = 'Einloggen …'; }
+  try{
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ errEl.textContent = 'Login fehlgeschlagen: ' + error.message; return; }
+    const profileLoaded = await loadProfile(data.user.id, data.user);
+    if(!profileLoaded || !currentUser){
+      errEl.textContent = 'Login war erfolgreich, aber dein Profil konnte nicht geladen werden. Bitte später erneut versuchen.';
+      return;
+    }
+    if(currentUser.is_banned){
+      await sb.auth.signOut(); currentUser = null; stopPresenceHeartbeat();
+      errEl.textContent = 'Dieser Account wurde gesperrt.';
+      return;
+    }
+    await restoreMyTeam();
+    renderAuthBar();
+    showHome();
+  }catch(e){
+    console.error('Login error', e);
+    errEl.textContent = 'Login konnte nicht mit dem Server verbunden werden: ' + (e.message || 'Unbekannter Fehler');
+  }finally{
+    if(submit){ submit.disabled = false; submit.textContent = '🔓 Einloggen'; }
   }
-  if(currentUser && currentUser.is_banned){
-    await sb.auth.signOut(); currentUser = null; stopPresenceHeartbeat();
-    errEl.textContent = 'Dieser Account wurde gesperrt.';
-    return;
-  }
-  await restoreMyTeam();
-  renderAuthBar();
-  showHome();
 }
 async function handleForgotPassword(){
   const errEl = document.getElementById('auth-error');
@@ -4613,18 +4647,22 @@ function renderSabotagePanel(){
   const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
   const mirrorReady = (currentRound.mirror_holders||[]).includes(currentUser.id);
   const mirrorNote = mirrorReady ? `<p class="setup-info" style="margin:0 0 14px;text-align:left;color:var(--turquoise-bright);">🪞 Euer Spiegel ist aktiv — die nächste Sabotage gegen euch trifft automatisch stattdessen den Angreifer.</p>` : '';
+  const mirrorBrought = (sabotageLoadout.mirror||0) > 0 && (owned.mirror||0) > 0;
+  const mirrorAction = mirrorBrought && !mirrorReady
+    ? `<div class="settings-row-btn" style="margin:0 0 12px;"><span class="settings-row-icon">🪞</span><span class="settings-row-text"><span class="settings-row-title">Spiegel bereit</span><span class="settings-row-sub">Aktiviere ihn bewusst für diese Runde. Danach schützt er vor genau einer Sabotage.</span></span><button class="sb-btn" onclick="activateMirror()">Aktivieren</button></div>`
+    : '';
   // In der laufenden Runde sind NUR die im Loadout mitgenommenen Items einsetzbar — so kann
   // niemand mitten in der Runde nachkaufen und sofort einsetzen. Modus-gebundene Items
   // erscheinen nur, wenn der aktuelle Runden-Modus passt.
   const available = SHOP_SABOTAGE.filter(item => (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode) && !item.passive);
   if(!available.length){
-    return mirrorNote;
+    return mirrorNote + mirrorAction;
   }
   // Wer mit einer Joker-Sperre belegt wurde, darf diese Runde gar keine Vorteile/Sabotagen mehr
   // einsetzen — die Buttons bleiben sichtbar, aber sichtbar deaktiviert, statt einfach zu verschwinden.
   const isLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
   const dis = isLocked ? 'disabled style="opacity:.4;cursor:not-allowed;"' : '';
-  let html = mirrorNote + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">`;
+  let html = mirrorNote + mirrorAction + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">`;
   if(isLocked){
     html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;color:var(--lose);">🙅 Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.</p>`;
   }
@@ -4632,9 +4670,9 @@ function renderSabotagePanel(){
     if(item.selfOnly){
       html += `<p class="setup-info" style="margin:6px 0 4px;text-align:left;">${item.icon} ${item.label} — ${item.desc}</p>`;
       if(item.id==='delete_challenge'){
-        const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result && it.diff!=='schwer');
+        const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
         if(!myItems.length){
-          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen (schwere Challenges gehen nicht).</div>`;
+          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen übrig.</div>`;
         } else {
           html += `<div class="filter-row" style="margin-bottom:8px;">`;
           myItems.forEach(it=>{
@@ -4681,21 +4719,25 @@ function renderSabotagePanel(){
 }
 let teamMirrorSyncedFor = null; // Round-ID + Bring-Status, für den dieses Gerät seinen Spiegel-Stand schon gemeldet hat
 async function syncMirrorReadyState(){
-  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
+  // Der Spiegel wird nur nach ausdrücklicher Bestätigung aktiviert.
+}
+async function activateMirror(){
+  if(!currentRound || !currentUser || !sb || currentRound.status!=='active') return;
   const s = statsStore[currentUser.username];
-  const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage['mirror']) || 0;
-  const brought = (sabotageLoadout['mirror']||0) > 0 && owned > 0;
-  const syncKey = currentRound.id + ':' + brought;
-  if(teamMirrorSyncedFor === syncKey) return;
-  const already = (currentRound.mirror_holders||[]).includes(currentUser.id);
-  if(brought === already){ teamMirrorSyncedFor = syncKey; return; }
-  teamMirrorSyncedFor = syncKey;
-  const list = new Set(currentRound.mirror_holders || []);
-  if(brought) list.add(currentUser.id); else list.delete(currentUser.id);
-  try{
-    const { error } = await sb.from('game_rounds').update({ mirror_holders: Array.from(list) }).eq('id', currentRound.id);
-    if(!error) currentRound.mirror_holders = Array.from(list);
-  }catch(e){ console.error(e); }
+  const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage.mirror) || 0;
+  if(!owned || !(sabotageLoadout.mirror||0)){ showAlert('Der Spiegel muss vorher für diese Runde ausgewählt werden.', '🪞'); return; }
+  if((currentRound.mirror_holders||[]).includes(currentUser.id)) return;
+  if(!(await confirmAction('Spiegel jetzt aktivieren? Er schützt vor genau einer Sabotage und wird dabei verbraucht.', '🪞'))) return;
+  const holders = Array.from(new Set([...(currentRound.mirror_holders||[]), currentUser.id]));
+  const { error } = await sb.from('game_rounds').update({ mirror_holders: holders }).eq('id', currentRound.id);
+  if(error){ showAlert('Spiegel konnte nicht aktiviert werden: '+error.message, '⚠️'); return; }
+  currentRound.mirror_holders = holders;
+  s.shopOwned.sabotage.mirror = owned - 1;
+  sabotageLoadout.mirror = Math.max(0, (sabotageLoadout.mirror||0)-1);
+  saveLoadout(); saveStats();
+  showItemScreenFlash('🪞', 'Spiegel aktiviert');
+  showLiveItemCard(`${currentUser.username} hat den Spiegel aktiviert.`, '🪞');
+  renderTeamPage();
 }
 async function useSabotageItem(itemId, targetUserId, extraId){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
@@ -4775,10 +4817,9 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       currentRound.hero_revealed = revealedList;
     } else if(itemId==='extra_hard'){
       const pool = personalPoolFor(currentRound.game_id, currentRound.game_mode);
-      const hardOnes = pool.filter(c=>c.diff==='schwer');
+      const hardOnes = shuffle(pool.filter(c=>c.diff==='schwer')).slice(0,2);
       if(hardOnes.length){
-        const pick = hardOnes[randInt(0,hardOnes.length-1)];
-        const { error: hardErr } = await sb.from('round_items').insert({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'schwer', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['schwer'] });
+        const { error: hardErr } = await sb.from('round_items').insert(hardOnes.map(pick=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'schwer', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['schwer'] })));
         if(hardErr) throw new Error('Extra-Challenge konnte nicht gespeichert werden: '+hardErr.message);
       }
     } else if(itemId==='lucky'){
@@ -4786,7 +4827,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       const easyOnes = shuffle(pool.filter(c=>c.diff==='leicht'));
       const uniqueTexts = [];
       const uniquePicks = [];
-      for(const c of easyOnes){ if(!uniqueTexts.includes(c.text)){ uniqueTexts.push(c.text); uniquePicks.push(c); } if(uniquePicks.length>=5) break; }
+      for(const c of easyOnes){ if(!uniqueTexts.includes(c.text)){ uniqueTexts.push(c.text); uniquePicks.push(c); } if(uniquePicks.length>=7) break; }
       if(uniquePicks.length){
         // Ersetzt ALLE persönlichen Challenges (auch mittel & schwer) durch genau diese 5 leichten —
         // nicht nur ergänzen. Der Löschfehler wird bewusst geprüft: schlägt das Löschen fehl (z.B.
@@ -4794,7 +4835,8 @@ async function useSabotageItem(itemId, targetUserId, extraId){
         // Challenges auf die alten draufzustapeln.
         const { error: delErr } = await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', targetUserId).eq('scope','personal');
         if(delErr){ showAlert('Glückspilz fehlgeschlagen — alte Challenges konnten nicht entfernt werden: ' + delErr.message + ' — prüft in Supabase, ob eine DELETE-Policy auf round_items existiert.'); return; }
-        const { error: insErr } = await sb.from('round_items').insert(uniquePicks.map(pick=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: pick.text, diff:'leicht', points: TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht'] })));
+        const bonusIndex = randInt(0, uniquePicks.length-1);
+        const { error: insErr } = await sb.from('round_items').insert(uniquePicks.map((pick,index)=>({ round_id: currentRound.id, user_id: targetUserId, scope:'personal', text: (index===bonusIndex?'🍀 BONUS: ':'')+pick.text, diff:'leicht', points: index===bonusIndex ? randInt(3,10) : TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht'] })));
         if(insErr){ showAlert('Glückspilz: neue Challenges konnten nicht erstellt werden: ' + insErr.message); return; }
       }
     } else if(itemId==='team_shield'){
@@ -4810,7 +4852,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       if(easy.length){
         const pick = easy[randInt(0,easy.length-1)];
         const names = teamMembers.map(m=>m.username);
-        const { error: spiritErr } = await sb.from('round_items').insert({ round_id: currentRound.id, user_id: null, scope:'shared', text: '🤝 BONUS: '+substitutePlayerName(pick.text, names), diff:'leicht', points: TEAM_ROUND_DIFF_POINTS['leicht'] });
+        const { error: spiritErr } = await sb.from('round_items').insert({ round_id: currentRound.id, user_id: null, scope:'shared', text: '🤝 BONUS: '+substitutePlayerName(pick.text, names), diff:'leicht', points: 3 });
         if(spiritErr) throw new Error('Team-Geist konnte nicht gespeichert werden: '+spiritErr.message);
       }
     } else if(itemId==='spy_glass'){
@@ -4852,7 +4894,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     } else if(itemId==='delete_challenge'){
       if(!extraId) return;
       const delTarget = roundItems.find(it=>it.id===extraId);
-      if(!delTarget || delTarget.diff==='schwer') return;
+      if(!delTarget) return;
       const { error: delChErr } = await sb.from('round_items').update({ result: 'success', struck: true }).eq('id', extraId);
       if(delChErr) throw new Error('Challenge streichen fehlgeschlagen: '+delChErr.message);
     }
@@ -4862,880 +4904,18 @@ async function useSabotageItem(itemId, targetUserId, extraId){
     saveStats();
     await loadRoundItems();
     renderTeamPage();
-    if(itemId==='force_reroll'){
-      // Das Ziel landet sofort wieder bei seiner Helden-Auswahl statt irgendwo in der langen Runde.
-      requestAnimationFrame(()=>window.scrollTo({ top:0, behavior:'smooth' }));
-    }
+    if(itemId==='force_reroll') requestAnimationFrame(()=>window.scrollTo({ top:0, behavior:'smooth' }));
     const ownAction = mirrored
-      ? `🪞 ${originalTargetName} hatte einen Spiegel aktiv — „${item.label}“ hat stattdessen dich getroffen!`
+      ? `${originalTargetName} hatte einen Spiegel aktiv — „${item.label}“ hat stattdessen dich getroffen!`
       : (item.selfOnly ? `Du hast „${item.label}“ benutzt.` : `${item.label} gegen ${target.username} eingesetzt.`);
     showToast(ownAction, mirrored ? '🪞' : item.icon);
     showLiveItemCard(ownAction, mirrored ? '🪞' : item.icon);
-    // Jede eingesetzte Karte wird an die anderen Teammitglieder live verteilt – auch Vorteile.
-    if(item){
-      // Nicht nur das direkte Ziel, sondern die gesamte Gruppe (außer dem Auslöser selbst) soll
-      // mitbekommen, wenn jemand etwas gegen einen anderen einsetzt (bzw. wenn ein Spiegel zurückschlägt).
-      const notifyIds = teamMembers.map(m=>m.user_id).filter(id=>id !== currentUser.id);
-      const rows = notifyIds.map(id=>{
-        let message;
-        if(mirrored){
-          message = id === originalTargetUserId
-            ? `🪞 Dein Spiegel hat „${item.label}“ von ${currentUser.username} zurückgeworfen — es hat ihn selbst getroffen!`
-            : `🪞 ${originalTargetName}s Spiegel hat „${item.label}“ von ${currentUser.username} zurückgeworfen.`;
-        } else if(item.selfOnly){
-          message = `${currentUser.username} hat „${item.label}“ eingesetzt.`;
-        } else if(id === targetUserId){
-          message = itemId==='point_thief' ? `${currentUser.username} hat dir ${transferredPoints} Punkte gestohlen.` : `${currentUser.username} hat „${item.label}“ gegen dich eingesetzt.`;
-        } else {
-          message = itemId==='point_thief' ? `${currentUser.username} hat ${target.username} ${transferredPoints} Punkte gestohlen.` : `${currentUser.username} hat „${item.label}“ gegen ${target.username} eingesetzt.`;
-        }
-        return { target_user_id: id, from_user_id: currentUser.id, round_id: currentRound.id, icon: mirrored ? '🪞' : item.icon, message };
-      });
-      // Die Aktion selbst bleibt erfolgreich, falls die Benachrichtigungs-Tabelle noch nicht
-      // eingerichtet ist; der Fehler wird nur protokolliert und die nötige SQL steht in der Datei.
-      const { error: notificationError } = await sb.from('player_notifications').insert(rows);
-      if(notificationError){
-        console.warn('Sabotage-Benachrichtigung konnte nicht gespeichert werden:', notificationError.message);
-        showAlert('Die Aktion wurde ausgeführt, aber die Ziel-Benachrichtigung konnte nicht gespeichert werden. Bitte das Supabase-Skript für player_notifications ausführen: '+notificationError.message, '⚠️');
-      }
-    }
   }catch(e){
-    showAlert('Fehler beim Einsetzen: ' + e.message);
+    console.error(e); showAlert(e.message || 'Der Karteneffekt konnte nicht ausgeführt werden.', '⚠️');
   }
 }
-async function voteJoker(val){
-  if(!currentRound || !currentUser || !sb || !currentRound.pending_joker) return;
-  const votes = Object.assign({}, currentRound.joker_votes || {}, { [currentUser.id]: val });
-  const prevVotes = currentRound.joker_votes;
-  currentRound.joker_votes = votes;
-  renderTeamPage();
-  const { error } = await sb.from('game_rounds').update({ joker_votes: votes }).eq('id', currentRound.id);
-  if(error){
-    console.error('Joker-Stimme konnte nicht gespeichert werden:', error.message);
-    currentRound.joker_votes = prevVotes;
-    showAlert('Eure Stimme konnte nicht gespeichert werden: '+error.message);
-    renderTeamPage();
-    return;
-  }
-  await maybeResolveJokerVote();
-}
-function jokerVotesNeeded(){
-  // Absolute Mehrheit der Team-Mitglieder (nicht nur der abgegebenen Stimmen):
-  // bei 2 Spielern müssen beide zustimmen, bei 3 reichen 2, bei 4 reichen 3, usw.
-  const total = Math.max(teamMembers.length, 1);
-  return Math.floor(total/2) + 1;
-}
-async function maybeResolveJokerVote(){
-  if(!currentRound || !currentRound.pending_joker || !sb) return;
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  if(!isHost) return; // nur der Host führt die eigentliche Neu-Auslosung aus, damit es nicht doppelt passiert
-  const votes = currentRound.joker_votes || {};
-  const yes = Object.values(votes).filter(v=>v===true).length;
-  const no = Object.values(votes).filter(v=>v===false).length;
-  const total = Math.max(teamMembers.length, 1);
-  const needed = jokerVotesNeeded();
-  const impossible = no > (total - needed); // selbst wenn alle Rest-Stimmen "Dafür" wären, reicht's nicht mehr
-  if(yes < needed && !impossible) return; // Abstimmung läuft noch weiter
-  if(yes >= needed){
-    const { type, by } = currentRound.pending_joker;
-    if(type === 'hero') await executeHeroJoker(by);
-    else if(type === 'personal_challenge') await executePersonalChallengeJoker(by);
-    else if(type === 'team_challenge') await executeTeamChallengeJoker();
-  }
-  // Bei "impossible" (Mehrheit nicht mehr erreichbar) wird die Abstimmung ohne Auslosung beendet — der Joker ist weg.
-  await sb.from('game_rounds').update({ pending_joker: null, joker_votes: {} }).eq('id', currentRound.id);
-  currentRound.pending_joker = null; currentRound.joker_votes = {};
-  await loadRoundItems();
-  renderTeamPage();
-}
-// Abstimmung, ob die aktuelle Runde/das aktuelle Match komplett übersprungen wird (z. B. weil ein
-// Spiel bei jemandem nicht startet oder die Gruppe es nicht schaffen will) — KEINE Punkte werden
-// gutgeschrieben. Nutzt dieselbe Mehrheits-Logik wie die Joker-Abstimmung (jokerVotesNeeded()).
-async function requestSkipVote(){
-  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
-  if(currentRound.pending_joker){ showAlert('Es läuft gerade eine Joker-Abstimmung — die muss erst abgeschlossen sein.'); return; }
-  if(currentRound.pending_skip){ showAlert('Es läuft schon eine Abstimmung zum Überspringen.'); return; }
-  const pending = { by: currentUser.id, byName: currentUser.username };
-  const initialVotes = { [currentUser.id]: true };
-  const { error } = await sb.from('game_rounds').update({ pending_skip: pending, skip_votes: initialVotes }).eq('id', currentRound.id);
-  if(error){ showAlert('Fehler: ' + error.message); return; }
-  currentRound.pending_skip = pending; currentRound.skip_votes = initialVotes;
-  renderTeamPage();
-  await maybeResolveSkipVote();
-}
-async function voteSkip(val){
-  if(!currentRound || !currentUser || !sb || !currentRound.pending_skip) return;
-  const votes = Object.assign({}, currentRound.skip_votes || {}, { [currentUser.id]: val });
-  currentRound.skip_votes = votes;
-  await sb.from('game_rounds').update({ skip_votes: votes }).eq('id', currentRound.id);
-  renderTeamPage();
-  await maybeResolveSkipVote();
-}
-async function maybeResolveSkipVote(){
-  if(!currentRound || !currentRound.pending_skip || !sb) return;
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  if(!isHost) return; // nur der Host löst final auf, damit es nicht doppelt passiert
-  const votes = currentRound.skip_votes || {};
-  const yes = Object.values(votes).filter(v=>v===true).length;
-  const no = Object.values(votes).filter(v=>v===false).length;
-  const total = Math.max(teamMembers.length, 1);
-  const needed = jokerVotesNeeded();
-  const impossible = no > (total - needed);
-  if(yes < needed && !impossible) return; // Abstimmung läuft noch weiter
-  if(yes >= needed){
-    const hasNext = teamCampaignHasNext();
-    await sb.from('game_rounds').update({ status:'skipped', pending_skip:null, skip_votes:{}, campaign_has_next: hasNext }).eq('id', currentRound.id);
-    currentRound.status = 'skipped';
-    currentRound.campaign_has_next = hasNext;
-    // Übersprungenes Spiel merken, damit es sich später wieder ans Ende der Kampagne anhängen lässt
-    // (nur bei "Spiele nacheinander" sinnvoll — bei "gleiches Spiel über mehrere Runden" gäb's nichts zum Wiedereinbauen).
-    if(isGamesFlow(currentRound.scope) && currentRound.game_id && !teamSkippedGames.includes(currentRound.game_id)){
-      teamSkippedGames.push(currentRound.game_id);
-    }
-    saveTeamCampaignState();
-  } else {
-    await sb.from('game_rounds').update({ pending_skip: null, skip_votes: {} }).eq('id', currentRound.id);
-  }
-  currentRound.pending_skip = null; currentRound.skip_votes = {};
-  await loadRoundItems();
-  renderTeamPage();
-}
-// Hängt ein zuvor übersprungenes Spiel wieder ans Ende der laufenden Online-Kampagne an (nur Host).
-function reAddSkippedGameTeam(gameId){
-  if(teamRoundScope!=='games') return;
-  teamRoundGameSequence.push(gameId);
-  teamSkippedGames = teamSkippedGames.filter(g=>g!==gameId);
-  saveTeamCampaignState();
-  renderTeamPage();
-}
-function skippedGamesTeamChipsHTML(){
-  if(!teamSkippedGames.length) return '';
-  return `<div class="rules-note" style="margin-top:14px;">🚫 In dieser Kampagne übersprungen:</div>
-    <div class="player-chips" style="margin:6px 0 4px;">${teamSkippedGames.map(gid=>
-      `<button class="chip" style="cursor:pointer;border:none;" onclick="reAddSkippedGameTeam('${gid}')">${gameIconHTML(gid,16)} ${GAME_NAME[gid]} · 🔁 wieder einbauen</button>`
-    ).join('')}</div>`;
-}
-function renderSkipVoteBanner(){
-  if(!currentRound || !currentRound.pending_skip) return '';
-  const p = currentRound.pending_skip;
-  const votes = currentRound.skip_votes || {};
-  const yes = Object.values(votes).filter(v=>v===true).length;
-  const no = Object.values(votes).filter(v=>v===false).length;
-  const myVote = votes[currentUser.id];
-  const needed = jokerVotesNeeded();
-  return `<div class="settings-card" style="border-color:var(--lose);">
-    <div class="setup-step-head"><span class="setup-step-icon">🚫</span><div class="setup-step-title">Überspringen?</div></div>
-    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${unitWordThis(currentRound.scope)} komplett überspringen — es gibt dann keine Punkte dafür. Es braucht die absolute Mehrheit: ${needed} von ${teamMembers.length} Stimmen dafür.</p>
-    <div class="roll-zone" style="gap:10px;">
-      <button class="sb-btn${myVote===true?' active':''}" onclick="voteSkip(true)">✅ Dafür</button>
-      <button class="sb-btn${myVote===false?' active':''}" onclick="voteSkip(false)">❌ Dagegen</button>
-    </div>
-    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes}/${needed} benötigt · ❌ ${no}</div>
-  </div>`;
-}
-async function executeHeroJoker(forUserId){
-  const pool = HERO_GAMES[currentRound.game_id];
-  if(!pool || !sb) return;
-  // "Held auslosen" losst für das GESAMTE Team neu aus (nicht nur für die anfragende Person) —
-  // fühlt sich wie ein frischer gemeinsamer Draw an. Jede Person behält dabei ihre eigene bisherige
-  // Rolle (falls sie beim Start eine Wunschrolle gewählt hatte), nur der konkrete Held wechselt.
-  // hero_revealed wird geleert, damit auf JEDEM Gerät die Roulette-Animation neu losläuft.
-  const memberIds = teamMembers.map(m=>m.user_id);
-  const prevAssignment = currentRound.hero_assignment || {};
-  const usedHeroes = new Set();
-  const newAssignment = {};
-  memberIds.forEach(uid=>{
-    const prevHero = prevAssignment[uid];
-    const roleForThis = prevHero ? prevHero[1] : null;
-    let choices = roleForThis ? pool.filter(h=>h[1]===roleForThis && !usedHeroes.has(h[0])) : pool.filter(h=>!usedHeroes.has(h[0]));
-    if(!choices.length) choices = roleForThis ? pool.filter(h=>h[1]===roleForThis) : pool;
-    if(prevHero && choices.length>1){ const withoutPrev = choices.filter(h=>h[0]!==prevHero[0]); if(withoutPrev.length) choices = withoutPrev; }
-    const newHero = pickHeroAvoidingRecent(choices, uid, currentRound.game_id);
-    newAssignment[uid] = newHero; usedHeroes.add(newHero[0]);
-  });
-  const used = (currentRound.hero_joker_used || []).slice();
-  used.push(forUserId); // Das Joker-Kontingent der anfragenden Person wird belastet.
-  await sb.from('game_rounds').update({ hero_assignment: newAssignment, hero_joker_used: used, hero_revealed: [] }).eq('id', currentRound.id);
-  currentRound.hero_assignment = newAssignment;
-  currentRound.hero_joker_used = used;
-  currentRound.hero_revealed = [];
-  // Lokal zurücksetzen, damit die Roulette-Animation auch auf diesem Gerät (Host) neu startet.
-  teamHeroRevealedFor = null; teamIdleReelCacheFor = null;
-}
-async function executePersonalChallengeJoker(forUserId){
-  if(!sb) return;
-  const { error: delErr } = await sb.from('round_items').delete().eq('round_id', currentRound.id).eq('user_id', forUserId).eq('scope','personal');
-  if(delErr){ showAlert('Reroll fehlgeschlagen — alte Challenges konnten nicht entfernt werden: '+delErr.message+' — prüft in Supabase, ob eine DELETE-Policy auf round_items existiert.'); return; }
-  const difficulty = currentRound.difficulty || 'Mittel';
-  const forcedComp = currentRound.is_match_style ? MATCH_STYLE_COMPOSITION[difficulty] : null;
-  const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [forUserId], currentRound.hero_assignment, forcedComp, personalPoolFor(currentRound.game_id, currentRound.game_mode));
-  const newItems = (singleSet[forUserId]||[]).map(c=>({ round_id: currentRound.id, user_id: forUserId, scope:'personal', text:c.text, diff:c.diff, points: TEAM_ROUND_PERSONAL_DIFF_POINTS[c.diff] }));
-  const { error: insErr } = await sb.from('round_items').insert(newItems);
-  if(insErr){ showAlert('Reroll: neue Challenges konnten nicht erstellt werden: '+insErr.message); return; }
-  const used = (currentRound.challenge_joker_used || []).slice();
-  used.push(forUserId);
-  await sb.from('game_rounds').update({ challenge_joker_used: used }).eq('id', currentRound.id);
-  currentRound.challenge_joker_used = used;
-}
-async function executeTeamChallengeJoker(){
-  if(!sb) return;
-  const difficulty = currentRound.difficulty || 'Mittel';
-  const rulesPool = rulesPoolFor(currentRound.game_id, currentRound.game_mode);
-  const isMatchStyleRound = !!currentRound.is_match_style;
-  const comp = currentRound.session_mode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyleRound ? MATCH_STYLE_COMPOSITION[difficulty] : DIFF_COMPOSITION[difficulty]);
-  const chosen = pickByComposition(rulesPool, comp);
-  const names = teamMembers.map(m=>m.username);
-  const replacements = chosen.map(c=>({ text:substitutePlayerName(c.text, names), diff:c.diff, points:TEAM_ROUND_DIFF_POINTS[c.diff] }));
-  // Kein DELETE+INSERT: Bei manchen Supabase-RLS-Konfigurationen wird ein DELETE
-  // still als "0 Zeilen" behandelt. Dann wurden die neuen Regeln angehängt. Die
-  // vorhandenen gemeinsamen Regeln werden deshalb direkt überschrieben.
-  const existing = roundItems.filter(it=>it.scope==='shared');
-  if(existing.length){
-    const updates = existing.map((item, index)=>{
-      // ÃœberzÃ¤hlige Alt-EintrÃ¤ge (z. B. aus dem frÃ¼heren DELETE-Problem)
-      // werden per UPDATE aus dem gemeinsamen Pool genommen.
-      if(index >= replacements.length) return sb.from('round_items').update({ scope:'rerolled', result:null, struck:false }).eq('id', item.id);
-      return sb.from('round_items').update({ ...replacements[index], result:null, struck:false }).eq('id', item.id);
-    });
-    const results = await Promise.all(updates);
-    const failed = results.find(r=>r.error);
-    if(failed){ showAlert('Reroll: Team-Challenges konnten nicht ausgetauscht werden: '+failed.error.message); return; }
-    if(replacements.length > existing.length){
-      const missing = replacements.slice(existing.length).map(c=>({ round_id:currentRound.id, user_id:null, scope:'shared', ...c }));
-      const { error: insErr } = await sb.from('round_items').insert(missing);
-      if(insErr){ showAlert('Reroll: fehlende Team-Challenges konnten nicht erstellt werden: '+insErr.message); return; }
-    }
-  } else {
-    const { error: insErr } = await sb.from('round_items').insert(replacements.map(c=>({ round_id:currentRound.id, user_id:null, scope:'shared', ...c })));
-    if(insErr){ showAlert('Reroll: neue Team-Challenges konnten nicht erstellt werden: '+insErr.message); return; }
-  }
-  const uses = (currentRound.team_challenge_joker_uses || 0) + 1;
-  await sb.from('game_rounds').update({ team_challenge_joker_uses: uses }).eq('id', currentRound.id);
-  currentRound.team_challenge_joker_uses = uses;
-}
-function renderJokerVoteBanner(){
-  if(!currentRound || !currentRound.pending_joker) return '';
-  const p = currentRound.pending_joker;
-  const votes = currentRound.joker_votes || {};
-  const yes = Object.values(votes).filter(v=>v===true).length;
-  const no = Object.values(votes).filter(v=>v===false).length;
-  const myVote = votes[currentUser.id];
-  const needed = jokerVotesNeeded();
-  return `<div class="settings-card" style="border-color:var(--turquoise);">
-    <div class="setup-step-head"><span class="setup-step-icon">🃏</span><div class="setup-step-title">Joker-Abstimmung</div></div>
-    <p class="setup-info" style="margin-top:0;"><strong>${p.byName}</strong> möchte ${jokerLabel(p.type)} neu auslosen. Es braucht die absolute Mehrheit: ${needed} von ${teamMembers.length} Stimmen dafür.</p>
-    <div class="roll-zone" style="gap:10px;">
-      <button class="sb-btn${myVote===true?' active':''}" onclick="voteJoker(true)">✅ Dafür</button>
-      <button class="sb-btn${myVote===false?' active':''}" onclick="voteJoker(false)">❌ Dagegen</button>
-    </div>
-    <div class="score-sub" style="text-align:center; margin-top:6px;">Stimmen: ✅ ${yes}/${needed} benötigt · ❌ ${no}</div>
-  </div>`;
-}
-async function castVote(itemId, success){
-  if(!currentUser || !sb) return;
-  // Optimistisch: der Klick auf den Button zählt die Stimme sofort lokal hoch/runter,
-  // statt erst auf die Server-Antwort zu warten — fühlt sich direkt an den Button gekoppelt an.
-  roundVotes[itemId] = roundVotes[itemId] || {};
-  const prev = roundVotes[itemId][currentUser.id];
-  // Tippt man dieselbe Option nochmal an, wird die eigene Stimme zurückgenommen statt erneut gesetzt.
-  const retract = prev === success;
-  if(retract) delete roundVotes[itemId][currentUser.id];
-  else roundVotes[itemId][currentUser.id] = success;
-  renderTeamPage();
-  const restorePrev = ()=>{
-    if(prev===undefined) delete roundVotes[itemId][currentUser.id]; else roundVotes[itemId][currentUser.id] = prev;
-    renderTeamPage();
-  };
-  try{
-    if(retract) await sb.from('round_votes').delete().eq('item_id', itemId).eq('voter_id', currentUser.id);
-    else await sb.from('round_votes').upsert({ item_id: itemId, voter_id: currentUser.id, success }, { onConflict: 'item_id,voter_id' });
-  }catch(e){
-    console.error('Stimme konnte nicht gespeichert werden:', e);
-    restorePrev(); return;
-  }
-  // Kein sofortiges zweites Voll-Rendering mehr hier — der optimistische Stand oben ist schon
-  // korrekt, und das ausgelöste Realtime-Event (round_votes) rendert ohnehin entprellt nach
-  // (debouncedRoundItemsRefresh). Das doppelte Rendering direkt hintereinander war die Hauptursache
-  // fürs Flackern beim Klicken.
-}
-async function setSharedResult(itemId, result){
-  if(!currentUser || !myTeam || myTeam.host_id !== currentUser.id || !sb) return;
-  await sb.from('round_items').update({ result }).eq('id', itemId);
-  await loadRoundItems();
-  renderTeamPage();
-}
-const MATCH_WIN_BONUS_POINTS = 5; // Extra-Punkte, wenn die Runde/das Match als "Gewonnen" markiert wurde (s. match_result)
-function computeTeamRoundResults(round, items){
-  const winBonus = round.match_result === 'win' ? MATCH_WIN_BONUS_POINTS : 0;
-  if(round.mode === 'team'){
-    const shared = items.filter(it=>it.scope==='shared');
-    const total = shared.reduce((s,it)=> s + (it.result==='success'?it.points:(it.result==='fail'?-failPenaltyFor(it.diff):0)), 0) + winBonus;
-    // WinChallenge Classic: Challenge-Punkte zählen nur, wenn die Runde/das Match als Sieg markiert
-    // wurde — bei "Verloren" (oder noch nicht markiert) ist das Ergebnis schlicht 0, egal wie viele
-    // Challenges geschafft wurden.
-    const finalTotal = round.classic_mode ? (round.match_result === 'win' ? total : 0) : total;
-    return [{ name:'Team-Ergebnis', score: finalTotal }];
-  }
-  // Nie die optionale profiles-Relation als Identität verwenden: je nach RLS/Realtime-Event
-  // kann sie leer sein. Die user_id ist die stabile Quelle; damit erscheint niemand als "?"
-  // und es werden keine Ergebnisse verschiedener Spieler zusammengelegt.
-  const byPlayer = Object.fromEntries(teamMembers.map(m=>[m.user_id,{ name:m.username, userId:m.user_id, score:winBonus }]));
-  items.filter(it=>it.scope==='personal').forEach(it=>{
-    if(!it.user_id) return;
-    const member = teamMembers.find(m=>m.user_id===it.user_id);
-    const entry = byPlayer[it.user_id] || (byPlayer[it.user_id] = { name:member?member.username:'Unbekannt', userId:it.user_id, score:winBonus });
-    if(it.result==='success') entry.score += it.points;
-    else if(it.result==='fail') entry.score -= failPenaltyFor(it.diff);
-  });
-  return Object.values(byPlayer).sort((a,b)=>b.score-a.score || a.name.localeCompare(b.name));
-}
-// Jedes Teammitglied kann live markieren, ob die Runde/das Match gewonnen oder verloren wurde —
-// zählt sofort als Bonus mit (s. MATCH_WIN_BONUS_POINTS), lässt sich beliebig umklicken bis
-// die Runde abgeschlossen wird. Erfordert game_rounds.match_result (text, nullable) in Supabase.
-async function setMatchResult(result){
-  if(!currentRound || !sb || !myTeam || !currentUser || myTeam.host_id !== currentUser.id){ showAlert('Nur der Team-Ersteller (👑) kann festlegen, ob gewonnen oder verloren wurde.'); return; }
-  const { error } = await sb.from('game_rounds').update({ match_result: result }).eq('id', currentRound.id);
-  if(error){ showAlert('Fehler: ' + error.message); return; }
-  currentRound.match_result = result;
-  renderTeamPage();
-}
-function renderMatchResultToggle(){
-  if(!currentRound) return '';
-  const uw = unitWord(currentRound.scope, false);
-  const cur = currentRound.match_result;
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  if(!isHost){
-    const statusText = cur==='win' ? `✅ Als Sieg markiert (+${MATCH_WIN_BONUS_POINTS})` : cur==='loss' ? '❌ Als Niederlage markiert' : '⏳ Noch nicht markiert — wartet auf den Team-Ersteller (👑)';
-    return `<div class="filter-row" style="margin-bottom:14px;"><span class="setup-info" style="margin:0;">🏆 ${uw} gewonnen? ${statusText}</span></div>`;
-  }
-  return `<div class="filter-row" style="margin-bottom:14px;">
-    <span class="setup-info" style="margin:0 10px 0 0;align-self:center;">🏆 ${uw} gewonnen?</span>
-    <button class="filter-pill${cur==='win'?' active':''}" onclick="setMatchResult('win')">✅ Gewonnen (+${MATCH_WIN_BONUS_POINTS})</button>
-    <button class="filter-pill${cur==='loss'?' active':''}" onclick="setMatchResult('loss')">❌ Verloren</button>
-  </div>`;
-}
-async function finalizeTeamRound(){
-  if(!currentRound || !sb) return;
-  // Sowohl im Team- als auch im Versus-Modus entscheidet die Mehrheit der abgegebenen Stimmen.
-  // Bei Gleichstand (z. B. niemand hat abgestimmt) bleibt die Challenge ohne Ergebnis.
-  for(const item of roundItems){
-    if(item.result) continue;
-    const votes = roundVotes[item.id] || {};
-    const yes = Object.values(votes).filter(v=>v===true).length;
-    const no = Object.values(votes).filter(v=>v===false).length;
-    if(yes !== no){ await sb.from('round_items').update({ result: yes>no?'success':'fail' }).eq('id', item.id); }
-  }
-  await sb.from('game_rounds').update({ status:'done' }).eq('id', currentRound.id);
-  currentRound.status = 'done';
-  await loadRoundItems();
-  const heroesThisRound = currentRound.hero_assignment ? Object.entries(currentRound.hero_assignment).map(([uid,hero])=>({
-    name: (teamMembers.find(m=>m.user_id===uid)||{}).username || '?', hero: hero[0],
-  })) : [];
-  teamCampaignHistory.push({
-    gameId: currentRound.game_id, mode: currentRound.mode,
-    results: computeTeamRoundResults(currentRound, roundItems),
-    heroes: heroesThisRound,
-    won: roundItems.filter(it=>it.result==='success').length,
-    lost: roundItems.filter(it=>it.result==='fail').length,
-    challenges: roundItems.map(it=>({ text:it.text, scope:it.scope, result:it.result||'pending', points:Number(it.points)||0 })),
-  });
-  // teamCampaignIndex/teamCampaignHistory sind rein lokale Host-Variablen (werden nur beim Host
-  // fortgeschrieben, nie über Supabase an Nicht-Host-Geräte übertragen). Damit "Kampagne fertig?"
-  // (Feuerwerk/Endbildschirm) auch auf den Geräten der anderen Mitspieler korrekt ankommt — statt
-  // dort dauerhaft falsch zu bleiben, weil ihr lokaler Stand nie mitgezählt hat — schreibt der Host
-  // das zuverlässig berechnete Ergebnis direkt auf die Runde.
-  const hasNext = teamCampaignHasNext();
-  await sb.from('game_rounds').update({ campaign_has_next: hasNext }).eq('id', currentRound.id);
-  currentRound.campaign_has_next = hasNext;
-  recordMyLocalStatsForRound();
-  renderTeamPage();
-}
-// Trägt die eigenen (lokalen) Punkte/Statistiken für die aktuelle Runde ein — läuft auf JEDEM
-// Gerät für die jeweils eigene Person, nicht nur beim Host, sonst bekämen Mitglieder nie Punkte gutgeschrieben.
-let teamStatsRecordedFor = null; // Round-ID, für die die eigenen Stats schon eingetragen wurden
-function recordMyLocalStatsForRound(){
-  if(!currentRound || !currentUser) return;
-  if(teamStatsRecordedFor === currentRound.id) return;
-  const myItems = roundItems.filter(it=> currentRound.mode==='team' ? true : it.user_id === currentUser.id);
-  if(!myItems.length) return;
-  teamStatsRecordedFor = currentRound.id;
-  const s = getPlayerStats(currentUser.username);
-  let earned = 0, won = 0, lost = 0;
-  myItems.forEach(it=>{
-    if(it.result === 'success'){ earned += it.points; won++; recordChallengeOutcome(s, it.text, true); }
-    else if(it.result === 'fail'){ lost++; recordChallengeOutcome(s, it.text, false); }
-  });
-  // WinChallenge Classic: im Team-Modus gibt's die verdienten Punkte nur gutgeschrieben, wenn die
-  // Runde/das Match am Ende als Sieg markiert wurde.
-  if(currentRound.mode==='team' && currentRound.classic_mode && currentRound.match_result !== 'win'){
-    earned = 0;
-  }
-  s.totalPoints += earned; s.roundsPlayed += 1; s.challengesWon += won; s.challengesLost += lost;
-  // Ein Sieg ist ein echter erster Platz, nicht bloß eine Runde mit positivem Ergebnis. Die alte
-  // Regel („mehr geschafft als verloren“) konnte dadurch den falschen Spieler als Sieger zählen.
-  const roundRanking = computeTeamRoundResults(currentRound, roundItems);
-  const myRoundResult = roundRanking.find(r=>r.userId===currentUser.id);
-  const roundWon = currentRound.mode==='team'
-    ? earned > 0
-    : !!(myRoundResult && roundRanking[0] && myRoundResult.score===roundRanking[0].score);
-  if(roundWon) s.roundWins += 1;
-  s.gamesPlayed[currentRound.game_id] = (s.gamesPlayed[currentRound.game_id]||0)+1;
-  const myHeroForStats = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
-  if(myHeroForStats){ s.heroesPlayed = s.heroesPlayed || {}; s.heroesPlayed[currentRound.game_id+':'+myHeroForStats[0]] = true; }
-  if(earned > s.bestRoundScore) s.bestRoundScore = earned;
-  recordGameHistoryEntry({
-    date: new Date().toISOString(),
-    gameId: currentRound.game_id,
-    mode: currentRound.mode,
-    difficulty: currentRound.difficulty || null,
-    players: teamMembers.map(m=>m.username),
-    challenges: roundItems.map(it=>({
-      text: it.text, diff: it.diff, scope: it.scope,
-      player: it.scope==='personal' ? ((it.profiles && it.profiles.username) || teamMembers.find(m=>m.user_id===it.user_id)?.username || null) : null,
-      result: it.result==='success' ? 'win' : it.result==='fail' ? 'lose' : null,
-    })),
-  });
-  saveStats();
-  notifyNewAchievements(checkAchievements(currentUser.username));
-  syncStatsToCloud(currentUser.username);
-}
-function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItems = []; roundVotes = {}; renderTeamPage(); }
-function renderTeamRoundHeader(){
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : isGamesFlow(currentRound.scope) ? '🎮 SPIEL' : '🔁 RUNDE';
-  const uw = unitWord(currentRound.scope);
-  const roundCounter = isHost ? ` · ${currentRound.scope==='points' ? campaignProgressLabel() : uw+' '+(teamCampaignIndex+1)+'/'+campaignTotal()}` : '';
-  const canLeaveNow = currentRound.status === 'active' || currentRound.status === 'voting';
-  const hostMenu = (isHost && currentRound.status !== 'done' && currentRound.status !== 'skipped') ? `<div class="header-menu">
-    <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
-    <div class="header-menu-panel" id="round-header-menu">
-      <button onclick="extendTeamCampaign()">➕ ${uw} hinzufügen</button>
-      <button class="danger" onclick="endTeamRoundNow()">🛑 ${uw} beenden</button>
-      <button class="danger" onclick="cancelTeamRound()">❌ Abbrechen</button>
-    </div>
-  </div>` : '';
-  // Nicht-Host-Mitglieder konnten eine laufende Runde/Match bisher gar nicht verlassen — nur der
-  // Host konnte sie für alle beenden/abbrechen. Jetzt kann jede/r einzeln aussteigen; die Runde
-  // läuft für den Rest der Gruppe unverändert weiter.
-  const memberLeaveMenu = (!isHost && canLeaveNow) ? `<div class="header-menu">
-    <button class="header-menu-btn" id="round-header-menu-btn" onclick="toggleRoundMenu(event)" aria-label="Weitere Optionen">⋮</button>
-    <div class="header-menu-panel" id="round-header-menu">
-      <button class="danger" onclick="leaveTeamRound()">🚪 ${uw} verlassen</button>
-    </div>
-  </div>` : '';
-  return `<div class="team-unit-banner">${unitLabel}</div>
-  <div class="scoreboard-head" style="margin-bottom:14px;">
-    <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
-    <div class="scoreboard-actions">${hostMenu}${memberLeaveMenu}</div>
-  </div>`;
-}
-function extendTeamCampaign(){
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  if(!isHost) return;
-  teamRoundCount += 2;
-  renderTeamPage();
-}
-function toggleHomeMenu(ev){
-  if(ev) ev.stopPropagation();
-  const panel = document.getElementById('home-menu-panel');
-  const btn = document.getElementById('home-menu-btn');
-  if(!panel || !btn) return;
-  const willOpen = !panel.classList.contains('open');
-  if(willOpen){
-    const rect = btn.getBoundingClientRect();
-    const panelWidth = 210;
-    let left = rect.right - panelWidth;
-    if(left < 8) left = 8;
-    if(left + panelWidth > window.innerWidth - 8) left = window.innerWidth - panelWidth - 8;
-    panel.style.position = 'fixed';
-    panel.style.top = (rect.bottom + 6) + 'px';
-    panel.style.left = left + 'px';
-    panel.style.right = 'auto';
-  }
-  panel.classList.toggle('open', willOpen);
-  if(willOpen){
-    const closeOnOutside = ()=>{ panel.classList.remove('open'); document.removeEventListener('click', closeOnOutside); };
-    setTimeout(()=>document.addEventListener('click', closeOnOutside), 0);
-  }
-}
-function toggleRoundMenu(ev){
-  if(ev) ev.stopPropagation();
-  const panel = document.getElementById('round-header-menu');
-  const btn = document.getElementById('round-header-menu-btn');
-  if(!panel || !btn) return;
-  const willOpen = !panel.classList.contains('open');
-  if(willOpen){
-    const rect = btn.getBoundingClientRect();
-    const panelWidth = 190;
-    let left = rect.right - panelWidth;
-    if(left < 8) left = 8;
-    if(left + panelWidth > window.innerWidth - 8) left = window.innerWidth - panelWidth - 8;
-    panel.style.position = 'fixed';
-    panel.style.top = (rect.bottom + 6) + 'px';
-    panel.style.left = left + 'px';
-    panel.style.right = 'auto';
-  }
-  panel.classList.toggle('open', willOpen);
-  if(willOpen){
-    const closeOnOutside = ()=>{ panel.classList.remove('open'); document.removeEventListener('click', closeOnOutside); };
-    setTimeout(()=>document.addEventListener('click', closeOnOutside), 0);
-  }
-}
-// Lässt ein NICHT-Host-Mitglied die laufende Runde/Match individuell verlassen, ohne sie für den
-// Rest der Gruppe zu beenden. Der eigene Nutzer wird serverseitig in "left_players" vermerkt —
-// checkActiveRound() blendet die Runde dadurch auf ALLEN Geräten dieses Nutzers aus (auch nach
-// einem Reload), während sie für die übrige Gruppe unverändert weiterläuft.
-// ERFORDERT die Spalte "left_players" (jsonb, Default '[]') auf game_rounds in Supabase — analog
-// zu den bestehenden Spalten wie sabotaged_no_joker/spied_pairs.
-async function leaveTeamRound(){
-  if(!currentRound || !myTeam || !currentUser || !sb) return;
-  const isHost = myTeam.host_id === currentUser.id;
-  if(isHost){ showAlert('Als Team-Ersteller (👑) kannst du die Runde nur für die ganze Gruppe beenden oder abbrechen, nicht einzeln verlassen.'); return; }
-  if(!(await confirmAction(`${unitWord(currentRound.scope)} wirklich verlassen? Die anderen spielen ohne dich weiter — ihr könnt jederzeit gemeinsam eine neue Runde starten.`, '🚪'))) return;
-  const list = new Set(currentRound.left_players || []);
-  list.add(currentUser.id);
-  const { error } = await sb.from('game_rounds').update({ left_players: Array.from(list) }).eq('id', currentRound.id);
-  if(error){ showAlert('Verlassen fehlgeschlagen: '+error.message+' — vermutlich fehlt die Spalte "left_players" (jsonb, Default []) auf game_rounds in Supabase.'); return; }
-  unlockTeamRoundRender();
-  currentRound = null; roundItems = []; roundVotes = {};
-  teamPersonallyDoneFor = null;
-  renderTeamPage();
-}
-async function cancelTeamRound(){
-  if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
-  if(!(await confirmAction(`${unitWord(currentRound.scope)} für alle sofort abbrechen? Es gibt kein Ergebnis, alle springen zurück in die Gruppe.`))) return;
-  unlockTeamRoundRender();
-  await sb.from('game_rounds').delete().eq('id', currentRound.id);
-  currentRound = null; roundItems = []; roundVotes = {};
-  teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
-  saveTeamCampaignState();
-  teamMembers.forEach(m=>{ m.ready = false; });
-  await sb.from('team_members').update({ ready: false }).eq('team_id', myTeam.id);
-  renderTeamPage();
-}
-function returnToLobbyFromDone(){
-  unlockTeamRoundRender();
-  currentRound = null; roundItems = []; roundVotes = {};
-  teamSettingsOpen = false;
-  teamCampaignIndex = 0; teamCampaignHistory = []; teamCampaignSyncedFor = null; teamRoundHeroAssignment = null; teamPendingGameIntro = false; teamSkippedGames = [];
-  saveTeamCampaignState();
-  renderTeamPage();
-}
-async function endTeamRoundNow(){
-  if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id) return;
-  if(!(await confirmAction(`${unitWord(currentRound.scope)} wirklich sofort beenden? Noch offene Challenges ohne Ergebnis zählen dann nicht.`))) return;
-  unlockTeamRoundRender();
-  await finalizeTeamRound();
-}
-function renderTeamHeroBlock(){
-  if(!currentRound.hero_assignment) return '';
-  const revealedSet = new Set(currentRound.hero_revealed || []);
-  revealedSet.add(currentUser.id); // ich sehe meinen eigenen Helden natürlich immer
-  let html = '<div class="solo-hero-list sb-hero-row">';
-  Object.entries(currentRound.hero_assignment).forEach(([uid, hero])=>{
-    const member = teamMembers.find(m=>m.user_id===uid);
-    const username = member ? member.username : '?';
-    const avatarBit = withHatOverlay(username, renderAccountAvatarHTML(member ? member.avatar : null, 18), 18);
-    const playerCard = `<span class="member-clickable" style="cursor:pointer;" onclick="showMemberProfile('${uid}')">${playerCosmeticCardHTML(username, avatarBit)}</span>`;
-    if(revealedSet.has(uid)){
-      const [heroName, role] = hero; const meta = ROLE_META[role]; const bg = heroColor(heroName);
-      html += `<div class="solo-hero-item" style="opacity:1; transform:none;">
-        <div class="solo-player">${playerCard}</div>
-        <div class="solo-hero-body">
-          <div class="solo-avatar" style="background:${heroImageFor(currentRound.game_id,heroName)?'#000':bg}; overflow:hidden;">${heroAvatarInner(heroName,currentRound.game_id)}<span class="avatar-badge" style="background:${meta.color}">${meta.icon}</span></div>
-          <div class="solo-hero">${heroName}</div>
-          <div class="solo-role" style="background:${meta.color}">${role}</div>
-        </div></div>`;
-    } else {
-      html += `<div class="solo-hero-item" style="opacity:0.55; transform:none;">
-        <div class="solo-player">${playerCard}</div>
-        <div class="solo-hero-body">
-          <div class="solo-avatar" style="background:var(--bg-elevated); display:flex; align-items:center; justify-content:center; font-size:1.3rem;">🔒</div>
-          <div class="solo-hero" style="color:var(--text-faint);">Wählt gerade aus…</div>
-        </div>
-      </div>`;
-    }
-  });
-  html += '</div>';
-  return html;
-}
-// Rendert eine Liste von Challenge-Items MIT Abstimm-Buttons (✅/❌ + Live-Stimmenzähler). Wird
-// sowohl während der laufenden Runde (status 'active' — schon während des Matches abhakbar) als
-// auch in der finalen Bewertungsphase (status 'voting' — dort dann für alle sichtbar/änderbar)
-// verwendet, damit während des Matches gesetzte Haken beim Abschluss einfach übernommen werden
-// statt am Ende alles neu rekonstruieren zu müssen. Stimmen bleiben bis finalizeTeamRound() jederzeit änderbar.
-function renderVotableChallengeItems(items){
-  let html = '';
-  sortByDifficulty(items).forEach(it=>{
-    const votesForItem = roundVotes[it.id] || {};
-    const yes = Object.values(votesForItem).filter(v=>v===true).length;
-    const no = Object.values(votesForItem).filter(v=>v===false).length;
-    const myVote = votesForItem[currentUser.id];
-    html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
-      <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
-      <div class="sb-challenge-text">${it.text}</div>
-      <div class="sb-points">${it.struck?'🗑️ gestrichen · '+it.points:it.result==='success'?'+'+it.points:it.result==='fail'?'−'+failPenaltyFor(it.diff):it.points} Pkt</div>`;
-    if(!it.result){
-      html += `<div class="sb-actions">
-        <button class="${myVote===true?'active':''}" data-action="win" onclick="castVote('${it.id}', true)">✅<span class="vote-count">${yes}</span></button>
-        <button class="${myVote===false?'active':''}" data-action="lose" onclick="castVote('${it.id}', false)">❌<span class="vote-count">${no}</span></button>
-      </div>`;
-    } else {
-      html += `<div class="score-sub" style="flex:none;margin:0;">✅${yes}·❌${no}</div>`;
-    }
-    html += `</div>`;
-  });
-  return html;
-}
-function renderTeamRoundSection(){
-  const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
-  if(!currentRound) return '';
-  const header = renderTeamRoundHeader();
-  syncMirrorReadyState();
-
-  const myHero = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
-  // Server (hero_revealed) ist die alleinige Quelle der Wahrheit dafür, ob DIESES Gerät den
-  // aktuell zugewiesenen Helden schon gesehen hat. So startet die Roulette-Animation weder nach
-  // einem Reload neu (der Server weiß es noch), noch bleibt sie nach einem Team-Reroll (Joker)
-  // fälschlich übersprungen (hero_revealed wird dabei serverseitig für alle geleert).
-  const alreadyRevealedOnServer = !!(currentRound.hero_revealed && currentRound.hero_revealed.includes(currentUser.id));
-  teamHeroRevealedFor = alreadyRevealedOnServer ? currentRound.id : null;
-  const needsReveal = currentRound.status === 'active' && myHero && !alreadyRevealedOnServer;
-
-  if(needsReveal){
-    const pool = HERO_GAMES[currentRound.game_id];
-    const mine = teamMembers.find(m=>m.user_id===currentUser.id);
-    const myChosenRole = mine && mine.round_role && mine.round_role!=='all' ? mine.round_role : null;
-    const roleLine = myChosenRole
-      ? ` · deine Rolle: ${ROLE_META[myChosenRole]?ROLE_META[myChosenRole].icon:''} ${myChosenRole}`
-      : (myHero ? ` · Rolle: ${ROLE_META[myHero[1]]?ROLE_META[myHero[1]].icon:''} ${myHero[1]}` : '');
-    // Cache the idle reel's random background items per round instead of regenerating them
-    // on every re-render — background polling (every ~3s) would otherwise silently reshuffle
-    // the idle reel, which looks like it's twitching on its own before the player taps Start.
-    if(teamIdleReelCacheFor !== currentRound.id){
-      teamIdleReelCacheFor = currentRound.id;
-      teamIdleReelCacheHTML = buildIdleReelHTML(pool);
-    }
-    const html = header + `<div class="panel-block" style="margin-top:20px;">
-      <div class="section-lead" style="padding-top:0;">
-        <div class="eyebrow">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · Helden-Auslosung</div>
-        <h2 style="font-size:1.7rem;display:flex;align-items:center;gap:10px;">${gameIconHTML(currentRound.game_id,30)} ${GAME_NAME[currentRound.game_id]}</h2>
-        <p style="margin:2px 0 0;color:var(--text-muted);">Dein Held${roleLine}</p>
-      </div>
-      <div class="reel-block">
-        <div class="reel-outer"><div class="reel-viewport reel-idle"><div class="reel-center-marker"></div><div class="reel-track" id="team-reel-track">${teamIdleReelCacheHTML}</div></div></div>
-        <div class="roll-zone" style="margin-top:20px; margin-bottom:0;"><button class="roll-btn" id="team-reel-next">🎰 Start</button></div>
-      </div>
-    </div>`;
-    setTimeout(()=>{
-      const track = document.getElementById('team-reel-track');
-      const btn = document.getElementById('team-reel-next');
-      if(!track || !btn) return;
-      btn.onclick = ()=>{
-        if(teamRevealInFlightFor === currentRound.id) return;
-        teamRevealInFlightFor = currentRound.id;
-        btn.disabled = true; btn.textContent = 'Dreht sich…';
-        lockTeamRoundRender(4200);
-        spinReelTrack(track, pool, myHero, 3600, async ()=>{
-          try{
-            teamHeroRevealedFor = currentRound.id;
-            teamIdleReelCacheFor = null;
-            const revealed = new Set(currentRound.hero_revealed || []);
-            revealed.add(currentUser.id);
-            currentRound.hero_revealed = Array.from(revealed);
-            if(sb) await sb.from('game_rounds').update({ hero_revealed: currentRound.hero_revealed }).eq('id', currentRound.id);
-          } finally {
-            teamRevealInFlightFor = null;
-            unlockTeamRoundRender();
-            renderTeamPage();
-          }
-        });
-      };
-    }, 0);
-    return html;
-  }
-
-  const heroBlock = renderTeamHeroBlock();
-
-  if(currentRound.status === 'active'){
-    // Die Einblend-Animation soll nur beim allerersten Anzeigen dieser Runde laufen — vorher lief
-    // sie bei JEDEM Re-Render neu (Live-Voting, Polling, Realtime-Updates von Mitspielern), was sich
-    // trotz Debounce wie ständiges Flackern angefühlt hat, weil die ganze Karte immer wieder von
-    // opacity:0 einblendete statt einfach ruhig zu bleiben.
-    const isNewRoundView = teamRoundCuedFor !== currentRound.id;
-    if(isNewRoundView){ teamRoundCuedFor = currentRound.id; playStartCue(); }
-    const maxJokers = maxJokerUses();
-    // Wer mit einer Joker-Sperre sabotiert wurde, soll das nicht erst per Fehlermeldung nach dem
-    // Klick erfahren — die Reroll-Buttons erscheinen für die betroffene Person direkt sichtbar
-    // deaktiviert und durchgestrichen.
-    const jokerLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
-    const jokerLockAttrs = 'disabled style="opacity:.45;text-decoration:line-through;cursor:not-allowed;" title="Joker-Sperre aktiv — diese Runde kein Reroll mehr"';
-    let html = header + `<div class="panel-block${isNewRoundView?' round-fade-in':''}" style="margin-top:20px;">
-      <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
-    html += renderJokerVoteBanner();
-    html += renderSkipVoteBanner();
-    if(!currentRound.pending_joker && !currentRound.pending_skip){
-      html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin-bottom:4px;"><button class="sb-btn" onclick="requestSkipVote()">🚫 ${unitWordThis(currentRound.scope)} überspringen</button></div>`;
-    }
-    // Loadout ("Vorteil einsetzen") steht bewusst ÜBER dem Helden-Bild/-Namen — für jeden Spieler,
-    // egal ob Team- oder Jeder-gegen-Jeden-Modus.
-    html += renderSabotagePanel();
-    html += currentRound.mode==='team' ? heroBlock : (myHero ? renderHeroRow([[teamMembers.find(m=>m.user_id===currentUser.id)?.username || 'Du', myHero]], null, currentRound.game_id) : '');
-    // Der Held-Reroll losst für das GANZE Team neu aus (nicht nur für die anfragende Person) — das
-    // Kontingent zählt deshalb teamweit (jede Nutzung durch irgendjemanden zählt), nicht pro Person
-    // wie bei "Meine Challenges" (die betrifft ja nur die anfragende Person selbst).
-    const heroJokerUsesTotal = (currentRound.hero_joker_used||[]).length;
-    const heroJokerBtn = (currentRound.hero_assignment && myHero && heroJokerUsesTotal < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-      ? (jokerLocked
-          ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>`
-          : `<button class="sb-btn" onclick="requestJoker('hero')">🃏 Held (${maxJokers-heroJokerUsesTotal}x)</button>`)
-      : '';
-    const doneSet = new Set(currentRound.personally_done || []);
-    const leftSet = new Set(currentRound.left_players || []);
-    const others = teamMembers.filter(m=>m.user_id !== currentUser.id && !leftSet.has(m.user_id));
-    const missing = others.filter(m=>!doneSet.has(m.user_id));
-    if(others.length){
-      html += `<div class="rules-note" style="margin-top:12px;">Status:</div>`;
-      html += `<div class="player-chips" style="margin:6px 0 4px;">` + others.map(m=>
-        `<div class="chip readonly member-clickable" onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,18), 18), ' '+(doneSet.has(m.user_id)?'✅':'⏳'))}</div>`
-      ).join('') + `</div>`;
-    }
-    if(currentRound.mode === 'team'){
-      html += renderMatchResultToggle();
-      html += `<div class="rules-note">✅/❌ zählt schon jetzt live mit — ihr könnt beim Abschluss noch alles ändern.</div>`;
-      html += renderVotableChallengeItems(roundItems.filter(it=>it.scope==='shared'));
-      const teamJokerUses = currentRound.team_challenge_joker_uses || 0;
-      const challengeJokerBtn = (teamJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-        ? (jokerLocked
-            ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>`
-            : `<button class="sb-btn" onclick="requestJoker('team_challenge')">🃏 Team-Challenges (${maxJokers-teamJokerUses}x)</button>`)
-        : '';
-      if(heroJokerBtn || challengeJokerBtn){
-        html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
-      }
-    } else {
-      const mine = roundItems.filter(it=>it.user_id===currentUser.id);
-      html += renderMatchResultToggle();
-      html += `<div class="rules-note">🔒 Nur du siehst diese Liste auf deinem Handy — ✅/❌ zählt schon jetzt live mit, beim Abschluss noch änderbar.</div>`;
-      html += renderVotableChallengeItems(mine);
-      const myChallengeJokerUses = (currentRound.challenge_joker_used||[]).filter(id=>id===currentUser.id).length;
-      const challengeJokerBtn = (myChallengeJokerUses < maxJokers && !currentRound.pending_joker && !currentRound.pending_skip)
-        ? (jokerLocked
-            ? `<button class="sb-btn" ${jokerLockAttrs}>🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>`
-            : `<button class="sb-btn" onclick="requestJoker('personal_challenge')">🃏 Meine Challenges (${maxJokers-myChallengeJokerUses}x)</button>`)
-        : '';
-      if(heroJokerBtn || challengeJokerBtn){
-        html += `<div class="roll-zone" style="gap:8px;flex-wrap:wrap;margin:8px 0 4px;">${heroJokerBtn}${challengeJokerBtn}</div>`;
-      }
-      // Spionage-Vorteil: für jedes ausspionierte Ziel dessen (sonst geheime) Liste einblenden.
-      const spiedTargets = (currentRound.spied_pairs||[]).filter(p=>p.startsWith(currentUser.id+'>')).map(p=>p.split('>')[1]);
-      spiedTargets.forEach(tid=>{
-        const tm = teamMembers.find(m=>m.user_id===tid);
-        const theirItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===tid);
-        if(tm && theirItems.length){
-          html += `<div class="rules-note" style="margin-top:12px;">🔍 Spionage — Challenges von ${tm.username}:</div>`;
-          html += renderChallengeListPlain(theirItems);
-        }
-      });
-    }
-    if(isHost){
-      if(missing.length){
-        html += `<div class="empty-hint" style="margin-top:8px;">Wartet noch auf: ${missing.map(m=>m.username).join(', ')}</div></div>`;
-      } else {
-        html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="enterRoundVoting()">🏁 ${unitWord(currentRound.scope)} beenden &amp; bewerten</button></div></div>`;
-      }
-    } else if(teamPersonallyDoneFor === currentRound.id){
-      html += `<div class="empty-hint" style="margin-top:16px;">✅ Du bist fertig — warte auf den Team-Ersteller (👑)…</div></div>`;
-    } else {
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="markTeamPersonallyDone()">✅ Fertig</button></div></div>`;
-    }
-    return html;
-  }
-
-  if(currentRound.status === 'voting'){
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🗳️</span><div class="setup-step-title">Bewertung</div></div>`;
-    html += renderMatchResultToggle();
-    if(currentRound.mode === 'team'){
-      html += `<p class="setup-info" style="margin-top:0;">Jeder stimmt für jede Regel ab (schon während des Matches gesetzte Haken sind vorausgefüllt). Es zählt die Mehrheit.</p>`;
-      html += renderVotableChallengeItems(roundItems.filter(it=>it.scope==='shared'));
-      if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
-      else { html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die Bewertung abschließt…</div>`; }
-    } else {
-      html += `<p class="setup-info" style="margin-top:0;">Jetzt sehen alle alle Challenges (schon während des Matches gesetzte Haken sind vorausgefüllt). Stimmt für jede einzeln ab.</p>`;
-      const byPlayer = {};
-      roundItems.filter(it=>it.scope==='personal').forEach(it=>{ (byPlayer[it.user_id] = byPlayer[it.user_id]||[]).push(it); });
-      Object.values(byPlayer).forEach(items=>{
-        const first = items[0];
-        const username = first.profiles ? first.profiles.username : '?';
-        const avatar = withHatOverlay(username, renderAccountAvatarHTML(first.profiles ? first.profiles.avatar : null, 18), 18);
-        html += `<div class="player-block-label member-clickable" style="cursor:pointer;" onclick="showMemberProfile('${first.user_id}')">${playerCosmeticCardHTML(username, avatar)}</div>`;
-        if(currentRound.hero_assignment && currentRound.hero_assignment[first.user_id]) html += renderHeroRow([[username, currentRound.hero_assignment[first.user_id]]], null, currentRound.game_id);
-        html += renderVotableChallengeItems(sortByDifficulty(items));
-      });
-      if(isHost){ html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="finalizeTeamRound()">✅ Bewertung abschließen</button></div>`; }
-      else { html += `<div class="empty-hint">Wartet, bis der Team-Ersteller die Bewertung abschließt…</div>`; }
-    }
-    html += `</div>`;
-    return html;
-  }
-
-  if(currentRound.status === 'skipped'){
-    const total = campaignTotal();
-    const hasNext = isHost && syncedCampaignHasNext(isHost);
-    const nextLabel = currentRound.scope==='points' ? campaignProgressLabel() : `${teamCampaignIndex+2}/${total}`;
-    const uwDone = unitWord(currentRound.scope);
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🚫</span><div class="setup-step-title">${uwDone} übersprungen</div></div>`;
-    html += `<p class="setup-info" style="margin-top:0;">Keine Punkte für ${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]} — war so von der Mehrheit entschieden.</p>`;
-    html += skippedGamesTeamChipsHTML();
-    if(hasNext){
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${nextLabel})</button></div>`;
-      html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
-    } else if(isHost){
-      html += `<p class="setup-info" style="margin-top:12px;">🏆 Kampagne abgeschlossen (${currentRound.scope==='points' ? campaignProgressLabel() : total+'/'+total+' '+unitWordPlural(currentRound.scope)}, diese hier übersprungen).</p>`;
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
-      html += `<div class="roll-zone" style="margin-top:8px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Spiel beenden &amp; zurück zur Gruppe</button></div>`;
-      if(teamSkippedGames.length) html += `<p class="setup-info" style="margin-top:12px;">Übersprungene Spiele oben lassen sich per "wieder einbauen" direkt weiterspielen, statt eine neue Kampagne zu starten.</p>`;
-    } else {
-      html += `<div class="empty-hint">Wartet, bis der Team-Ersteller entscheidet, wie's weitergeht…</div>`;
-      html += `<div class="roll-zone" style="margin-top:16px; margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div>`;
-    }
-    html += `</div>`;
-    return html;
-  }
-
-  if(currentRound.status === 'done'){
-    recordMyLocalStatsForRound();
-    const results = computeTeamRoundResults(currentRound, roundItems);
-    const total = campaignTotal();
-    // „hasNext“ steuert nur den Host-Button. Für die Abschlussanimation brauchen wir dagegen
-    // den tatsächlichen Kampagnenstand — dafür syncedCampaignHasNext() (liest bei Nicht-Host-Geräten
-    // den vom Host synchronisierten Server-Wert statt des lokal nie fortgeschriebenen Standes).
-    const campaignHasNext = syncedCampaignHasNext(isHost);
-    const hasNext = isHost && campaignHasNext;
-    const nextLabel = currentRound.scope==='points' ? campaignProgressLabel() : `${teamCampaignIndex+2}/${total}`;
-    const syncedSummary = myTeam.campaign_summary && myTeam.campaign_summary.roundId === currentRound.id ? myTeam.campaign_summary : null;
-    const campaignDoneForMember = !isHost && !!syncedSummary;
-    const uwDone = unitWord(currentRound.scope);
-    // Der Fortschritt gehört für alle sichtbar in die Abschlussüberschrift – nicht nur für den Host.
-    const doneTitle = `${uwDone} ${currentRound.scope==='points' ? campaignProgressLabel() : teamCampaignIndex+1+'/'+total} abgeschlossen`;
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
-    html += renderLeaderboardTable(results, null, currentRound.game_id);
-    html += `<div class="round-progress-note">Fortschritt: ${currentRound.scope==='points' ? campaignProgressLabel() : `${teamCampaignIndex+1}/${total}`}</div>`;
-    if(hasNext){
-      html += `<div class="roll-zone" style="margin-top:16px;margin-bottom:0;"><button class="roll-btn" onclick="nextCampaignRound()">▶️ ${unitWordNext(currentRound.scope)} (${nextLabel})</button></div>`;
-    } else if(isHost){
-      html += `<div class="roll-zone" style="margin-top:16px;margin-bottom:0;"><button class="roll-btn" onclick="startNewCampaign()">🔄 Neue Kampagne einstellen</button></div>`;
-    } else if(!campaignDoneForMember){
-      html += `<div class="empty-hint" style="margin-top:16px;">Wartet, bis der Team-Ersteller entscheidet, wie es weitergeht…</div>`;
-    }
-    html += `<div class="roll-zone" style="margin-top:8px;margin-bottom:0;"><button class="sb-btn" onclick="returnToLobbyFromDone()">🏠 Zurück zur Gruppe</button></div></div>`;
-    return html;
-  }
-  return '';
-}
-  /* Beschädigter, versehentlich in den Runden-Renderer eingefügter Bilddatenblock.
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step.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',
+/* Beschädigter Bilddatenblock aus einer älteren Dateiversion – wird bewusst ignoriert.
+      // Das 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',
   'r6:Jackal': 'data:image/png;base64,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',
   'r6:Zofia': 'data:image/png;base64,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66/n0ksvJSEhoVK+7UxGw/KeQxn32LFjLF26lPnz57Ns2TK3zVudBiAsqAn3h6tIkQknT/sUdslVTDXAOqcAKP1BebL4OBTF4sTGl1o78aHBSTjgVFWlW7duDB8+nBEjRjBkyBB3J5sEXeignQ0JzUmG5vyOHj3K//73P5YsWcLy5cvZunXrSZNMMlpVgVgtdSiEEIoT8a5wshPVmd5zDoDy/QHsA54vQ1EEtkJqnNXVmWRN0+jYsSNZWVlcfPHFDBkyhG7dulUC16lAV98rIaF+YG3BGAwG2bx5MytXruTTTz9l3bp15OXl1Whmq8s1VsF+C7Br/WJPAahzEoBSSpM6dHi4KDe3R22ZUNd1WrVqRefOnenVqxdZWVn07t2bTp06ndSyQm43PBXTSfDVtbl3XaSiooKYmJhanRhaFRjB7kG4bds2NmzYwOrVq/nqq6/IycnhwIEDp2ZA5+BvRVXVtJ491x3asOEZIKUWYDonouCTEavrmmUYSrfRowsLvv2Grf942z2aVXH66w0cOJDMzEzS09O54IILOO+88+jYsSOZmZmnXD+VPU9qkxqRjdQ7depEhw4dIro0KK+1d+9ecnJy+NGPflQj0EOX4cLXtH0+Hz169KBHjx6MGjUKgJKSEnbv3u0WWWzbto0jR47w9ddfs23btpP61/QcP574Vq3KD23Y4FGdjfBnS84qAGW0FSgq0jteey0Iwda337EHwenl17p1a958882TKkPCzfHprJ+GNu95+eWXWbNmDa+99lpEK3QkoEzTpGPHjrz44ovs2bOH22+/vVbticPXtMPXs1VVJSEhga5du9K1a1f3c1u2bOHmm292m7hbponq8dBtzG1kXHQhB1evqfd13sYAQAdsqggUFdHm8svxJiez+Y3/wwoGUTWNd999l88//5yXXnqJa665xl1O0nX9OxUQSJDpus7TTz/NI488ws6dO0/rMJ3aghDg0UcfpX379pimyfjx4+scgVdXZBEMBvF6vQA8//zzTJ482e63qGluK5Ke48eT2uUCu4G7rjWEoW84la2KphEoKqLlgAH0nXgf3qQkLNNE93rZs2cPP/7xj5k0aRIVFRVu08vTbaAo235UVFQwfvx4Jk+ezFNPPUWbNm1qdaj2aSna6ceSnp7O888/z5133sm0adPcwME83U6qDht6vV727dvHT37yEx54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',
   'r6:Ying': 'data:image/png;base64,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',
@@ -5787,6 +4967,7 @@ function showAdminPanel(){
   renderAdminTabs();
 }
 const ADMIN_TABS = [
+  { key:'system', icon:'⚙️', label:'System' },
   { key:'users', icon:'👥', label:'Benutzer' },
   { key:'heroes', icon:'🖼️', label:'Helden-Bilder' },
   { key:'covers', icon:'🎮', label:'Cover-Bilder' },
@@ -5814,8 +4995,32 @@ function showAdminTab(key){
   });
   renderAdminTabs();
   if(key==='points') renderAdminPointsTab();
+  if(key==='system') renderAdminSystemTab();
   if(key==='pending_challenges') renderAdminPendingChallengesTab();
   if(key==='game_suggestions') renderAdminGameSuggestionsTab();
+}
+function renderAdminSystemTab(){
+  const el = document.getElementById('admin-system-status');
+  if(el) el.textContent = sb ? 'Bereit: Online-Verbindung kann geprüft werden.' : 'Keine Online-Verbindung eingerichtet.';
+}
+async function adminTestConnection(){
+  const el = document.getElementById('admin-system-status');
+  if(!el) return;
+  if(!sb){ el.textContent = 'Keine Supabase-Verbindung eingerichtet.'; return; }
+  el.textContent = 'Verbindung wird geprüft …';
+  try{
+    const { error } = await sb.auth.getSession();
+    el.textContent = error ? `Verbindung fehlgeschlagen: ${error.message}` : 'Verbindung erfolgreich. Live-Daten sind erreichbar.';
+  }catch(e){ el.textContent = 'Verbindung fehlgeschlagen: '+e.message; }
+}
+async function adminRefreshLiveData(){
+  const el = document.getElementById('admin-system-status');
+  if(el) el.textContent = 'Live-Daten werden neu geladen …';
+  try{
+    await Promise.all([loadGameCovers(), loadHeroImages(), currentUser ? loadTeamMembers() : Promise.resolve()]);
+    if(currentUser) await pollTeamState();
+    if(el) el.textContent = 'Live-Daten wurden aktualisiert.';
+  }catch(e){ if(el) el.textContent = 'Aktualisierung fehlgeschlagen: '+e.message; }
 }
 let adminPointsSelectedPlayer = null;
 function renderAdminPointsTab(){
@@ -7468,6 +6673,7 @@ function rollButton(btn, onDone, spins=10, delay=70){
 let globalPlayers = loadPlayers();
 let customChallenges = loadCustomChallenges();
 let userPrefs = loadPrefs();
+document.body.classList.toggle('compact-layout', !!userPrefs.compactLayout);
 function renderGlobalPlayerChips(){
   const wrap = document.getElementById('global-player-chips'); wrap.innerHTML = '';
   if(!globalPlayers.length){ wrap.innerHTML = `<div class="empty-hint" style="padding:4px 2px;">Noch keine Spieler hinzugefügt.</div>`; }
@@ -8396,15 +7602,15 @@ function frameStyleFor(frame){
 const SHOP_SABOTAGE = [
   {id:'lock_joker', icon:'🙅', label:'Joker-Sperre', desc:'Nur bei Jeder gegen Jeden: Zielspieler kann diese Runde keinen Joker/Reroll mehr anfragen und keine Vorteile oder Sabotagen mehr einsetzen.', cost:300, mode:'versus'},
   {id:'hero_steal', icon:'🔀', label:'Helden-Tausch', desc:'Tauscht sofort deinen Helden mit dem Zielspieler. Beide behalten die neue Zuweisung direkt – ohne erneutes Roulette.', cost:250},
-  {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort eine zusätzliche schwere Challenge dazu.', cost:220},
+  {id:'extra_hard', icon:'💀', label:'Extra-Challenge', desc:'Zielspieler bekommt sofort zwei zusätzliche schwere Challenges dazu.', cost:220},
   {id:'force_reroll', icon:'🎲', label:'Zwangs-Reroll', desc:'Der Held des Zielspielers wird sofort neu ausgelost — ohne Abstimmung.', cost:200},
-  {id:'lucky', icon:'🍀', label:'Glückspilz', desc:'Ersetzt alle deine persönlichen Challenges durch 5 leichte.', cost:200, selfOnly:true},
-  {id:'delete_challenge', icon:'🗑️', label:'Challenge streichen', desc:'Wählt eine eigene Challenge (nicht schwer) aus und streicht sie ersatzlos — volle Punkte, keine Bewertung mehr nötig.', cost:150, selfOnly:true},
+  {id:'lucky', icon:'🍀', label:'Glückspilz', desc:'Ersetzt alle deine persönlichen Challenges durch 7 leichte. Eine davon bringt zufällig 3–10 Punkte.', cost:200, selfOnly:true},
+  {id:'delete_challenge', icon:'🗑️', label:'Challenge streichen', desc:'Wählt eine eigene Challenge – auch schwere – und streicht sie ersatzlos. Die Punkte zählen voll.', cost:150, selfOnly:true},
   {id:'hero_pick', icon:'🎯', label:'Helden-Auswahl', desc:'Sucht euch euren Helden für diese Runde komplett frei aus, statt ihn zufällig zugewiesen zu bekommen. Nur in Spielen mit Helden-Auslosung.', cost:350, selfOnly:true},
   // Modus-gebundene Vorteile: funktionieren nur im jeweiligen Modus (mode: 'team' | 'versus').
-  {id:'team_shield', icon:'🛡️', label:'Team-Schild', desc:'Nur im Team-Modus: Eine gemeinsame Team-Regel eurer Wahl zählt automatisch als geschafft.', cost:190, selfOnly:true, mode:'team'},
-  {id:'team_spirit', icon:'🤝', label:'Team-Geist', desc:'Nur im Team-Modus: Eine zusätzliche leichte Team-Regel für Bonus-Punkte kommt dazu.', cost:90, selfOnly:true, mode:'team'},
-  {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'Nur bei Jeder gegen Jeden: Deckt sofort die geheimen Challenges des Zielspielers für dich auf.', cost:150, mode:'versus'},
+  {id:'team_shield', icon:'🛡️', label:'Team-Schild', desc:'Nur im Team-Modus: Eine Team-Regel eurer Wahl zählt automatisch und verhindert für diese Runde sämtliche Minuspunkte.', cost:190, selfOnly:true, mode:'team'},
+  {id:'team_spirit', icon:'🤝', label:'Team-Geist', desc:'Nur im Team-Modus: Eine zusätzliche leichte Team-Regel für genau 3 Bonuspunkte.', cost:90, selfOnly:true, mode:'team'},
+  {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'Nur bei Jeder gegen Jeden: Deckt die Challenges des Ziels auf. Danach darfst du eine eigene gegen eine gleichwertige gegnerische Challenge tauschen.', cost:150, mode:'versus'},
   {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'Nur bei Jeder gegen Jeden: Stiehlt dem Zielspieler zufällig 1–10 Punkte — aus dieser Runde oder, falls nötig, aus seinem bereits verbuchten Guthaben aus vorigen Runden — und schreibt sie dir gut.', cost:230, mode:'versus'},
   {id:'mirror', icon:'🪞', label:'Spiegel', desc:'Passiv: Nehmt ihr diesen mit, trifft eine gegen euch eingesetzte Sabotage stattdessen automatisch den Angreifer — kein Knopf zum Einsetzen. Wird dabei verbraucht. Maximal 1 auf Lager.', cost:500, passive:true, maxOwned:1},
 ];
@@ -8413,6 +7619,32 @@ function shopBalance(name){
   const s = statsStore[name];
   if(!s) return 0;
   return Math.max(0, (s.totalPoints||0) - (s.spent||0));
+}
+function gambleShopCoins(){
+  const name = shopSelectedPlayer;
+  const input = document.getElementById('shop-gamble-stake');
+  const result = document.getElementById('shop-gamble-result');
+  if(!name || !input || !statsStore[name]) return;
+  const stake = Math.max(1, Math.min(50, Math.floor(Number(input.value)||0)));
+  input.value = stake;
+  if(shopBalance(name) < stake){ showAlert('Dafür reichen deine Shop-Münzen nicht.', '🎰'); return; }
+  const roll = Math.random();
+  let payout = 0;
+  if(roll < 0.0005) payout = 1000;          // Jackpot: 0,05 %
+  else if(roll < 0.0025) payout = Math.min(1000, stake * 100);
+  else if(roll < 0.0125) payout = Math.min(1000, stake * 20);
+  else if(roll < 0.08) payout = stake * 5;
+  else if(roll < 0.28) payout = stake * 2;
+  const s = statsStore[name];
+  s.spent = (s.spent||0) + stake;
+  if(payout) s.totalPoints = (s.totalPoints||0) + payout;
+  saveStats();
+  if(result) result.innerHTML = payout
+    ? `<span style="color:var(--win);font-weight:700;">Gewonnen: +${payout} Münzen${payout===1000?' — JACKPOT!':''}</span>`
+    : `<span style="color:var(--text-muted);">Leider nichts gewonnen. Einsatz: ${stake} Münzen.</span>`;
+  const balance = document.getElementById('shop-balance');
+  if(balance) balance.textContent = `💰 Guthaben von ${name}: ${shopBalance(name)} Punkte`;
+  if(payout===1000) showLiveItemCard(`${name} hat den 1.000-Münzen-Jackpot geknackt!`, '🎰');
 }
 function renderShopPage(){
   const pickerRow = document.getElementById('shop-player-picker');
@@ -8454,6 +7686,7 @@ function renderShopPage(){
     <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
     ${uniqueQuoteHTML(s)}
   </div>`;
+  html += `<div class="settings-card shop-luck-machine"><div class="setup-step-head"><span class="setup-step-icon">🎰</span><div class="setup-step-title">Glücksautomat</div></div><p class="setup-info" style="margin-top:0;">Setze 1–50 Shop-Münzen. Gewinne sind selten; 1.000 Münzen sind ein extrem seltener Jackpot.</p><div class="luck-machine-row"><label for="shop-gamble-stake">Einsatz</label><input id="shop-gamble-stake" type="number" min="1" max="50" value="1" inputmode="numeric"><button class="roll-btn" onclick="gambleShopCoins()">🎰 Drehen</button></div><div id="shop-gamble-result" class="setup-info" style="margin:10px 0 0;text-align:center;"></div></div>`;
   html += '<div class="shop-catalog"><div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Abzeichen</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
   SHOP_BADGES.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
     const isOwned = owned.badges.includes(b.id);
@@ -8476,7 +7709,7 @@ function renderShopPage(){
     </div>`;
   });
   html += '</div></div>';
-  html += '<div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Banner-Farbe</div></div><div class="filter-row">';
+  html += '<div class="settings-card shop-category-banner"><div class="setup-step-head"><div class="setup-step-title">Banner</div></div><div class="filter-row">';
   SHOP_BANNERS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
@@ -8489,7 +7722,7 @@ function renderShopPage(){
     html += `<button class="filter-pill${isEquipped?' active':''}${bannerClassFor(b)}" style="${btnStyle}" onclick="${b.cost>0?(isOwned?`equipShopItem('banner','${b.id}')`:`buyShopItem('banner','${b.id}')`):(isEquipped?'':`equipShopItem('banner','${b.id}')`)}">${bannerImgTagHTML(b)}<span style="position:relative;z-index:2;text-shadow:0 1px 3px rgba(0,0,0,0.85), 0 0 8px rgba(0,0,0,0.6);">${b.label} ${b.cost>0?(isOwned?(isEquipped?'✓':''):'· '+b.cost+' Pkt'):(isEquipped?'✓ aktiv':(b.basic?'Kostenlos':'🏆 freigeschaltet'))}</span></button>`;
   });
   html += '</div></div>';
-  html += '<div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
+  html += '<div class="settings-card shop-category-glow"><div class="setup-step-head"><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
   SHOP_GLOWS.slice().sort((a,b)=>a.cost-b.cost).forEach(g=>{
     const isOwned = owned.glows && owned.glows.includes(g.id);
     if(g.cosmicExclusive && !isOwned) return;
@@ -8499,7 +7732,7 @@ function renderShopPage(){
     html += `<button class="filter-pill ${btnClass}${isEquipped?' active':''}" style="${btnStyle}" onclick="${isOwned?`equipShopItem('glow','${g.id}')`:`buyShopItem('glow','${g.id}')`}">${g.icon} ${g.label} ${isOwned?(isEquipped?'✓':''):'· '+g.cost+' Pkt'}</button>`;
   });
   html += '</div></div>';
-  html += '<div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Rahmen</div></div><div class="filter-row">';
+  html += '<div class="settings-card shop-category-frame"><div class="setup-step-head"><div class="setup-step-title">Rahmen</div></div><div class="filter-row">';
   SHOP_FRAMES.slice().sort((a,b)=>a.cost-b.cost).forEach(f=>{
     const isOwned = owned.frames && owned.frames.includes(f.id);
     if(f.cosmicExclusive && !isOwned) return;
@@ -8513,7 +7746,7 @@ function renderShopPage(){
     const ownedCount = (owned.sabotage && owned.sabotage[b.id]) || 0;
     html += `<div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="buySabotageItem('${b.id}')">
       <span class="settings-row-icon">${b.icon}</span>
-      <span class="settings-row-text"><span class="settings-row-title">${b.label} ${ownedCount?`<span style="color:var(--turquoise);">(${ownedCount}x im Besitz)</span>`:''}</span><span class="settings-row-sub">${b.desc}</span></span>
+      <span class="settings-row-text"><span class="settings-row-title">${b.label} ${ownedCount?`<span style="color:var(--turquoise);">(${ownedCount}x im Besitz)</span>`:''}</span><span class="shop-mode-tag ${b.mode||''}">${b.mode==='team'?'Nur Team-Modus':b.mode==='versus'?'Nur Jeder-gegen-Jeden':'In beiden Modi'}</span><span class="settings-row-sub">${b.desc}</span></span>
       <span class="settings-row-chev">${b.cost} Pkt</span>
     </div>`;
   });
@@ -9907,8 +9140,26 @@ document.getElementById('wwm-roll').addEventListener('click', ()=>{
 });
 
 /* ============================================================ LIVE ITEM-KARTEN ============================================================ */
+function showItemScreenFlash(icon, label){
+  const old = document.getElementById('item-screen-flash'); if(old) old.remove();
+  const flash = document.createElement('div');
+  flash.id = 'item-screen-flash';
+  flash.innerHTML = `<div class="item-screen-flash-symbol">${icon}</div><div class="item-screen-flash-label">${label||''}</div>`;
+  const styleId = 'item-screen-flash-style';
+  if(!document.getElementById(styleId)){
+    const style = document.createElement('style'); style.id = styleId;
+    style.textContent = `#item-screen-flash{position:fixed;inset:0;z-index:10049;display:grid;place-content:center;pointer-events:none;background:radial-gradient(circle,rgba(186,235,255,.18),rgba(15,17,34,0) 55%);animation:item-flash 1.3s ease-out forwards}.item-screen-flash-symbol{font-size:clamp(5rem,18vw,12rem);filter:drop-shadow(0 0 22px rgba(196,242,255,.9));animation:item-symbol .9s cubic-bezier(.2,.9,.25,1)}.item-screen-flash-label{text-align:center;margin-top:8px;font:800 clamp(1rem,3vw,1.5rem)/1 Rajdhani,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#e8fbff;text-shadow:0 0 15px #47dfff}@keyframes item-flash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}@keyframes item-symbol{0%{transform:scale(.35) rotate(-15deg)}55%{transform:scale(1.08) rotate(4deg)}100%{transform:scale(1)}}`;
+    document.head.appendChild(style);
+  }
+  document.body.appendChild(flash); setTimeout(()=>flash.remove(),1350);
+}
 function showLiveItemCard(message, icon){
   if(!message) return;
+  if(message.includes('Spiegel')) showItemScreenFlash('🪞', 'Spiegel-Effekt');
+  else if(message.includes('Team-Schild')) showItemScreenFlash('🛡️', 'Team-Schild');
+  else if(message.includes('Helden-Tausch')) showItemScreenFlash('🔀', 'Helden getauscht');
+  else if(message.includes('Zwangs-Reroll')) showItemScreenFlash('🎲', 'Neu ausgelost');
+  else if(message.includes('Spionage')) showItemScreenFlash('🔍', 'Spionage');
   const old = document.getElementById('live-item-card');
   if(old) old.remove();
   if(!document.getElementById('live-item-card-style')){
