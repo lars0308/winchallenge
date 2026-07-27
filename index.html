@@ -443,17 +443,18 @@
   .shop-owned:not(.active):not(.selected){ background-color:rgba(34,211,209,.055); }
   /* Online-Lobby: klare, breite Konfigurationsgruppen statt einer schmalen Button-Säule. */
   #team-round-picker{ max-width:1240px; margin:0 auto; display:grid; gap:14px; }
-  .lobby-config-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-  .lobby-config-section{ min-width:0; padding:16px 18px; border:1px solid var(--border-soft); border-radius:16px; background:linear-gradient(145deg,rgba(25,25,40,.94),rgba(16,16,29,.94)); }
+  .lobby-config-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px; }
+  .lobby-config-section{ min-width:0; padding:20px 22px; border:1px solid var(--border-soft); border-radius:18px; background:linear-gradient(145deg,rgba(25,25,40,.94),rgba(16,16,29,.94)); box-shadow:0 10px 28px rgba(0,0,0,.14); }
   .lobby-config-section.wide{ grid-column:1 / -1; }
   .lobby-config-section-title{ margin:0 0 10px; color:var(--text); font-size:.83rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .lobby-config-section-hint{ margin:-3px 0 16px; color:var(--text-muted); font-size:.8rem; line-height:1.35; }
   .lobby-config-section .filter-row{ justify-content:center; }
   .lobby-config-section .setup-info{ margin:0 0 9px; text-align:center; }
   .loadout-picker.loadout-collapsed{ padding-bottom:12px; }
   .loadout-picker.loadout-collapsed > :not(.setup-step-head){ display:none; }
   .loadout-picker .setup-step-head{ cursor:pointer; user-select:none; }
   .loadout-collapse-toggle{ margin-left:auto; border:1px solid var(--border); border-radius:999px; padding:5px 10px; background:var(--bg-elevated); color:var(--text-muted); font-size:.75rem; font-weight:800; }
-  @media(max-width:760px){ .lobby-config-grid{ grid-template-columns:1fr; } .lobby-config-section.wide{ grid-column:auto; } .lobby-config-section{ padding:14px 12px; } }
+  @media(max-width:760px){ .lobby-config-grid{ grid-template-columns:1fr; gap:14px; } .lobby-config-section.wide{ grid-column:auto; } .lobby-config-section{ padding:16px 14px; } }
   .shop-mode-tag.team{ border-color:rgba(34,211,209,.5); color:var(--turquoise-bright); }.shop-mode-tag.versus{ border-color:rgba(168,85,247,.6); color:#d6b4ff; }
   .duck-hunt{ position:fixed; z-index:101; border:0; background:transparent; padding:4px; font-size:1.55rem; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); animation:duck-wobble 2.1s ease-in-out infinite; }
   .duck-hunt:hover{ transform:scale(1.22) rotate(10deg); }.duck-hunt:focus-visible{ outline:2px solid #ffe55c; border-radius:50%; }
@@ -4123,20 +4124,38 @@ async function setOnlineChallengeResult(itemId,result){
   if(error){ showAlert('Ergebnis konnte nicht gespeichert werden: '+error.message); return; }
   await loadRoundItems(); renderTeamPage();
 }
+async function revealOnlineHero(){
+  if(!currentRound||!currentUser||!sb) return;
+  const hero=(currentRound.hero_assignment||{})[currentUser.id], pool=HERO_GAMES[currentRound.game_id];
+  const track=document.getElementById('team-online-hero-reel'), btn=document.getElementById('team-online-hero-start');
+  if(!hero||!pool||!track||!btn) return;
+  btn.disabled=true; btn.textContent='Dreht sich …'; lockTeamRoundRender(4300);
+  spinReelTrack(track,pool,hero,3600,async()=>{
+    const revealed=Array.from(new Set([...(currentRound.hero_revealed||[]),currentUser.id]));
+    const {error}=await sb.from('game_rounds').update({hero_revealed:revealed}).eq('id',currentRound.id);
+    if(error){ showAlert('Held konnte nicht bestätigt werden: '+error.message); btn.disabled=false; btn.textContent='Nochmal versuchen'; unlockTeamRoundRender(); return; }
+    currentRound.hero_revealed=revealed; unlockTeamRoundRender(); renderTeamPage();
+  });
+}
 function renderOnlineRoundWorkspace(){
   if(!currentRound || !currentUser) return '';
-  const isTeam=currentRound.mode==='team';
+  const isTeam=currentRound.mode==='team', hero=(currentRound.hero_assignment||{})[currentUser.id];
+  const roundLabel=campaignProgressLabel(), gameName=GAME_NAME[currentRound.game_id]||currentRound.game_id;
+  const header=`<div class="scoreboard-head"><div class="scoreboard-info"><div class="round-badge">${roundLabel}</div><div class="scoreboard-title">${gameIconHTML(currentRound.game_id,22)} ${gameName}</div><div class="scoreboard-meta">${isTeam?'Team gegen Team':'Jeder gegen Jeden'} · ${currentRound.session_mode==='chaos'?'Chaos':'Challenge'} · ${currentRound.difficulty||'Mittel'}</div></div></div>`;
+  if(hero && !(currentRound.hero_revealed||[]).includes(currentUser.id)){
+    const pool=HERO_GAMES[currentRound.game_id]||[];
+    return `<div class="settings-card online-round-workspace round-fade-in">${header}<div class="section-lead" style="padding:14px 0 0;"><div class="eyebrow">Helden-Auslosung</div><h2 style="font-size:1.5rem;">${gameIconHTML(currentRound.game_id,26)} ${gameName}</h2><p>Dein Held wird live für dich ausgelost.</p></div><div class="reel-block"><div class="reel-player-name">${currentUser.username}</div><div class="reel-outer"><div class="reel-viewport reel-idle"><div class="reel-center-marker"></div><div class="reel-track" id="team-online-hero-reel">${buildIdleReelHTML(pool)}</div></div></div><div class="roll-zone" style="margin-top:20px;"><button class="roll-btn" id="team-online-hero-start" onclick="revealOnlineHero()">Roulette starten</button></div></div></div>`;
+  }
   const visible=isTeam ? roundItems.filter(i=>i.scope==='shared') : roundItems.filter(i=>i.user_id===currentUser.id);
-  const open=visible.filter(i=>!i.result), done=visible.filter(i=>i.result==='win').length, failed=visible.filter(i=>i.result==='lose').length;
-  const hero=(currentRound.hero_assignment||{})[currentUser.id];
-  const heroLine=hero?`<div class="settings-row-sub">Dein Held: <strong>${hero[0]}</strong>${hero[1]?` · ${hero[1]}`:''}</div>`:'';
+  const done=visible.filter(i=>i.result==='win').length, failed=visible.filter(i=>i.result==='lose').length;
   const cards=visible.length ? visible.map(i=>{
-    const state=i.result==='win'?' geschafft':i.result==='lose'?' nicht-geschafft':'';
-    const actions=!i.result?`<div class="filter-row" style="margin-top:10px;"><button class="filter-pill active" onclick="setOnlineChallengeResult('${i.id}','win')">Geschafft</button><button class="filter-pill" onclick="setOnlineChallengeResult('${i.id}','lose')">Nicht geschafft</button></div>`:'';
-    return `<div class="settings-row-btn" style="display:block;margin:9px 0;cursor:default;"><div class="settings-row-text"><span class="settings-row-title">${i.text}</span><span class="settings-row-sub">${i.diff||'Challenge'} · ${i.points||0} Punkte${state}</span></div>${actions}</div>`;
-  }).join(''):'<div class="empty-hint">Für diese Runde werden gerade Challenges geladen …</div>';
+    const state=i.result==='win'?' won':i.result==='lose'?' lost':'';
+    const points=i.result==='win'?`+${i.points||0}`:i.result==='lose'?`−${i.points||0}`:`${i.points||0} Pkt`;
+    const actions=!i.result?`<div class="sb-actions"><button onclick="setOnlineChallengeResult('${i.id}','win')">✅</button><button onclick="setOnlineChallengeResult('${i.id}','lose')">❌</button></div>`:'';
+    return `<div class="sb-challenge-item${state}"><div class="sb-diff-badge" style="background:${DIFF_COLOR[i.diff]||'var(--turquoise)'}">${DIFF_LABEL[i.diff]||i.diff||'Challenge'}</div><div class="sb-challenge-text">${i.text}</div><div class="sb-points">${points}</div>${actions}</div>`;
+  }).join(''):'<div class="empty-hint">Challenges werden geladen …</div>';
   const host=currentUser&&myTeam&&myTeam.host_id===currentUser.id;
-  return `<div class="settings-card online-round-workspace"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">${GAME_NAME[currentRound.game_id]||currentRound.game_id} · ${campaignProgressLabel()}</div></div><p class="setup-info" style="margin-top:0;">${isTeam?'Gemeinsame Challenges für euer Team.':'Deine persönlichen Challenges.'}</p>${heroLine}<div class="setup-info" style="margin:12px 0 4px;">${done} geschafft · ${failed} nicht geschafft · ${open.length} offen</div><div class="online-challenge-list">${cards}</div>${host?`<div class="roll-zone" style="margin-top:14px;"><button class="sb-btn" onclick="enterRoundVoting()">Ergebnisse zur Bewertung freigeben</button></div>`:''}</div>`;
+  return `<div class="settings-card online-round-workspace round-fade-in">${header}${hero?renderHeroRow([[currentUser.username,hero]],null,currentRound.game_id):''}<div class="score-sub">${done} geschafft · ${failed} nicht geschafft · ${visible.length-done-failed} offen</div><div class="challenges-label">${isTeam?'Spielregeln':'Deine Challenges'}</div><div class="sb-challenge-list">${cards}</div>${host?`<div class="roll-zone" style="margin-top:24px;"><button class="roll-btn" onclick="enterRoundVoting()">Runde abschließen</button></div>`:''}</div>`;
 }
 function renderTeamPage(){
   const el=document.getElementById('team-content');
