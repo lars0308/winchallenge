@@ -3672,6 +3672,8 @@ async function subscribeTeam(teamId){
     .on('postgres_changes', { event:'*', schema:'public', table:'game_rounds', filter:`team_id=eq.${teamId}` }, ()=>{ checkActiveRound(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'round_items' }, ()=>{ debouncedRoundItemsRefresh(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'round_votes' }, ()=>{ debouncedRoundItemsRefresh(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'round_minigames' }, ()=>{ debouncedRoundItemsRefresh(); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'round_minigame_actions' }, ()=>{ debouncedRoundItemsRefresh(); })
     .subscribe((status)=>{
       if(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT'){
         console.warn('Team-Realtime nicht verbunden (Status: '+status+'). Prüfe in Supabase unter Database → Replication. Live-Updates laufen währenddessen per Polling weiter.');
@@ -4112,6 +4114,30 @@ async function toggleMyTeamReady(){
   const { error }=await sb.from('team_members').update({ready}).eq('team_id',myTeam.id).eq('user_id',currentUser.id);
   if(error){ if(mine) mine.ready=!ready; showAlert('Bereitschaft konnte nicht gespeichert werden: '+error.message); renderTeamPage(); }
 }
+async function setOnlineChallengeResult(itemId,result){
+  if(!currentRound || !currentUser || !sb) return;
+  const item=roundItems.find(x=>x.id===itemId);
+  if(!item) return;
+  if(currentRound.mode==='versus' && item.user_id!==currentUser.id){ showAlert('Du kannst nur deine eigenen Challenges bewerten.'); return; }
+  const {error}=await sb.from('round_items').update({result}).eq('id',itemId);
+  if(error){ showAlert('Ergebnis konnte nicht gespeichert werden: '+error.message); return; }
+  await loadRoundItems(); renderTeamPage();
+}
+function renderOnlineRoundWorkspace(){
+  if(!currentRound || !currentUser) return '';
+  const isTeam=currentRound.mode==='team';
+  const visible=isTeam ? roundItems.filter(i=>i.scope==='shared') : roundItems.filter(i=>i.user_id===currentUser.id);
+  const open=visible.filter(i=>!i.result), done=visible.filter(i=>i.result==='win').length, failed=visible.filter(i=>i.result==='lose').length;
+  const hero=(currentRound.hero_assignment||{})[currentUser.id];
+  const heroLine=hero?`<div class="settings-row-sub">Dein Held: <strong>${hero[0]}</strong>${hero[1]?` · ${hero[1]}`:''}</div>`:'';
+  const cards=visible.length ? visible.map(i=>{
+    const state=i.result==='win'?' geschafft':i.result==='lose'?' nicht-geschafft':'';
+    const actions=!i.result?`<div class="filter-row" style="margin-top:10px;"><button class="filter-pill active" onclick="setOnlineChallengeResult('${i.id}','win')">Geschafft</button><button class="filter-pill" onclick="setOnlineChallengeResult('${i.id}','lose')">Nicht geschafft</button></div>`:'';
+    return `<div class="settings-row-btn" style="display:block;margin:9px 0;cursor:default;"><div class="settings-row-text"><span class="settings-row-title">${i.text}</span><span class="settings-row-sub">${i.diff||'Challenge'} · ${i.points||0} Punkte${state}</span></div>${actions}</div>`;
+  }).join(''):'<div class="empty-hint">Für diese Runde werden gerade Challenges geladen …</div>';
+  const host=currentUser&&myTeam&&myTeam.host_id===currentUser.id;
+  return `<div class="settings-card online-round-workspace"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">${GAME_NAME[currentRound.game_id]||currentRound.game_id} · ${campaignProgressLabel()}</div></div><p class="setup-info" style="margin-top:0;">${isTeam?'Gemeinsame Challenges für euer Team.':'Deine persönlichen Challenges.'}</p>${heroLine}<div class="setup-info" style="margin:12px 0 4px;">${done} geschafft · ${failed} nicht geschafft · ${open.length} offen</div><div class="online-challenge-list">${cards}</div>${host?`<div class="roll-zone" style="margin-top:14px;"><button class="sb-btn" onclick="enterRoundVoting()">Ergebnisse zur Bewertung freigeben</button></div>`:''}</div>`;
+}
 function renderTeamPage(){
   const el=document.getElementById('team-content');
   if(!el) return;
@@ -4172,7 +4198,10 @@ function renderTeamPage(){
   if(!myTeam){ if(title) title.textContent='Team'; if(leave) leave.style.display='none'; el.innerHTML='<div class="empty-hint">Kein Team ausgewählt.</div>'; return; }
   if(title) title.textContent=myTeam.name||'Team'; if(leave) leave.style.display='inline-flex';
   const isHost=!!(currentUser&&myTeam.host_id===currentUser.id), mine=teamMembers.find(m=>currentUser&&m.user_id===currentUser.id);
-  if(currentRound){ el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Runde läuft gerade</div></div><p class="setup-info">${GAME_NAME[currentRound.game_id]||currentRound.game_id} · ${campaignProgressLabel()}</p><div class="roll-zone"><button class="roll-btn" onclick="showView('session')">Zur aktuellen Runde</button></div></div>${renderMiniGamesPanel()}`; return; }
+  if(currentRound){
+    el.innerHTML=`${renderOnlineRoundWorkspace()}${renderSabotagePanel()}`;
+    return;
+  }
   const members=teamMembers.map(m=>{ const c=cosmeticsFor(m.username), banner=SHOP_BANNERS.find(b=>b.id===c.banner); return `<button class="chip selectable${m.ready?' selected':''}${bannerClassFor(banner)}" style="${banner?bannerStyleFor(banner):''};min-height:38px;overflow:hidden;" onclick="showMemberProfile('${m.user_id}')">${bannerImgTagHTML(banner)}<span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:5px;">${avatarHTML(m.username,22)} ${glowNameHTML(m.username,m.username)}${m.user_id===myTeam.host_id?' 👑':''}${m.ready?' ✓':''}</span></button>`; }).join('')||'<span class="empty-hint">Mitglieder werden geladen …</span>';
   const hostMenu=isHost&&hostTransferOpen?`<div class="filter-row" style="margin-top:10px;">${teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>`<button class="filter-pill" onclick="transferHost('${m.user_id}','${m.username.replace(/'/g,"\\'")}')">An ${m.username} übergeben</button>`).join('')||'<span class="setup-info">Keine weiteren Mitglieder.</span>'}</div>`:'';
   const actionRow=`<div class="filter-row" style="justify-content:center;margin-top:14px;"><button class="sb-btn" onclick="openFriendInviteModal()">Freund direkt einladen</button>${isHost?'<button class="sb-btn" onclick="toggleHostTransferMenu()">Host übergeben</button>':''}</div>${hostMenu}`;
@@ -4591,7 +4620,7 @@ function debouncedRoundItemsRefresh(){
   if(roundItemsRefreshTimer) clearTimeout(roundItemsRefreshTimer);
   roundItemsRefreshTimer = setTimeout(()=>{
     roundItemsRefreshTimer = null;
-    if(currentRound) loadRoundItems().then(renderTeamPage);
+    if(currentRound) Promise.all([loadRoundItems(),loadRoundMiniGames()]).then(renderTeamPage);
   }, 400);
 }
 // Fallback für Projekte, bei denen Supabase Realtime noch nicht für alle Tabellen aktiviert ist:
@@ -4604,6 +4633,7 @@ async function refreshLiveRoundItems(){
   const signature = JSON.stringify([
     roundItems.map(it=>[it.id,it.user_id,it.text,it.result,it.struck]),
     Object.entries(roundVotes).sort(([a],[b])=>a.localeCompare(b)),
+    roundMiniGames.map(e=>[e.id,e.kind,e.status,e.initiator_id,e.winner_id,e.payload]),
   ]);
   if(signature === lastLiveRoundItemsSignature) return;
   lastLiveRoundItemsSignature = signature;
@@ -4830,13 +4860,14 @@ function renderSabotagePanel(){
   // erscheinen nur, wenn der aktuelle Runden-Modus passt.
   const available = SHOP_SABOTAGE.filter(item => (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode) && !item.passive);
   if(!available.length){
-    return mirrorNote + mirrorAction + duckAction + spySwapHTML;
+    const miniOnly=renderMiniGamesPanel();
+    return mirrorNote + mirrorAction + duckAction + spySwapHTML + (miniOnly?`<details class="round-benefits-panel" style="margin:0 0 14px;"><summary>Vorteile einsetzen</summary><div style="padding:12px 14px 14px;">${miniOnly}</div></details>`:'');
   }
   // Wer mit einer Joker-Sperre belegt wurde, darf diese Runde gar keine Vorteile/Sabotagen mehr
   // einsetzen — die Buttons bleiben sichtbar, aber sichtbar deaktiviert, statt einfach zu verschwinden.
   const isLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
   const dis = isLocked ? 'disabled style="opacity:.4;cursor:not-allowed;"' : '';
-  let html = mirrorNote + mirrorAction + duckAction + spySwapHTML + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">`;
+  let html = mirrorNote + mirrorAction + duckAction + spySwapHTML + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">${renderMiniGamesPanel()}`;
   if(isLocked){
     html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;color:var(--lose);">🙅 Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.</p>`;
   }
@@ -4936,10 +4967,10 @@ function renderMiniGamesPanel(){
   const s=statsStore[currentUser.username]||{}, owned=(s.shopOwned&&s.shopOwned.sabotage)||{};
   const can=id=>(owned[id]||0)>0&&(sabotageLoadout[id]||0)>0;
   const open=roundMiniGames.filter(e=>e.status==='active');
-  let html='<details class="round-benefits-panel" style="margin:0 0 14px;"><summary>Minispiele</summary><div style="padding:12px 14px 14px;"><p class="setup-info" style="margin-top:0;">Kaufbare Live-Vorteile für diese Runde.</p><div class="filter-row">';
-  [['reaction_duel','⚡ Reaktionsduell'],['risk_card','🎲 Risiko-Karte'],['number_guess','🔢 Zahlenraten']].forEach(([id,label])=>{ html+=`<button class="filter-pill" ${can(id)?'':'disabled'} onclick="startMiniGame('${id}')">${label}</button>`; }); html+='</div>';
+  let html='<div class="minigame-controls"><p class="setup-info" style="margin:6px 0 10px;text-align:left;">Minispiele: einsetzbar wie Vorteile. Die Zahl zeigt Bestand · mitgenommen.</p><div class="filter-row">';
+  [['reaction_duel','⚡ Reaktionsduell'],['risk_card','🎲 Risiko-Karte'],['number_guess','🔢 Zahlenraten']].forEach(([id,label])=>{ const count=`${owned[id]||0}× · ${sabotageLoadout[id]||0} bereit`; html+=`<button class="filter-pill" ${can(id)?'':'disabled'} onclick="startMiniGame('${id}')">${label} <small>${count}</small></button>`; }); html+='</div>';
   open.forEach(e=>{ if(e.kind==='reaction_duel') html+=`<div class="settings-row-btn" style="margin-top:10px;"><span class="settings-row-text"><span class="settings-row-title">Reaktionsduell läuft</span><span class="settings-row-sub">Schnellster Klick streicht eine leichte Challenge.</span></span><button class="roll-btn" onclick="playMiniGame('${e.id}','click')">JETZT!</button></div>`; else if(e.kind==='number_guess') html+=`<div class="settings-row-btn" style="margin-top:10px;"><span class="settings-row-text"><span class="settings-row-title">Zahlenraten läuft</span><span class="settings-row-sub">Rate eine Zahl von 1 bis 10.</span></span><span class="filter-row">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button class="filter-pill" onclick="playMiniGame('${e.id}',${n})">${n}</button>`).join('')}</span></div>`; });
-  return html+'</div></details>';
+  return html+'</div>';
 }
 function renderSpySwapPanel(){
   if(!currentRound || !currentUser || currentRound.mode!=='versus') return '';
