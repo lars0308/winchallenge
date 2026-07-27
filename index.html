@@ -419,6 +419,12 @@
   .shop-luck-machine{ margin:16px 0; background:linear-gradient(135deg,rgba(77,44,120,.42),rgba(17,86,108,.32)); border-color:rgba(121,92,255,.52); }
   .shop-luck-machine:not(.open) .slot-machine,.shop-luck-machine:not(.open) .luck-machine-row,.shop-luck-machine:not(.open) #shop-gamble-result{ display:none; }
   .shop-luck-toggle{ margin-left:auto; min-height:32px; padding:0 12px; border:1px solid var(--border); border-radius:999px; background:var(--bg-elevated); color:var(--text); font-weight:800; cursor:pointer; }
+  .shop-luck-machine:not(.open){ min-height:0; padding:0 18px; background:linear-gradient(100deg,rgba(58,31,112,.62),rgba(10,40,61,.76)); }
+  .shop-luck-machine:not(.open) .setup-step-head{ width:100%; min-height:62px; margin:0; padding:0; border:0; }
+  .shop-luck-machine:not(.open) .setup-step-head::after{ content:'Chance auf 1–1.000 Shop-Münzen'; margin-left:10px; color:var(--text-muted); font-size:.84rem; font-weight:600; }
+  .shop-luck-machine:not(.open) .setup-info{ display:none; }
+  .shop-luck-machine.open .setup-step-head{ align-items:center; }
+  .shop-luck-machine.open .shop-luck-toggle{ border-color:var(--turquoise-bright); color:var(--turquoise-bright); }
   .shop-luck-machine .setup-info:first-of-type::after{ content:"\A\A Gewinnreihen: 6× ✦ = 1 · 6× ◆ = 20 · 6× ★ = 50 · 6× 7 = 200 · 6× W = 1.000 Münzen"; display:block; color:var(--turquoise-bright); font-weight:700; line-height:1.5; }
   .shop-luck-machine .setup-info:first-of-type::after{ content:"\A\A Gewinnreihen: 6× ☘ = 1 · 6× ● = 5 · 6× ✦ = 10 · 6× ◆ = 20 · 6× ★ = 50 · 6× ⚡ = 100 · 6× 7 = 200 · 6× 💠 = 500 · 6× W = 1.000 Münzen"; }
   .shop-luck-machine .luck-machine-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
