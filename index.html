@@ -399,8 +399,8 @@
   .shop-sabotage-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:10px; }
   .shop-sabotage-list .settings-row-btn{ margin-top:0 !important; height:100%; box-sizing:border-box; }
   @media(max-width:680px){ .shop-catalog{ grid-template-columns:1fr; } .shop-sabotage-list{ grid-template-columns:1fr; } }
-  #view-shop .content{ max-width:1500px; }
-  #view-shop .shop-catalog{ grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); }
+  #view-shop .content{ max-width:1760px; }
+  #view-shop .shop-catalog{ grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
   #view-shop .shop-catalog .settings-card{ min-height:100%; }
   #view-shop .shop-category-glow{ order:3; }
   #view-shop .shop-category-frame{ order:4; }
@@ -409,8 +409,17 @@
   .shop-luck-machine{ margin:16px 0; background:linear-gradient(135deg,rgba(77,44,120,.42),rgba(17,86,108,.32)); border-color:rgba(121,92,255,.52); }
   .shop-luck-machine .luck-machine-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
   .shop-luck-machine input{ width:92px; text-align:center; font:700 1rem Rajdhani,sans-serif; }
+  .slot-machine{ max-width:760px; margin:14px auto 0; padding:14px; border:5px solid #f6c744; border-radius:22px; background:linear-gradient(145deg,#19132c,#080914 55%,#20103b); box-shadow:inset 0 0 0 2px #5d3d9d,0 16px 35px rgba(0,0,0,.45),0 0 24px rgba(245,199,68,.2); }
+  .slot-machine-head{ display:flex; align-items:center; justify-content:space-between; color:#ffe36a; font:800 1rem Rajdhani,sans-serif; letter-spacing:.14em; text-transform:uppercase; padding:0 3px 10px; }
+  .slot-reels{ display:grid; grid-template-columns:repeat(6,1fr); gap:7px; padding:9px; border-radius:13px; background:#05050c; box-shadow:inset 0 0 18px #000; }
+  .slot-reel{ min-height:72px; display:grid; place-items:center; overflow:hidden; border-radius:9px; background:linear-gradient(180deg,#f8f8ff,#9ca4c7); color:#151225; font:900 clamp(1.7rem,5vw,2.8rem)/1 Rajdhani,sans-serif; text-shadow:0 1px #fff; }
+  .slot-machine.spinning .slot-reel{ animation:slot-spin .14s linear infinite; }.slot-machine.jackpot{ border-color:#fff07a; box-shadow:0 0 35px rgba(255,224,67,.85),inset 0 0 0 2px #fff; }
+  @keyframes slot-spin{50%{transform:translateY(-9px);filter:blur(1px)}}
   .shop-mode-tag{ display:inline-flex; align-items:center; margin:4px 0 0; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--text-muted); font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
   .shop-mode-tag.team{ border-color:rgba(34,211,209,.5); color:var(--turquoise-bright); }.shop-mode-tag.versus{ border-color:rgba(168,85,247,.6); color:#d6b4ff; }
+  .duck-hunt{ position:fixed; z-index:101; border:0; background:transparent; padding:4px; font-size:1.55rem; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); animation:duck-wobble 2.1s ease-in-out infinite; }
+  .duck-hunt:hover{ transform:scale(1.22) rotate(10deg); }.duck-hunt:focus-visible{ outline:2px solid #ffe55c; border-radius:50%; }
+  @keyframes duck-wobble{50%{transform:translateY(-5px) rotate(-8deg)}}
   .loadout-picker{ background:linear-gradient(145deg,rgba(31,31,46,.96),rgba(17,17,27,.96)); border-color:rgba(34,211,209,.24); }
   .loadout-picker .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:9px; }
   .loadout-picker .filter-pill{ min-height:48px; text-align:left; padding:10px 12px; }
@@ -4651,18 +4660,20 @@ function renderSabotagePanel(){
   const mirrorAction = mirrorBrought && !mirrorReady
     ? `<div class="settings-row-btn" style="margin:0 0 12px;"><span class="settings-row-icon">🪞</span><span class="settings-row-text"><span class="settings-row-title">Spiegel bereit</span><span class="settings-row-sub">Aktiviere ihn bewusst für diese Runde. Danach schützt er vor genau einer Sabotage.</span></span><button class="sb-btn" onclick="activateMirror()">Aktivieren</button></div>`
     : '';
+  const duckAction = (s.ducksCollected||0)>=50 ? `<div class="roll-zone" style="margin:0 0 12px;"><button class="sb-btn" onclick="sendDuckQuack()">🦆 Quak senden</button></div>` : '';
+  const spySwapHTML = renderSpySwapPanel();
   // In der laufenden Runde sind NUR die im Loadout mitgenommenen Items einsetzbar — so kann
   // niemand mitten in der Runde nachkaufen und sofort einsetzen. Modus-gebundene Items
   // erscheinen nur, wenn der aktuelle Runden-Modus passt.
   const available = SHOP_SABOTAGE.filter(item => (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode) && !item.passive);
   if(!available.length){
-    return mirrorNote + mirrorAction;
+    return mirrorNote + mirrorAction + duckAction + spySwapHTML;
   }
   // Wer mit einer Joker-Sperre belegt wurde, darf diese Runde gar keine Vorteile/Sabotagen mehr
   // einsetzen — die Buttons bleiben sichtbar, aber sichtbar deaktiviert, statt einfach zu verschwinden.
   const isLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
   const dis = isLocked ? 'disabled style="opacity:.4;cursor:not-allowed;"' : '';
-  let html = mirrorNote + mirrorAction + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">`;
+  let html = mirrorNote + mirrorAction + duckAction + spySwapHTML + `<details class="round-benefits-panel" style="margin-top:0;margin-bottom:14px;"><summary>Vorteile einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:12px 14px 14px;">`;
   if(isLocked){
     html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;color:var(--lose);">🙅 Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.</p>`;
   }
@@ -4716,6 +4727,38 @@ function renderSabotagePanel(){
   });
   html += `</div></details>`;
   return html;
+}
+function renderSpySwapPanel(){
+  if(!currentRound || !currentUser || currentRound.mode!=='versus') return '';
+  const targets = (currentRound.spied_pairs||[]).filter(x=>x.startsWith(currentUser.id+'>')).map(x=>x.split('>')[1]);
+  if(!targets.length) return '';
+  const mine = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
+  let html = `<details class="round-benefits-panel" style="margin:0 0 14px;"><summary>🔍 Spionage: Challenges tauschen</summary><div style="padding:12px 14px 14px;"><p class="setup-info" style="margin:0 0 10px;text-align:left;">Du siehst die gegnerischen Challenges. Tauschen geht nur bei gleichem Punktewert.</p>`;
+  targets.forEach(targetId=>{
+    const target = teamMembers.find(m=>m.user_id===targetId);
+    const theirs = roundItems.filter(it=>it.scope==='personal' && it.user_id===targetId && !it.result);
+    if(!target || !theirs.length) return;
+    html += `<div class="setup-info" style="margin:12px 0 6px;text-align:left;color:var(--turquoise-bright);">${target.username}s Challenges</div>`;
+    theirs.forEach(other=>{
+      const matches = mine.filter(own=>Number(own.points)===Number(other.points));
+      html += `<div class="settings-row-btn" style="margin:6px 0;"><span class="settings-row-text"><span class="settings-row-title">${other.text}</span><span class="settings-row-sub">${other.points} Punkte</span></span>${matches.length?`<span class="filter-row">${matches.map(own=>`<button class="filter-pill" onclick="swapSpiedChallenge('${own.id}','${other.id}')">Tauschen</button>`).join('')}</span>`:'<span class="settings-row-chev">kein gleicher Wert</span>'}</div>`;
+    });
+  });
+  return html+'</div></details>';
+}
+async function swapSpiedChallenge(ownItemId, otherItemId){
+  if(!currentRound || !currentUser || !sb) return;
+  const own = roundItems.find(it=>it.id===ownItemId && it.user_id===currentUser.id);
+  const other = roundItems.find(it=>it.id===otherItemId);
+  if(!own || !other || own.result || other.result || Number(own.points)!==Number(other.points)){ showAlert('Diese Challenges können nicht getauscht werden.', '🔍'); return; }
+  const permitted = (currentRound.spied_pairs||[]).includes(currentUser.id+'>'+other.user_id);
+  if(!permitted){ showAlert('Dafür muss zuerst Spionage gegen dieses Ziel eingesetzt werden.', '🔍'); return; }
+  if(!(await confirmAction(`„${own.text}“ gegen „${other.text}“ tauschen? Beide bleiben ${own.points} Punkte wert.`, '🔍'))) return;
+  const { error: a } = await sb.from('round_items').update({ user_id: other.user_id }).eq('id', own.id);
+  if(a){ showAlert('Tausch fehlgeschlagen: '+a.message, '⚠️'); return; }
+  const { error: b } = await sb.from('round_items').update({ user_id: currentUser.id }).eq('id', other.id);
+  if(b){ await sb.from('round_items').update({ user_id: currentUser.id }).eq('id', own.id); showAlert('Tausch fehlgeschlagen: '+b.message, '⚠️'); return; }
+  await loadRoundItems(); renderTeamPage(); showLiveItemCard(`${currentUser.username} hat zwei gleichwertige Challenges getauscht.`, '🔍');
 }
 let teamMirrorSyncedFor = null; // Round-ID + Bring-Status, für den dieses Gerät seinen Spiegel-Stand schon gemeldet hat
 async function syncMirrorReadyState(){
@@ -6730,6 +6773,7 @@ function showView(id, skipHistory){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
   window.scrollTo({top:0, behavior:'smooth'});
+  renderDuckHunt(id);
   if(id==='auth') renderAuthPage();
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
   if(id==='teams-list'){ switchTeamsListTab(currentUser ? teamsListTab : 'mine'); renderTeamsListPage(); if(currentUser) startTeamsListPolling(); else stopTeamsListPolling(); } else { stopTeamsListPolling(); }
@@ -7568,6 +7612,9 @@ const SHOP_BANNERS = [
   {id:'scream', label:'😱 Der Schrei', img:BANNER_SCREAM_GIF, cost:220, animated:true, horror:true},
   {id:'decay', label:'🧟 Fäulnis-Fratze', img:BANNER_DECAY_GIF, cost:240, animated:true, horror:true},
   {id:'watcher_eyes', label:'👁️ Der Beobachter', img:BANNER_EYES_GIF, cost:0, animated:true, horror:true, requiresAllAchievements:true, prestige:true},
+  {id:'pin_neon', label:'Neon-Anime', img:'https://i.pinimg.com/originals/7e/e6/87/7ee68785e912300b89900a6243419f3b.gif', cost:280, animated:true, rarity:'episch'},
+  {id:'jujutsu_kaisen', label:'Jujutsu Kaisen', img:'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c13c0d2f-1bc2-47e5-b959-70aaa89f724d/dfq0co7-ee8f85f7-33ea-4ad0-baf4-ead495e572f3.gif?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W3sicGF0aCI6Ii9mL2MxM2MwZDJmLTFiYzItNDdlNS1iOTU5LTcwYWFhODlmNzI0ZC9kZnEwY283LWVlOGY4NWY3LTMzZWEtNGFkMC1iYWY0LWVhZDQ5NWU1NzJmMy5naWYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6ZmlsZS5kb3dubG9hZCJdfQ.vI2aD4IwANEsMUxQeZxbbSzkqH7sMRQgFom3EeWlno0', cost:300, animated:true, rarity:'legendär'},
+  {id:'duck_hunt', label:'Enten-Expedition', grad:'linear-gradient(120deg,#ffdd38,#ffb703,#58c7ff,#ffdd38)', cost:0, animated:true, requiresDucks:50},
 ];
 const SHOP_GLOWS = [
   {id:'cyan', icon:'✨', label:'Cyan-Glühen', color:'#5ee7ff', cost:130},
@@ -7620,31 +7667,34 @@ function shopBalance(name){
   if(!s) return 0;
   return Math.max(0, (s.totalPoints||0) - (s.spent||0));
 }
+function shopItemSort(a,b){
+  const rarity = x => x.requiresAllAchievements || x.requiresDucks ? 4 : x.rarity==='legendär' ? 3 : x.rarity==='episch' ? 2 : x.cost>=200 ? 2 : x.cost>=100 ? 1 : 0;
+  return (a.cost-b.cost) || (rarity(a)-rarity(b)) || a.label.localeCompare(b.label, 'de');
+}
 function gambleShopCoins(){
   const name = shopSelectedPlayer;
   const input = document.getElementById('shop-gamble-stake');
   const result = document.getElementById('shop-gamble-result');
-  if(!name || !input || !statsStore[name]) return;
+  const machine = document.getElementById('shop-slot-machine');
+  const spinBtn = document.getElementById('shop-slot-spin');
+  if(!name || !input || !statsStore[name] || !machine || machine.classList.contains('spinning')) return;
   const stake = Math.max(1, Math.min(50, Math.floor(Number(input.value)||0)));
   input.value = stake;
   if(shopBalance(name) < stake){ showAlert('Dafür reichen deine Shop-Münzen nicht.', '🎰'); return; }
-  const roll = Math.random();
-  let payout = 0;
-  if(roll < 0.0005) payout = 1000;          // Jackpot: 0,05 %
-  else if(roll < 0.0025) payout = Math.min(1000, stake * 100);
-  else if(roll < 0.0125) payout = Math.min(1000, stake * 20);
-  else if(roll < 0.08) payout = stake * 5;
-  else if(roll < 0.28) payout = stake * 2;
+  machine.classList.remove('jackpot'); machine.classList.add('spinning'); if(spinBtn) spinBtn.disabled=true;
+  const jackpot = Math.random() < 0.0005; // sechs W: 0,05 %
   const s = statsStore[name];
   s.spent = (s.spent||0) + stake;
-  if(payout) s.totalPoints = (s.totalPoints||0) + payout;
   saveStats();
-  if(result) result.innerHTML = payout
-    ? `<span style="color:var(--win);font-weight:700;">Gewonnen: +${payout} Münzen${payout===1000?' — JACKPOT!':''}</span>`
-    : `<span style="color:var(--text-muted);">Leider nichts gewonnen. Einsatz: ${stake} Münzen.</span>`;
-  const balance = document.getElementById('shop-balance');
-  if(balance) balance.textContent = `💰 Guthaben von ${name}: ${shopBalance(name)} Punkte`;
-  if(payout===1000) showLiveItemCard(`${name} hat den 1.000-Münzen-Jackpot geknackt!`, '🎰');
+  const symbols=['★','7','◆','✦','☘','W'];
+  setTimeout(()=>{
+    const reels=[...machine.querySelectorAll('.slot-reel')];
+    reels.forEach((reel,i)=>{ reel.textContent=jackpot?'W':symbols[(i+randInt(0,symbols.length-2))%(symbols.length-1)]; });
+    machine.classList.remove('spinning'); if(spinBtn) spinBtn.disabled=false;
+    if(jackpot){ s.totalPoints=(s.totalPoints||0)+1000; saveStats(); machine.classList.add('jackpot'); showLiveItemCard(`${name} hat den 1.000-Münzen-Jackpot geknackt!`, '🎰'); }
+    if(result) result.innerHTML = jackpot ? `<span style="color:#ffe36a;font-weight:800;">6× W — JACKPOT: +1.000 Münzen!</span>` : `<span style="color:var(--text-muted);">Kein 6× W. Einsatz: ${stake} Münzen.</span>`;
+    const balance=document.getElementById('shop-balance'); if(balance) balance.textContent=`💰 Guthaben von ${name}: ${shopBalance(name)} Punkte`;
+  }, 1150);
 }
 function renderShopPage(){
   const pickerRow = document.getElementById('shop-player-picker');
@@ -7686,9 +7736,9 @@ function renderShopPage(){
     <div class="stat-card-head"><span class="stat-avatar">${withHatOverlay(shopSelectedPlayer, avatarHTML(shopSelectedPlayer,26), 26)}</span><div class="stat-name">${badgeIconHTML(previewBadge)}${glowNameHTML(shopSelectedPlayer,shopSelectedPlayer)}</div></div>
     ${uniqueQuoteHTML(s)}
   </div>`;
-  html += `<div class="settings-card shop-luck-machine"><div class="setup-step-head"><span class="setup-step-icon">🎰</span><div class="setup-step-title">Glücksautomat</div></div><p class="setup-info" style="margin-top:0;">Setze 1–50 Shop-Münzen. Gewinne sind selten; 1.000 Münzen sind ein extrem seltener Jackpot.</p><div class="luck-machine-row"><label for="shop-gamble-stake">Einsatz</label><input id="shop-gamble-stake" type="number" min="1" max="50" value="1" inputmode="numeric"><button class="roll-btn" onclick="gambleShopCoins()">🎰 Drehen</button></div><div id="shop-gamble-result" class="setup-info" style="margin:10px 0 0;text-align:center;"></div></div>`;
+  html += `<div class="settings-card shop-luck-machine"><div class="setup-step-head"><span class="setup-step-icon">🎰</span><div class="setup-step-title">W-Jackpot</div></div><p class="setup-info" style="margin-top:0;">Setze 1–50 Shop-Münzen. Nur sechs W-Logos in einer Reihe gewinnen den 1.000-Münzen-Jackpot.</p><div class="slot-machine" id="shop-slot-machine"><div class="slot-machine-head"><span>WIN CHALLENGE</span><span>6× W = 1.000</span></div><div class="slot-reels">${Array.from({length:6},()=>'<div class="slot-reel">W</div>').join('')}</div></div><div class="luck-machine-row" style="margin-top:12px;"><label for="shop-gamble-stake">Einsatz</label><input id="shop-gamble-stake" type="number" min="1" max="50" value="1" inputmode="numeric"><button class="roll-btn" id="shop-slot-spin" onclick="gambleShopCoins()">🎰 Drehen</button></div><div id="shop-gamble-result" class="setup-info" style="margin:10px 0 0;text-align:center;"></div></div>`;
   html += '<div class="shop-catalog"><div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Abzeichen</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
-  SHOP_BADGES.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
+  SHOP_BADGES.slice().sort(shopItemSort).forEach(b=>{
     const isOwned = owned.badges.includes(b.id);
     if(b.cosmicExclusive && !isOwned) return; // nur übers Kosmos-Paket — vorher unsichtbar
     const isEquipped = s && s.equippedBadge===b.id;
@@ -7700,7 +7750,7 @@ function renderShopPage(){
   });
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><div class="setup-step-title">Mützen</div></div><div class="avatar-grid" style="grid-template-columns:repeat(3,1fr);">';
-  SHOP_HATS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
+  SHOP_HATS.slice().sort(shopItemSort).forEach(b=>{
     const isOwned = owned.hats && owned.hats.includes(b.id);
     if(b.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedHat===b.id;
@@ -7710,12 +7760,13 @@ function renderShopPage(){
   });
   html += '</div></div>';
   html += '<div class="settings-card shop-category-banner"><div class="setup-step-head"><div class="setup-step-title">Banner</div></div><div class="filter-row">';
-  SHOP_BANNERS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
+  SHOP_BANNERS.slice().sort(shopItemSort).forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
-    const locked = b.requiresAllAchievements && !hasAllAchievements(s);
+    const locked = (b.requiresAllAchievements && !hasAllAchievements(s)) || (b.requiresDucks && (s.ducksCollected||0) < b.requiresDucks);
     if(locked){
-      html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · alle ${ACHIEVEMENTS_DEF.length} Achievements nötig</span></button>`;
+        const need = b.requiresDucks ? `${b.requiresDucks} Enten finden` : `alle ${ACHIEVEMENTS_DEF.length} Achievements nötig`;
+        html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · ${need}</span></button>`;
       return;
     }
     const btnStyle = `${bannerStyleFor(b)}border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);`;
@@ -7723,7 +7774,7 @@ function renderShopPage(){
   });
   html += '</div></div>';
   html += '<div class="settings-card shop-category-glow"><div class="setup-step-head"><div class="setup-step-title">Leuchtende Namen</div></div><div class="filter-row">';
-  SHOP_GLOWS.slice().sort((a,b)=>a.cost-b.cost).forEach(g=>{
+  SHOP_GLOWS.slice().sort(shopItemSort).forEach(g=>{
     const isOwned = owned.glows && owned.glows.includes(g.id);
     if(g.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedGlow===g.id;
@@ -7733,7 +7784,7 @@ function renderShopPage(){
   });
   html += '</div></div>';
   html += '<div class="settings-card shop-category-frame"><div class="setup-step-head"><div class="setup-step-title">Rahmen</div></div><div class="filter-row">';
-  SHOP_FRAMES.slice().sort((a,b)=>a.cost-b.cost).forEach(f=>{
+  SHOP_FRAMES.slice().sort(shopItemSort).forEach(f=>{
     const isOwned = owned.frames && owned.frames.includes(f.id);
     if(f.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedFrame===f.id;
@@ -7742,7 +7793,7 @@ function renderShopPage(){
   html += '</div></div></div>';
   html += '<div class="settings-card" id="shop-sabotage-card"><div class="setup-step-head"><div class="setup-step-title">Sabotage &amp; Vorteile</div></div><p class="setup-info" style="margin-top:0;">Einmalig einsetzbar (verbraucht sich), bis zu 10 Stück pro Item auf Lager. Einsetzbar nur online, während der Helden-Auslosung.</p>';
   html += '<div class="shop-sabotage-list">';
-  SHOP_SABOTAGE.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
+  SHOP_SABOTAGE.slice().sort(shopItemSort).forEach(b=>{
     const ownedCount = (owned.sabotage && owned.sabotage[b.id]) || 0;
     html += `<div class="settings-row-btn" style="cursor:pointer;margin-top:8px;" onclick="buySabotageItem('${b.id}')">
       <span class="settings-row-icon">${b.icon}</span>
@@ -9156,6 +9207,7 @@ function showItemScreenFlash(icon, label){
 function showLiveItemCard(message, icon){
   if(!message) return;
   if(message.includes('Spiegel')) showItemScreenFlash('🪞', 'Spiegel-Effekt');
+  else if(message.includes('🦆 Quak')) playDuckQuack();
   else if(message.includes('Team-Schild')) showItemScreenFlash('🛡️', 'Team-Schild');
   else if(message.includes('Helden-Tausch')) showItemScreenFlash('🔀', 'Helden getauscht');
   else if(message.includes('Zwangs-Reroll')) showItemScreenFlash('🎲', 'Neu ausgelost');
@@ -9181,6 +9233,46 @@ function showLiveItemCard(message, icon){
   setTimeout(()=>{ card.classList.remove('show'); setTimeout(()=>card.remove(),350); }, 3600);
 }
 
+/* ============================================================ ENTEN-EXPEDITION ============================================================ */
+const DUCK_VIEWS = ['home','start-choice','local-choice','blitz','auth-welcome','auth','profile','teams-list','team','session','stats','shop','achievements','custom-challenges','friends','user-settings','challenge-library','admin','browse'];
+const DUCK_SPAWNS = Array.from({length:50}, (_,i)=>({ id:i+1, view:DUCK_VIEWS[i%DUCK_VIEWS.length], x:6+((i*29)%86), y:14+((i*17)%70) }));
+function duckStats(){
+  if(!currentUser) return null;
+  const s = getPlayerStats(currentUser.username); s.ducksFound = Array.isArray(s.ducksFound) ? s.ducksFound : [];
+  s.ducksCollected = s.ducksFound.length; return s;
+}
+function renderDuckHunt(viewId){
+  document.querySelectorAll('.duck-hunt').forEach(el=>el.remove());
+  if(!currentUser) return;
+  const s = duckStats(); if(!s) return;
+  DUCK_SPAWNS.filter(d=>d.view===viewId && !s.ducksFound.includes(d.id)).forEach(d=>{
+    const btn = document.createElement('button'); btn.className='duck-hunt'; btn.type='button'; btn.textContent='🦆';
+    btn.style.left=d.x+'vw'; btn.style.top=d.y+'vh'; btn.setAttribute('aria-label','Versteckte Ente einsammeln');
+    btn.onclick=()=>collectDuck(d.id, btn); document.body.appendChild(btn);
+  });
+}
+function collectDuck(id, el){
+  const s = duckStats(); if(!s || s.ducksFound.includes(id)) return;
+  s.ducksFound.push(id); s.ducksCollected=s.ducksFound.length; saveStats();
+  el.remove(); showToast(`Ente ${s.ducksCollected}/50 gefunden!`, '🦆');
+  if(s.ducksCollected===50){
+    s.shopOwned = s.shopOwned || {badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
+    s.shopOwned.banners = s.shopOwned.banners || [];
+    if(!s.shopOwned.banners.includes('duck_hunt')) s.shopOwned.banners.push('duck_hunt');
+    s.equippedBanner='duck_hunt'; saveStats(); syncMyCosmeticsToProfile();
+    showLiveItemCard(`${currentUser.username} hat alle 50 Enten gefunden und den Enten-Banner freigeschaltet!`, '🦆');
+  }
+}
+function playDuckQuack(){
+  if(!userPrefs.soundVibration) return;
+  try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='square'; o.frequency.setValueAtTime(580,ctx.currentTime); o.frequency.exponentialRampToValueAtTime(220,ctx.currentTime+.22); g.gain.setValueAtTime(.08,ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25); o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+.26); }catch(e){}
+}
+async function sendDuckQuack(){
+  if(!currentRound || !currentUser || !sb) return;
+  playDuckQuack(); showLiveItemCard(`${currentUser.username}: 🦆 Quak!`, '🦆');
+  const rows=teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>({target_user_id:m.user_id,from_user_id:currentUser.id,round_id:currentRound.id,icon:'🦆',message:`${currentUser.username}: 🦆 Quak!`}));
+  if(rows.length) await sb.from('player_notifications').insert(rows);
+}
 /* ============================================================ INITIAL RENDER ============================================================ */
 renderGlobalPlayerChips();
 renderWwmRosterChips();
