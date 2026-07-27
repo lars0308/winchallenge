@@ -441,6 +441,19 @@
   .shop-owned{ position:relative; border-color:var(--turquoise-bright)!important; box-shadow:0 0 0 1px rgba(45,212,191,.36),0 0 16px rgba(34,211,209,.18)!important; }
   .shop-owned::after{ content:'✓'; position:absolute; top:5px; right:6px; width:17px; height:17px; display:grid; place-items:center; border-radius:50%; background:var(--turquoise-bright); color:#061119; font-size:.72rem; font-weight:900; text-shadow:none; z-index:5; }
   .shop-owned:not(.active):not(.selected){ background-color:rgba(34,211,209,.055); }
+  /* Online-Lobby: klare, breite Konfigurationsgruppen statt einer schmalen Button-Säule. */
+  #team-round-picker{ max-width:1240px; margin:0 auto; display:grid; gap:14px; }
+  .lobby-config-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .lobby-config-section{ min-width:0; padding:16px 18px; border:1px solid var(--border-soft); border-radius:16px; background:linear-gradient(145deg,rgba(25,25,40,.94),rgba(16,16,29,.94)); }
+  .lobby-config-section.wide{ grid-column:1 / -1; }
+  .lobby-config-section-title{ margin:0 0 10px; color:var(--text); font-size:.83rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+  .lobby-config-section .filter-row{ justify-content:center; }
+  .lobby-config-section .setup-info{ margin:0 0 9px; text-align:center; }
+  .loadout-picker.loadout-collapsed{ padding-bottom:12px; }
+  .loadout-picker.loadout-collapsed > :not(.setup-step-head){ display:none; }
+  .loadout-picker .setup-step-head{ cursor:pointer; user-select:none; }
+  .loadout-collapse-toggle{ margin-left:auto; border:1px solid var(--border); border-radius:999px; padding:5px 10px; background:var(--bg-elevated); color:var(--text-muted); font-size:.75rem; font-weight:800; }
+  @media(max-width:760px){ .lobby-config-grid{ grid-template-columns:1fr; } .lobby-config-section.wide{ grid-column:auto; } .lobby-config-section{ padding:14px 12px; } }
   .shop-mode-tag.team{ border-color:rgba(34,211,209,.5); color:var(--turquoise-bright); }.shop-mode-tag.versus{ border-color:rgba(168,85,247,.6); color:#d6b4ff; }
   .duck-hunt{ position:fixed; z-index:101; border:0; background:transparent; padding:4px; font-size:1.55rem; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); animation:duck-wobble 2.1s ease-in-out infinite; }
   .duck-hunt:hover{ transform:scale(1.22) rotate(10deg); }.duck-hunt:focus-visible{ outline:2px solid #ffe55c; border-radius:50%; }
@@ -4123,6 +4136,32 @@ function renderTeamPage(){
   el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div><div class="filter-row">${members}</div>${inviteButton}${isHost?`<div class="roll-zone" style="margin-top:12px;"><button class="sb-btn" onclick="toggleHostTransferMenu()">Host übergeben</button></div>${hostChoices}`:''}</div><div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><p class="setup-info">${campaignSummaryText()}</p>${isHost?'<div id="team-round-picker"></div><div class="roll-zone" style="margin-top:14px;"><button class="roll-btn" onclick="startTeamRound()">Runde starten</button></div>':'<p class="setup-info">Der Host richtet die nächste Runde ein. Die Auswahl bleibt hier live sichtbar.</p>'}</div><div class="roll-zone"><button class="sb-btn" onclick="toggleMyTeamReady()">${readyLabel}</button></div>${renderLoadoutPicker()}`;
   if(isHost) renderTeamRoundPicker();
 }
+function enhanceLobbySettingsLayout(){
+  const root=document.getElementById('team-round-picker'); if(!root) return;
+  const sections=[
+    {title:'Ablauf', ids:['team-round-scope-desc','team-round-scope-picker'], wide:true},
+    {title:'Spiele & Runden', ids:['team-round-game-step','team-round-gamemode-step','team-round-count-step','team-round-gamesmulti-step','team-round-pointgoal-wrap'], wide:true},
+    {title:'Spielmodus', ids:['team-round-mode-card','team-round-sessionmode-card','team-round-difficulty-step','team-round-herolock-step'], wide:false},
+    {title:'Schnellstart', ids:['team-round-blitz-zone'], wide:false}
+  ];
+  const grid=document.createElement('div'); grid.className='lobby-config-grid';
+  sections.forEach(spec=>{
+    const nodes=spec.ids.map(id=>document.getElementById(id)).filter(Boolean);
+    if(!nodes.length) return;
+    const box=document.createElement('section'); box.className='lobby-config-section'+(spec.wide?' wide':'');
+    box.innerHTML=`<div class="lobby-config-section-title">${spec.title}</div>`;
+    nodes.forEach(node=>box.appendChild(node)); grid.appendChild(box);
+  });
+  const confirm=document.getElementById('team-round-confirm-zone'), warning=document.getElementById('team-settings-warning');
+  root.innerHTML=''; root.appendChild(grid); if(confirm) root.appendChild(confirm); if(warning) root.appendChild(warning);
+}
+function setupLoadoutCollapse(container){
+  const card=container&&container.querySelector('.loadout-picker'); if(!card) return;
+  card.classList.add('loadout-collapsed');
+  const head=card.querySelector('.setup-step-head'); if(!head || head.querySelector('.loadout-collapse-toggle')) return;
+  head.insertAdjacentHTML('beforeend','<button type="button" class="loadout-collapse-toggle">Anzeigen</button>');
+  head.onclick=()=>{ card.classList.toggle('loadout-collapsed'); const btn=head.querySelector('.loadout-collapse-toggle'); if(btn) btn.textContent=card.classList.contains('loadout-collapsed')?'Anzeigen':'Schließen'; };
+}
 /* Wiederhergestellte vollständige Lobby-Ansicht. Diese Definition steht absichtlich nach
    der Notfallansicht und ersetzt sie vollständig. */
 function renderTeamPage(){
@@ -4138,6 +4177,7 @@ function renderTeamPage(){
   const setup=isHost ? (teamSettingsOpen ? `<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><div id="team-round-picker"><div class="setup-info" id="team-round-scope-desc"></div><div class="filter-row" id="team-round-scope-picker"></div><div id="team-round-game-step"><div class="setup-info">Spiel</div><div class="filter-row" id="team-round-game-picker"></div></div><div id="team-round-gamemode-step"><div class="setup-info" id="team-round-gamemode-desc"></div><div class="filter-row" id="team-round-gamemode-picker"></div></div><div id="team-round-count-step"><div class="setup-info" id="team-round-count-title"></div><div class="filter-row" id="team-round-count-picker"></div></div><div id="team-round-gamesmulti-step"><div class="setup-info">Spiele <span id="team-round-gamescount-hint"></span></div><div class="filter-row" id="team-round-games-multi"></div><div class="filter-row" id="team-round-games-order"></div><div class="filter-row" id="team-round-games-roundsper"></div><div id="team-round-games-modes-wrap"></div></div><div id="team-round-pointgoal-wrap"><div class="filter-row" id="team-round-pointgoal-picker"></div><div id="team-round-pointgoal-custom-wrap"><input id="team-round-pointgoal-custom" type="number" min="1" oninput="teamRoundCustomGoalValue=Number(this.value)||0;syncDraftSettings()"></div></div><div id="team-round-mode-card"><div class="setup-info">Spielmodus</div><div class="filter-row" id="team-round-mode-picker"></div><div id="team-round-classic-step"><div class="filter-row" id="team-round-classic-picker"></div></div></div><div id="team-round-sessionmode-card"><div class="filter-row" id="team-round-sessionmode-picker"></div><div class="filter-row" id="team-round-funchallenges-picker"></div></div><div id="team-round-difficulty-step"><div class="filter-row" id="team-round-difficulty-picker"></div></div><div id="team-round-herolock-step"><div class="setup-info" id="team-round-herolock-desc"></div><div class="filter-row" id="team-round-herolock-picker"></div></div><div id="team-round-blitz-zone"></div><div id="team-round-confirm-zone" class="roll-zone" style="margin-top:18px;"><button class="roll-btn" onclick="confirmTeamSettings()">Einstellungen bestätigen</button></div><div class="setup-warning" id="team-settings-warning"></div></div></div>` : `<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><p class="setup-info">${campaignSummaryText()}</p><div class="roll-zone"><button class="sb-btn" onclick="openTeamSettings()">Einstellungen bearbeiten</button><button class="roll-btn" onclick="startTeamRound()">Runde starten</button></div></div>`) : `<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><p class="setup-info">${campaignSummaryText()}<br>Der Host richtet die nächste Runde ein. Die Auswahl ist hier live sichtbar.</p></div>`;
   const ready=mine&&mine.ready?'Bereitschaft zurücknehmen':'Ich bin bereit';
   el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div><div class="filter-row" style="justify-content:center;">${members}</div>${actionRow}</div>${setup}${renderLoadoutPicker()}<div class="roll-zone" style="margin-top:22px;"><button class="roll-btn" style="min-width:min(100%,420px);font-size:1.12rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;box-shadow:0 0 25px rgba(34,211,209,.42);" onclick="toggleMyTeamReady()">${ready}</button></div>`;
+  setupLoadoutCollapse(el);
   if(isHost&&teamSettingsOpen) renderTeamRoundPicker();
 }
 function renderTeamRoundPicker(){
@@ -4403,6 +4443,7 @@ function renderTeamRoundPicker(){
         : 'Jede Runde bekommt jede/r einen neu ausgelosten Helden.';
     }
   }
+  enhanceLobbySettingsLayout();
   syncDraftSettings();
 }
 function confirmTeamSettings(){
@@ -7650,18 +7691,18 @@ const SHOP_BANNERS = [
   {id:'purple', label:'Neon-Lila', grad:'linear-gradient(120deg,#a044ff,#6a3093,#a044ff)', cost:70, animated:true},
   {id:'ice', label:'Eis ❄️', grad:'linear-gradient(120deg,#a1e8ff,#e0f7ff,#6ec6ea,#c8f1ff,#a1e8ff)', cost:80, animated:true},
   {id:'gold', label:'Gold', grad:'linear-gradient(120deg,#f7971e,#ffd200,#f7971e)', cost:90, animated:true},
-  {id:'matrix', label:'Matrix 🟩', grad:'linear-gradient(120deg,#020a02,#0a3d0a,#020a02)', cost:140, animated:true},
-  {id:'toxic', label:'Toxic Smoke 💨', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:140, animated:true},
+  {id:'matrix', label:'Matrix 🟩', grad:'linear-gradient(120deg,#020a02,#0a3d0a,#020a02)', cost:120, animated:true},
+  {id:'toxic', label:'Toxic Smoke 💨', grad:'linear-gradient(120deg,#0f9b0f,#00f260,#0f9b0f)', cost:120, animated:true},
   {id:'moon2', label:'Nachtblüten 🌸', grad:'linear-gradient(120deg,#0a1420,#1e3a4a,#e879b9,#0a1420)', cost:180, animated:true},
   {id:'blossom', label:'Soundwave 🎵', grad:'linear-gradient(120deg,#0a0a0a,#e8e8e8,#0a0a0a)', cost:180, animated:true},
   {id:'glitch', label:'Glitch 📺', grad:'linear-gradient(120deg,#0a0a0a,#ff2079,#00e5ff,#0a0a0a)', cost:220, animated:true},
-  {id:'nightsky', label:'Nachthimmel 🌙', grad:'linear-gradient(120deg,#1a0b2e,#4a1a6e,#c026d3,#1a0b2e)', cost:240, animated:true},
-  {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:260, animated:true},
+  {id:'nightsky', label:'Nachthimmel 🌙', grad:'linear-gradient(120deg,#1a0b2e,#4a1a6e,#c026d3,#1a0b2e)', cost:150, animated:true},
+  {id:'flame', label:'Flamme 🔥', grad:'linear-gradient(120deg,#ff512f,#f09819,#ff512f,#dd2476,#ff512f)', cost:180, animated:true},
   {id:'soundwave', label:'Hands 🤲', grad:'linear-gradient(120deg,#0a0a0a,#cfcfcf,#0a0a0a)', cost:320, animated:true},
-  {id:'scream', label:'😱 Der Schrei', img:BANNER_SCREAM_GIF, cost:220, animated:true, horror:true},
+  {id:'scream', label:'👁️ Blick der Augen', img:BANNER_SCREAM_GIF, cost:220, animated:true, horror:true},
   {id:'decay', label:'🧟 Fäulnis-Fratze', img:BANNER_DECAY_GIF, cost:240, animated:true, horror:true},
   {id:'watcher_eyes', label:'👁️ Der Beobachter', img:BANNER_EYES_GIF, cost:0, animated:true, horror:true, requiresAllAchievements:true, prestige:true},
-  {id:'pin_neon', label:'Neon-Anime', img:'https://i.pinimg.com/originals/7e/e6/87/7ee68785e912300b89900a6243419f3b.gif', cost:280, animated:true, rarity:'episch'},
+  {id:'pin_neon', label:'Neon-Anime', img:'https://i.pinimg.com/originals/7e/e6/87/7ee68785e912300b89900a6243419f3b.gif', cost:180, animated:true, rarity:'episch'},
   {id:'jujutsu_red', label:'Jujutsu Kaisen Rot', img:'jujutsu-kaisen-small.gif', cost:300, animated:true, rarity:'legendär'},
   {id:'jujutsu_kaisen', label:'Jujutsu Kaisen', img:'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c13c0d2f-1bc2-47e5-b959-70aaa89f724d/dfq0co7-ee8f85f7-33ea-4ad0-baf4-ead495e572f3.gif?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W3sicGF0aCI6Ii9mL2MxM2MwZDJmLTFiYzItNDdlNS1iOTU5LTcwYWFhODlmNzI0ZC9kZnEwY283LWVlOGY4NWY3LTMzZWEtNGFkMC1iYWY0LWVhZDQ5NWU1NzJmMy5naWYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6ZmlsZS5kb3dubG9hZCJdfQ.vI2aD4IwANEsMUxQeZxbbSzkqH7sMRQgFom3EeWlno0', cost:300, animated:true, rarity:'legendär'},
   {id:'duck_hunt', label:'Pikachu-Expedition', grad:'linear-gradient(120deg,#ffdd38,#ffb703,#58c7ff,#ffdd38)', cost:0, animated:true, requiresDucks:50},
@@ -7721,6 +7762,10 @@ function shopBalance(name){
   return Math.max(0, (s.totalPoints||0) - (s.spent||0));
 }
 function shopItemSort(a,b){
+  // Die beiden besonderen Freischalt-Banner stehen immer als Abschluss der Bannerliste.
+  const endItems = ['watcher_eyes','duck_hunt'];
+  const aEnd=endItems.indexOf(a.id), bEnd=endItems.indexOf(b.id);
+  if(aEnd!==-1 || bEnd!==-1){ if(aEnd===-1) return -1; if(bEnd===-1) return 1; return aEnd-bEnd; }
   const rarity = x => x.requiresAllAchievements || x.requiresDucks ? 4 : x.rarity==='legendär' ? 3 : x.rarity==='episch' ? 2 : x.cost>=200 ? 2 : x.cost>=100 ? 1 : 0;
   return (a.cost-b.cost) || (rarity(a)-rarity(b)) || a.label.localeCompare(b.label, 'de');
 }
