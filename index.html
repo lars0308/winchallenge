@@ -411,8 +411,16 @@
   #view-shop .shop-category-frame{ order:4; }
   #view-shop .shop-category-banner{ order:5; grid-column:1 / -1; }
   #view-shop .shop-category-banner .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
+  /* Desktop: exakt vier Kosmetik-Karten in Reihe 1; Banner beginnt zwingend Reihe 2 und spannt die gleiche Gesamtbreite. */
+  @media(min-width:1000px){
+    #view-shop .shop-catalog{ grid-template-columns:repeat(4,minmax(0,1fr))!important; }
+    #view-shop .shop-catalog .shop-category-banner{ grid-column:1 / -1!important; }
+  }
   .shop-luck-machine{ margin:16px 0; background:linear-gradient(135deg,rgba(77,44,120,.42),rgba(17,86,108,.32)); border-color:rgba(121,92,255,.52); }
+  .shop-luck-machine:not(.open) .slot-machine,.shop-luck-machine:not(.open) .luck-machine-row,.shop-luck-machine:not(.open) #shop-gamble-result{ display:none; }
+  .shop-luck-toggle{ margin-left:auto; min-height:32px; padding:0 12px; border:1px solid var(--border); border-radius:999px; background:var(--bg-elevated); color:var(--text); font-weight:800; cursor:pointer; }
   .shop-luck-machine .setup-info:first-of-type::after{ content:"\A\A Gewinnreihen: 6× ✦ = 1 · 6× ◆ = 20 · 6× ★ = 50 · 6× 7 = 200 · 6× W = 1.000 Münzen"; display:block; color:var(--turquoise-bright); font-weight:700; line-height:1.5; }
+  .shop-luck-machine .setup-info:first-of-type::after{ content:"\A\A Gewinnreihen: 6× ☘ = 1 · 6× ● = 5 · 6× ✦ = 10 · 6× ◆ = 20 · 6× ★ = 50 · 6× ⚡ = 100 · 6× 7 = 200 · 6× 💠 = 500 · 6× W = 1.000 Münzen"; }
   .shop-luck-machine .luck-machine-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
   .shop-luck-machine input{ width:92px; text-align:center; font:700 1rem Rajdhani,sans-serif; }
   .slot-machine{ max-width:760px; margin:14px auto 0; padding:14px; border:5px solid #f6c744; border-radius:22px; background:linear-gradient(145deg,#19132c,#080914 55%,#20103b); box-shadow:inset 0 0 0 2px #5d3d9d,0 16px 35px rgba(0,0,0,.45),0 0 24px rgba(245,199,68,.2); }
@@ -420,7 +428,13 @@
   .slot-reels{ display:grid; grid-template-columns:repeat(6,1fr); gap:7px; padding:9px; border-radius:13px; background:#05050c; box-shadow:inset 0 0 18px #000; }
   .slot-reel{ height:72px; overflow:hidden; border-radius:9px; background:linear-gradient(180deg,#f8f8ff,#9ca4c7); color:#151225; font:900 clamp(1.7rem,5vw,2.8rem)/1 Rajdhani,sans-serif; text-shadow:0 1px #fff; }
   .slot-strip{ will-change:transform; }.slot-symbol{ height:72px; display:grid; place-items:center; }.slot-machine.spinning .slot-reel{ filter:blur(.35px); }.slot-machine.jackpot{ border-color:#fff07a; box-shadow:0 0 35px rgba(255,224,67,.85),inset 0 0 0 2px #fff; }
+  .slot-symbol{ color:#fff; text-shadow:0 0 7px currentColor,0 0 16px currentColor; background:linear-gradient(145deg,#1b1731,#0a0b18); }
+  .slot-symbol.slot-w{ color:#ffe55c; background:linear-gradient(145deg,#5a3d00,#181207); }.slot-symbol.slot-seven{ color:#ff4e96; background:linear-gradient(145deg,#4b1236,#170713); }.slot-symbol.slot-star{ color:#63e6ff; background:linear-gradient(145deg,#063d58,#06151f); }.slot-symbol.slot-diamond{ color:#b998ff; background:linear-gradient(145deg,#311c65,#120a29); }.slot-symbol.slot-bolt{ color:#87ff56; background:linear-gradient(145deg,#17480f,#091c08); }.slot-symbol.slot-spark{ color:#ff9d5c; background:linear-gradient(145deg,#593015,#211008); }.slot-symbol.slot-clover{ color:#4dffd0; background:linear-gradient(145deg,#075847,#041a17); }.slot-symbol.slot-orb{ color:#70a7ff; background:linear-gradient(145deg,#142c71,#080f2f); }.slot-symbol.slot-gem{ color:#ff6ee8; background:linear-gradient(145deg,#66135c,#250821); }
   .shop-mode-tag{ display:inline-flex; align-items:center; margin:4px 0 0; padding:3px 8px; border:1px solid var(--border); border-radius:999px; color:var(--text-muted); font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  /* Bereits freigeschaltete Shop-Gegenstände sind auf einen Blick erkennbar. */
+  .shop-owned{ position:relative; border-color:var(--turquoise-bright)!important; box-shadow:0 0 0 1px rgba(45,212,191,.36),0 0 16px rgba(34,211,209,.18)!important; }
+  .shop-owned::after{ content:'✓'; position:absolute; top:5px; right:6px; width:17px; height:17px; display:grid; place-items:center; border-radius:50%; background:var(--turquoise-bright); color:#061119; font-size:.72rem; font-weight:900; text-shadow:none; z-index:5; }
+  .shop-owned:not(.active):not(.selected){ background-color:rgba(34,211,209,.055); }
   .shop-mode-tag.team{ border-color:rgba(34,211,209,.5); color:var(--turquoise-bright); }.shop-mode-tag.versus{ border-color:rgba(168,85,247,.6); color:#d6b4ff; }
   .duck-hunt{ position:fixed; z-index:101; border:0; background:transparent; padding:4px; font-size:1.55rem; cursor:pointer; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); animation:duck-wobble 2.1s ease-in-out infinite; }
   .duck-hunt:hover{ transform:scale(1.22) rotate(10deg); }.duck-hunt:focus-visible{ outline:2px solid #ffe55c; border-radius:50%; }
@@ -7633,6 +7647,16 @@ function shopItemSort(a,b){
   const rarity = x => x.requiresAllAchievements || x.requiresDucks ? 4 : x.rarity==='legendär' ? 3 : x.rarity==='episch' ? 2 : x.cost>=200 ? 2 : x.cost>=100 ? 1 : 0;
   return (a.cost-b.cost) || (rarity(a)-rarity(b)) || a.label.localeCompare(b.label, 'de');
 }
+function slotSymbolClass(symbol){
+  return ({'W':'slot-w','7':'slot-seven','★':'slot-star','◆':'slot-diamond','⚡':'slot-bolt','✦':'slot-spark','☘':'slot-clover','●':'slot-orb','💠':'slot-gem'})[symbol] || '';
+}
+function toggleShopJackpot(){
+  const card=document.querySelector('.shop-luck-machine');
+  if(!card) return;
+  card.classList.toggle('open');
+  const btn=card.querySelector('.shop-luck-toggle');
+  if(btn) btn.textContent=card.classList.contains('open') ? 'Schließen' : 'Gewinne ansehen';
+}
 function gambleShopCoins(){
   const name = shopSelectedPlayer;
   const input = document.getElementById('shop-gamble-stake');
@@ -7647,25 +7671,29 @@ function gambleShopCoins(){
   // Sichtbare Gewinnreihen: W bleibt der extrem seltene Hauptgewinn.
   const roll = Math.random();
   const prize = roll < 0.0005 ? {symbol:'W', amount:1000, label:'W-Jackpot'}
-    : roll < 0.005 ? {symbol:'7', amount:200, label:'Supergewinn'}
-    : roll < 0.03 ? {symbol:'★', amount:50, label:'Großgewinn'}
+    : roll < 0.002 ? {symbol:'💠', amount:500, label:'Diamant-Gewinn'}
+    : roll < 0.008 ? {symbol:'7', amount:200, label:'Supergewinn'}
+    : roll < 0.02 ? {symbol:'⚡', amount:100, label:'Neon-Gewinn'}
+    : roll < 0.05 ? {symbol:'★', amount:50, label:'Großgewinn'}
     : roll < 0.12 ? {symbol:'◆', amount:20, label:'Gewinn'}
-    : roll < 0.35 ? {symbol:'✦', amount:1, label:'Kleingewinn'} : null;
+    : roll < 0.22 ? {symbol:'✦', amount:10, label:'Bonus'}
+    : roll < 0.37 ? {symbol:'●', amount:5, label:'Kleiner Bonus'}
+    : roll < 0.62 ? {symbol:'☘', amount:1, label:'Trostgewinn'} : null;
   const jackpot = !!(prize && prize.amount===1000);
   const s = statsStore[name];
   s.spent = (s.spent||0) + stake;
   saveStats();
-  const symbols=['★','7','◆','✦','☘','W'];
+  const symbols=['★','7','◆','⚡','✦','☘','●','💠','W'];
   const reels=[...machine.querySelectorAll('.slot-reel')];
   const finalSymbols=reels.map((_,i)=>prize ? prize.symbol : symbols[(i+randInt(0,symbols.length-2))%(symbols.length-1)]);
   reels.forEach((reel,i)=>{
     const strip=document.createElement('div'); strip.className='slot-strip';
     const sequence=Array.from({length:14+i*3},()=>symbols[randInt(0,symbols.length-1)]); sequence.push(finalSymbols[i]);
-    strip.innerHTML=sequence.map(symbol=>`<div class="slot-symbol">${symbol}</div>`).join(''); reel.innerHTML=''; reel.appendChild(strip);
+    strip.innerHTML=sequence.map(symbol=>`<div class="slot-symbol ${slotSymbolClass(symbol)}">${symbol}</div>`).join(''); reel.innerHTML=''; reel.appendChild(strip);
     requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ strip.style.transition=`transform ${1.05+i*.22}s cubic-bezier(.12,.72,.12,1)`; strip.style.transform=`translateY(-${(sequence.length-1)*72}px)`; }); });
   });
   setTimeout(()=>{
-    reels.forEach((reel,i)=>{ reel.innerHTML=`<div class="slot-symbol">${finalSymbols[i]}</div>`; });
+    reels.forEach((reel,i)=>{ reel.innerHTML=`<div class="slot-symbol ${slotSymbolClass(finalSymbols[i])}">${finalSymbols[i]}</div>`; });
     machine.classList.remove('spinning'); if(spinBtn) spinBtn.disabled=false;
     if(prize && !jackpot){
       s.totalPoints=(s.totalPoints||0)+prize.amount; saveStats();
@@ -7735,7 +7763,7 @@ function renderShopPage(){
     const isEquipped = s && s.equippedBadge===b.id;
     const myAchievementCount = s ? (s.achievementsClaimed||[]).length : 0;
     const locked = b.requiresAchievementCount && myAchievementCount < b.requiresAchievementCount;
-    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;${locked?'opacity:0.4;':''}" ${locked?'':`onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}"`}>
+    html += `<div class="avatar-grid-item${isEquipped?' selected':''}${isOwned?' shop-owned':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;${locked?'opacity:0.4;':''}" ${locked?'':`onclick="${isOwned?`equipShopItem('badge','${b.id}')`:`buyShopItem('badge','${b.id}')`}"`}>
       <span>${locked?'🔒':b.animated?`<span class="badge-lightning-flash">${b.icon}</span>`:b.icon}</span><span style="font-size:0.5rem;color:var(--text-muted);">${locked?`${b.requiresAchievementCount} Achievements nötig`:isOwned?(isEquipped?'aktiv':'ausrüsten'):(b.cost>0?b.cost+' Pkt':'freischalten')}</span>
     </div>`;
   });
@@ -7745,7 +7773,7 @@ function renderShopPage(){
     const isOwned = owned.hats && owned.hats.includes(b.id);
     if(b.cosmicExclusive && !isOwned) return;
     const isEquipped = s && s.equippedHat===b.id;
-    html += `<div class="avatar-grid-item${isEquipped?' selected':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('hat','${b.id}')`:`buyShopItem('hat','${b.id}')`}">
+    html += `<div class="avatar-grid-item${isEquipped?' selected':''}${isOwned?' shop-owned':''}" style="font-size:1.4rem;flex-direction:column;gap:2px;" onclick="${isOwned?`equipShopItem('hat','${b.id}')`:`buyShopItem('hat','${b.id}')`}">
       <span>${b.icon}</span><span style="font-size:0.55rem;color:var(--text-muted);">${isOwned?(isEquipped?'aktiv':'ausrüsten'):b.cost+' Pkt'}</span>
     </div>`;
   });
@@ -7793,7 +7821,21 @@ function renderShopPage(){
     </div>`;
   });
   html += '</div></div>';
-  document.getElementById('shop-content').innerHTML = html;
+  const shopRoot = document.getElementById('shop-content');
+  shopRoot.innerHTML = html;
+  const luckCard=shopRoot.querySelector('.shop-luck-machine');
+  if(luckCard){
+    const head=luckCard.querySelector('.setup-step-head');
+    if(head) head.insertAdjacentHTML('beforeend','<button type="button" class="shop-luck-toggle" onclick="toggleShopJackpot()">Gewinne ansehen</button>');
+  }
+  // Besitz erkennt man nicht nur am Text: alle bereits ausrüstbaren Elemente erhalten
+  // die sichtbare Shop-Markierung. Das deckt Banner, Namen und Rahmen ebenso ab wie Raster-Items.
+  shopRoot.querySelectorAll('[onclick*="equipShopItem"]').forEach(el=>el.classList.add('shop-owned'));
+  SHOP_SABOTAGE.forEach(item=>{
+    if((owned.sabotage && owned.sabotage[item.id])>0){
+      shopRoot.querySelectorAll(`[onclick*="buySabotageItem('${item.id}')"]`).forEach(el=>el.classList.add('shop-owned'));
+    }
+  });
 }
 function buyShopItem(kind, id){
   const name = shopSelectedPlayer;
