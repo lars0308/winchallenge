@@ -395,7 +395,12 @@
   .shop-catalog .setup-step-title{ font-size:1rem; letter-spacing:.06em; text-transform:uppercase; }
   .shop-catalog .filter-row{ gap:9px; }
   .shop-catalog .filter-pill{ min-height:38px; }
-  @media(min-width:1000px){ .shop-catalog .settings-card:nth-child(3){ grid-column:span 2; } }
+  /* Die vier kleinen Kosmetik-Kategorien teilen sich exakt dieselbe Gesamtbreite wie Banner. */
+  @media(min-width:1000px){
+    #view-shop .shop-catalog{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+    #view-shop .shop-catalog .settings-card:nth-child(3){ grid-column:auto; }
+  }
+  @media(min-width:681px) and (max-width:999px){ #view-shop .shop-catalog{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
   .shop-sabotage-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:10px; }
   .shop-sabotage-list .settings-row-btn{ margin-top:0 !important; height:100%; box-sizing:border-box; }
   @media(max-width:680px){ .shop-catalog{ grid-template-columns:1fr; } .shop-sabotage-list{ grid-template-columns:1fr; } }
