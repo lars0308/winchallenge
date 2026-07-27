@@ -7868,14 +7868,21 @@ function showView(id, skipHistory){
   window.scrollTo({top:0, behavior:'smooth'});
   if(id==='auth') renderAuthPage();
   if(id==='team'){ renderTeamPage(); if(myTeam) startTeamPolling(); }
-  if(id==='teams-list'){ switchTeamsListTab(currentUser ? teamsListTab : 'mine'); renderTeamsListPage(); if(currentUser) startTeamsListPolling(); else stopTeamsListPolling(); } else { stopTeamsListPolling(); }
+  if(id==='teams-list'){
+    switchTeamsListTab(currentUser ? teamsListTab : 'mine');
+    Promise.resolve().then(()=>renderTeamsListPage()).catch(e=>{ console.error('Teams konnten nicht geladen werden:',e); showAlert('Teams konnten gerade nicht geladen werden. Bitte Seite neu laden.'); });
+    if(currentUser) startTeamsListPolling(); else stopTeamsListPolling();
+  } else { stopTeamsListPolling(); }
   if(id==='start-choice') renderStartChoicePage();
   if(id==='blitz') renderBlitzPage();
-  if(id==='shop') renderShopPage();
+  if(id==='shop') Promise.resolve().then(()=>renderShopPage()).catch(e=>{ console.error('Shop konnte nicht geladen werden:',e); showAlert('Der Shop konnte gerade nicht geladen werden. Bitte Seite neu laden.'); });
   if(id==='local-choice') renderLocalChoicePage();
   if(id==='achievements') renderAchievementsPage();
   if(id==='custom-challenges') renderCustomChallengesPage();
-  if(id==='friends'){ renderFriendsPage(); startFriendsPolling(); } else { stopFriendsPolling(); }
+  if(id==='friends'){
+    Promise.resolve().then(()=>renderFriendsPage()).catch(e=>{ console.error('Freunde konnten nicht geladen werden:',e); const list=document.getElementById('friends-list'); if(list) list.innerHTML='<div class="empty-hint">Freunde konnten nicht geladen werden. Bitte Seite neu laden.</div>'; });
+    startFriendsPolling();
+  } else { stopFriendsPolling(); }
   if(id==='user-settings') renderUserSettingsPage();
   if(id==='challenge-library') renderChallengeLibrary();
   if(id==='browse'){ renderTileGrid(); loadMyGameSuggestions(); }
@@ -8803,7 +8810,7 @@ function renderShopPage(){
   SHOP_BANNERS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
-    const locked = b.requiresAllAchievements && !hasAllAchievements(s);
+    const locked = (b.requiresAllAchievements && !hasAllAchievements(s)) || (b.requiresPikachu && !(owned.banners||[]).includes(b.id));
     if(locked){
       html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · alle ${ACHIEVEMENTS_DEF.length} Achievements nötig</span></button>`;
       return;
@@ -10297,6 +10304,115 @@ renderHomeGreeting();
       renderShopPage();
     }, 1050);
   };
+})();
+
+/* ========================================================= PIKACHU-EXPEDITION ========================================================= */
+(function(){
+  const miniCards = [
+    {id:'reaction_duel',icon:'⚡',label:'Reaktionsduell',desc:'Live-Minispiel: Der schnellste Klick darf eine leichte Challenge streichen.',cost:110,selfOnly:true},
+    {id:'risk_card',icon:'🎲',label:'Risiko-Karte',desc:'Würfelt für doppelte Punkte oder eine zusätzliche Challenge.',cost:100,selfOnly:true},
+    {id:'number_guess',icon:'🔢',label:'Zahlenraten',desc:'Rate die richtige Zahl für einen kleinen Punktebonus.',cost:70,selfOnly:true}
+  ];
+  miniCards.forEach(card=>{ if(!SHOP_SABOTAGE.some(item=>item.id===card.id)) SHOP_SABOTAGE.push(card); });
+})();
+
+(function(){
+  const baseUseSabotage = useSabotageItem;
+  async function consumeMiniCard(id){
+    const s = statsStore[currentUser.username];
+    s.shopOwned.sabotage[id] = Math.max(0,(s.shopOwned.sabotage[id]||0)-1);
+    sabotageLoadout[id] = Math.max(0,(sabotageLoadout[id]||0)-1);
+    saveLoadout(); saveStats();
+  }
+  async function refreshMiniCard(){ await loadRoundItems(); renderTeamPage(); }
+  async function runReactionDuel(){
+    const light = roundItems.find(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result && it.diff==='leicht');
+    if(!light){ showAlert('Für das Reaktionsduell brauchst du eine offene leichte Challenge.','⚡'); return false; }
+    const started = Date.now();
+    await new Promise(resolve=>window.setTimeout(resolve,900+Math.floor(Math.random()*1100)));
+    const clicked = await confirmAction('JETZT klicken! Schaffst du die Reaktion in unter einer Sekunde?');
+    if(!clicked || Date.now()-started>4000){ showAlert('Zu spät – keine Challenge wurde gestrichen.','⚡'); return false; }
+    const {error} = await sb.from('round_items').update({result:'success',points:0,struck:true}).eq('id',light.id);
+    if(error){ showAlert('Reaktionsduell konnte nicht gespeichert werden: '+error.message); return false; }
+    showToast('Reaktionsduell gewonnen: eine leichte Challenge wurde gestrichen.','⚡'); return true;
+  }
+  useSabotageItem = async function(id,target,extra){
+    if(!['reaction_duel','risk_card','number_guess'].includes(id)) return baseUseSabotage(id,target,extra);
+    if(!currentRound || !currentUser || !sb || currentRound.status!=='active') return;
+    const s=statsStore[currentUser.username];
+    if(!s || !(s.shopOwned&&s.shopOwned.sabotage&&s.shopOwned.sabotage[id]) || !(sabotageLoadout[id]||0)){
+      showAlert('Dieses Minispiel wurde nicht für diese Runde mitgenommen.','🎯'); return;
+    }
+    if(id==='reaction_duel'){
+      if(await runReactionDuel()){ await consumeMiniCard(id); await refreshMiniCard(); }
+      return;
+    }
+    if(id==='risk_card'){
+      const success=Math.random()<.5;
+      if(success){
+        const item=roundItems.find(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
+        if(!item){ showAlert('Keine offene Challenge für die Risiko-Karte.','🎲'); return; }
+        const {error}=await sb.from('round_items').update({points:(item.points||0)*2}).eq('id',item.id);
+        if(error){ showAlert('Risiko-Karte konnte nicht gespeichert werden: '+error.message); return; }
+        showToast('Risiko-Karte gewonnen: Punkte einer offenen Challenge wurden verdoppelt!','🎲');
+      }else{
+        const pool=personalPoolFor(currentRound.game_id,currentRound.game_mode).filter(x=>x.diff==='leicht');
+        const pick=pool[randInt(0,pool.length-1)];
+        const {error}=await sb.from('round_items').insert({round_id:currentRound.id,user_id:currentUser.id,scope:'personal',text:'Risiko-Karte: '+pick.text,diff:'leicht',points:TEAM_ROUND_PERSONAL_DIFF_POINTS['leicht']});
+        if(error){ showAlert('Risiko-Karte konnte nicht gespeichert werden: '+error.message); return; }
+        showToast('Risiko-Karte verloren: eine Zusatz-Challenge wurde gezogen.','🎲');
+      }
+      await consumeMiniCard(id); await refreshMiniCard(); return;
+    }
+    const guess=Number.parseInt(window.prompt('Zahlenraten: Wähle eine Zahl von 1 bis 10.'),10);
+    if(!Number.isInteger(guess)||guess<1||guess>10){ showAlert('Bitte eine Zahl von 1 bis 10 eingeben.','🔢'); return; }
+    const answer=1+Math.floor(Math.random()*10);
+    if(guess===answer){
+      const {error}=await sb.from('round_items').insert({round_id:currentRound.id,user_id:currentUser.id,scope:'personal',text:'Zahlenraten: +3 Punkte',diff:'leicht',points:3,result:'success',struck:true});
+      if(error){ showAlert('Punktebonus konnte nicht gespeichert werden: '+error.message); return; }
+      showToast('Richtig geraten! +3 Punkte.','🔢');
+    }else showAlert('Leider falsch – gesucht war '+answer+'.','🔢');
+    await consumeMiniCard(id); await refreshMiniCard();
+  };
+})();
+
+(function(){
+  const PIKA_KEY = 'winchallenge_pikachu_expedition_v1';
+  const TOTAL = 50;
+  if(!SHOP_BANNERS.some(b=>b.id==='pikachu_expedition')){
+    SHOP_BANNERS.push({id:'pikachu_expedition', label:'Pikachu-Expedition', grad:'linear-gradient(120deg,#facc15,#f59e0b,#38bdf8)', cost:0, prestige:true, requiresPikachu:true});
+  }
+  const oldShowView = showView;
+  showView = function(id, skipHistory){
+    const answer = oldShowView(id, skipHistory);
+    window.setTimeout(()=>placePikachu(id), 80);
+    return answer;
+  };
+  function readFound(){ try{return JSON.parse(localStorage.getItem(PIKA_KEY)||'[]');}catch(e){return [];} }
+  function placePikachu(viewId){
+    const view = document.getElementById('view-'+viewId);
+    if(!view || view.querySelector('.pika-hidden')) return;
+    const found = readFound();
+    const index = Array.from({length:TOTAL},(_,i)=>i).find(i=>!found.includes(i));
+    if(index===undefined) return;
+    const pika = document.createElement('button');
+    pika.type='button'; pika.className='pika-hidden'; pika.title=''; pika.setAttribute('aria-label','Verstecktes Pikachu');
+    pika.textContent='⚡';
+    pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${120+(index%7)*67}px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#facc15;color:#111;box-shadow:0 0 10px #facc15;cursor:pointer;opacity:.72;font-size:13px`;
+    pika.onclick=()=>{
+      const next = [...new Set([...readFound(),index])];
+      localStorage.setItem(PIKA_KEY,JSON.stringify(next)); pika.remove();
+      showToast(`Pikachu gefunden! ${next.length}/${TOTAL}`, '⚡');
+      if(next.length>=TOTAL && currentUser){
+        const s=statsStore[currentUser.username]; s.shopOwned=s.shopOwned||{badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
+        s.shopOwned.banners=s.shopOwned.banners||[];
+        if(!s.shopOwned.banners.includes('pikachu_expedition')) s.shopOwned.banners.push('pikachu_expedition');
+        saveStats(); showAlert('Pikachu-Expedition abgeschlossen! Das animierte Banner und der Blitz-Emoji sind freigeschaltet.','⚡');
+      }
+    };
+    view.style.position = view.style.position || 'relative';
+    view.appendChild(pika);
+  }
 })();
 </script>
 </body>
