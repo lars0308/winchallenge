@@ -4138,11 +4138,13 @@ function renderTeamPage(){
 }
 function enhanceLobbySettingsLayout(){
   const root=document.getElementById('team-round-picker'); if(!root) return;
-  const sections=[
+  const isBlitz=teamRoundScope==='blitz';
+  const sections=isBlitz ? [
+    {title:'Schnellstart', ids:['team-round-blitz-zone','team-round-game-step'], wide:true}
+  ] : [
     {title:'Ablauf', ids:['team-round-scope-desc','team-round-scope-picker'], wide:true},
     {title:'Spiele & Runden', ids:['team-round-game-step','team-round-gamemode-step','team-round-count-step','team-round-gamesmulti-step','team-round-pointgoal-wrap'], wide:true},
-    {title:'Spielmodus', ids:['team-round-mode-card','team-round-sessionmode-card','team-round-difficulty-step','team-round-herolock-step'], wide:false},
-    {title:'Schnellstart', ids:['team-round-blitz-zone'], wide:false}
+    {title:'Spielmodus', ids:['team-round-mode-card','team-round-sessionmode-card','team-round-difficulty-step','team-round-herolock-step'], wide:true}
   ];
   const grid=document.createElement('div'); grid.className='lobby-config-grid';
   sections.forEach(spec=>{
@@ -4224,6 +4226,15 @@ function renderTeamRoundPicker(){
   if(isBlitz){
     const gmStepEl = document.getElementById('team-round-gamemode-step');
     if(gmStepEl) gmStepEl.style.display = 'none';
+    const gameLabel = gameStep && gameStep.querySelector('.setup-info');
+    if(gameLabel) gameLabel.textContent = 'Spiel optional – ohne Auswahl wird zufällig gewählt';
+    const blitzInfo = document.getElementById('team-round-blitz-zone');
+    if(blitzInfo){
+      blitzInfo.innerHTML = `<p class="setup-info">Ein Klick genügt: Spiel ist optional, Schwierigkeit, Modus und Spielart werden zufällig gewählt.</p><div class="filter-row"><button class="filter-pill${!teamRoundGameChoice?' active':''}" onclick="teamRoundGameChoice=null;renderTeamRoundPicker()">🎲 Zufälliges Spiel</button></div><div class="roll-zone" style="margin-top:14px;"><button class="roll-btn" onclick="startTeamRound()">Schnellstart starten</button></div>`;
+    }
+  } else {
+    const gameLabel = gameStep && gameStep.querySelector('.setup-info');
+    if(gameLabel) gameLabel.textContent = 'Spiel';
   }
 
   const gameRow = document.getElementById('team-round-game-picker');
@@ -4600,6 +4611,19 @@ async function refreshLiveRoundItems(){
 }
 let teamPendingGameIntro = false; // Zeigt lokal beim Host kurz die Spiel-Intro-Karte, bevor die nächste Online-Runde gestartet wird (nur bei Spielen ohne Helden-Roulette, scope 'games')
 async function startTeamRound(skipReadyCheck){
+  if(teamRoundScope==='blitz'){
+    const quickGames=SESSION_GAMES.filter(id=>GAME_NAME[id]);
+    if(!teamRoundGameChoice && quickGames.length) teamRoundGameChoice=quickGames[randInt(0,quickGames.length-1)];
+    const quickModes=['team','versus'];
+    const quickStyles=['challenge','chaos'];
+    const quickDifficulties=['Leicht','Mittel','Schwer'];
+    teamRoundModeChoice=quickModes[randInt(0,quickModes.length-1)];
+    teamRoundSessionModeChoice=quickStyles[randInt(0,quickStyles.length-1)];
+    teamRoundDifficulty=quickDifficulties[randInt(0,quickDifficulties.length-1)];
+    teamRoundCount=1;
+    const gameModes=GAME_MODES[teamRoundGameChoice]||[];
+    teamRoundGameMode=gameModes.length ? gameModes[randInt(0,gameModes.length-1)].key : null;
+  }
   if(!teamRoundGameChoice){ showAlert('Bitte zuerst ein Spiel auswählen.'); return; }
   if(!skipReadyCheck && !allMembersReady()){ showAlert('Noch nicht alle Mitglieder sind bereit.'); return; }
   if(!myTeam || !currentUser || !sb) return;
