@@ -2230,7 +2230,12 @@ async function renderPendingInvites(){
   const listEl = document.getElementById('friend-invites-list');
   if(!currentUser || !sb){ divider.style.display='none'; listEl.innerHTML=''; return; }
   try{
-    const { data, error } = await sb.from('team_invites').select('id, team_id, status, teams(name, code), profiles!team_invites_from_user_fkey(username)').eq('to_user', currentUser.id).eq('status','pending');
+    // Einladungen sind nur 24 Stunden gültig. Der Zeitfilter verhindert, dass alte
+    // Einladungen noch sichtbar/annahmbar sind; die DELETE-Anfrage räumt sie bei
+    // geöffneter App zusätzlich direkt aus der Tabelle.
+    const expiresBefore = new Date(Date.now()-24*60*60*1000).toISOString();
+    await sb.from('team_invites').delete().eq('to_user', currentUser.id).eq('status','pending').lt('created_at', expiresBefore);
+    const { data, error } = await sb.from('team_invites').select('id, team_id, status, created_at, teams(name, code), profiles!team_invites_from_user_fkey(username)').eq('to_user', currentUser.id).eq('status','pending').gte('created_at', expiresBefore);
     if(error) throw error;
     if(!data || !data.length){ divider.style.display='none'; listEl.innerHTML=''; return; }
     divider.style.display = 'block';
@@ -2405,8 +2410,9 @@ function avatarFor(name){
 function avatarHTML(name, size){
   size = size || 26;
   const val = avatarFor(name);
-  if(typeof val === 'string' && val.indexOf('data:image') === 0){
-    return `<img src="${val}" style="width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;vertical-align:middle;">`;
+  if(typeof val === 'string' && (val.indexOf('data:image') === 0 || val.indexOf('asset:') === 0)){
+    const src = val.indexOf('asset:') === 0 ? val.slice(6) : val;
+    return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;vertical-align:middle;">`;
   }
   if(typeof val === 'string' && val.indexOf('icon:') === 0){
     const def = ICON_AVATARS.find(i=>'icon:'+i.id===val) || ICON_AVATARS[0];
@@ -2876,8 +2882,9 @@ function renderAccountAvatarHTML(avatarVal, size){
   size = size || 24;
   if(!avatarVal) return `<span style="font-size:${Math.round(size*0.8)}px;">😎</span>`;
   const lowerVal = avatarVal.toLowerCase();
-  if(lowerVal.indexOf('data:image') === 0){
-    return `<img src="${avatarVal}" style="width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;vertical-align:middle;">`;
+  if(lowerVal.indexOf('data:image') === 0 || lowerVal.indexOf('asset:') === 0){
+    const src = lowerVal.indexOf('asset:') === 0 ? avatarVal.slice(6) : avatarVal;
+    return `<img src="${src}" style="width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;vertical-align:middle;">`;
   }
   if(lowerVal.indexOf('hero:') === 0){
     const heroName = avatarVal.slice(avatarVal.indexOf(':', 5)+1);
@@ -2943,6 +2950,13 @@ function renderProfileAvatarGrid(){
     item.addEventListener('click', ()=>{ profileAvatarChoice = emo; renderProfileAvatarGrid(); });
     grid.appendChild(item);
   });
+  const pikachu = 'asset:assets/pikachu-avatar.gif';
+  const pikaItem = document.createElement('div');
+  pikaItem.className = 'avatar-grid-item'+(profileAvatarChoice===pikachu?' selected':'');
+  pikaItem.title = 'Pikachu';
+  pikaItem.innerHTML = '<img src="assets/pikachu-avatar.gif" style="width:100%;height:100%;object-fit:cover;">';
+  pikaItem.addEventListener('click', ()=>{ profileAvatarChoice = pikachu; renderProfileAvatarGrid(); });
+  grid.appendChild(pikaItem);
 }
 function renderProfileHeroAvatarGroups(){
   const wrap = document.getElementById('profile-hero-avatar-groups'); wrap.innerHTML = '';
@@ -3770,6 +3784,23 @@ async function transferHost(userId, username){
   myTeam.host_id = userId;
   showToast(`${username} ist jetzt Team-Ersteller (👑).`, '👑', 3200);
   renderTeamPage();
+}
+function openHostTransferPicker(){
+  if(!myTeam || !currentUser || myTeam.host_id!==currentUser.id) return;
+  const candidates=teamMembers.filter(m=>m.user_id!==currentUser.id);
+  if(!candidates.length){ showAlert('Für die Host-Übergabe wird mindestens ein weiteres Mitglied benötigt.','👑'); return; }
+  let modal=document.getElementById('host-transfer-modal');
+  if(!modal){
+    modal=document.createElement('div'); modal.id='host-transfer-modal'; modal.className='modal-backdrop hidden';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML=`<div class="member-modal-card" onclick="event.stopPropagation();" style="max-width:460px;">
+    <button class="member-modal-close" onclick="document.getElementById('host-transfer-modal').classList.add('hidden')">✕</button>
+    <div class="setup-step-head"><span class="setup-step-icon">👑</span><div class="setup-step-title">Host übergeben</div></div>
+    <p class="setup-info">Wähle, wer Einstellungen verwalten und Runden starten darf.</p>
+    <div class="filter-row" style="justify-content:center;">${candidates.map(m=>`<button class="filter-pill" onclick="document.getElementById('host-transfer-modal').classList.add('hidden'); transferHost('${m.user_id}','${m.username}')">${renderAccountAvatarHTML(m.avatar,18)} ${m.username}</button>`).join('')}</div>
+  </div>`;
+  modal.classList.remove('hidden');
 }
 let lastCheckedRoundSignature = null;
 async function checkActiveRound(){
@@ -5918,7 +5949,10 @@ function renderTeamLobbyScreen(isHost, mine){
         <div class="scoreboard-meta" style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1.3rem;letter-spacing:0.14em;color:var(--turquoise-bright);display:flex;align-items:center;gap:8px;">${myTeam.code} <button class="header-menu-btn" style="width:auto;border-radius:14px;padding:0 10px;font-size:0.68rem;" onclick="copyTeamCode('${myTeam.code}')" title="Code kopieren">⧉ Kopieren</button></div>
       </div>
     </div>
-    <div class="roll-zone" style="margin-bottom:6px;"><button class="sb-btn" onclick="openFriendInviteModal()">🤝 Freund direkt einladen</button></div>
+    <div class="roll-zone" style="margin-bottom:6px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <button class="sb-btn" onclick="openFriendInviteModal()">🤝 Freund direkt einladen</button>
+      ${isHost && teamMembers.length>1 ? '<button class="sb-btn" onclick="openHostTransferPicker()">👑 Host übergeben</button>' : ''}
+    </div>
     <div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div>
       <div class="player-chips">`;
@@ -5929,7 +5963,7 @@ function renderTeamLobbyScreen(isHost, mine){
     // um den eigenen Banner-Rahmen zustande. Bei aktivem Banner blenden wir den Chip-Rand aus,
     // der Banner selbst übernimmt dann die einzige sichtbare Umrandung.
     const memberHasBanner = !!cosmeticsFor(m.username).banner;
-    html += `<div class="chip readonly member-clickable"${memberHasBanner?' style="border-color:transparent;background:transparent;"':''} onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳')+' '+onlineDotHTML(m.last_active))}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); transferHost('${m.user_id}','${m.username}')" title="Zum Team-Ersteller machen">👑</button><button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
+    html += `<div class="chip readonly member-clickable"${memberHasBanner?' style="border-color:transparent;background:transparent;"':''} onclick="showMemberProfile('${m.user_id}')">${playerCosmeticCardHTML(m.username, withHatOverlay(m.username, renderAccountAvatarHTML(m.avatar,20), 20), (m.user_id===myTeam.host_id?' 👑':'')+' '+(m.ready?'✅':'⏳')+' '+onlineDotHTML(m.last_active))}${roleBadge}${canKick?`<button onclick="event.stopPropagation(); kickMember('${m.user_id}')" title="Aus dem Team entfernen">✕</button>`:''}</div>`;
   });
   html += `</div>`;
   html += `</div>`;
@@ -10314,6 +10348,9 @@ renderHomeGreeting();
     {id:'number_guess',icon:'🔢',label:'Zahlenraten',desc:'Rate die richtige Zahl für einen kleinen Punktebonus.',cost:70,selfOnly:true}
   ];
   miniCards.forEach(card=>{ if(!SHOP_SABOTAGE.some(item=>item.id===card.id)) SHOP_SABOTAGE.push(card); });
+  if(!SHOP_BANNERS.some(b=>b.id==='jujutsu_kaisen')){
+    SHOP_BANNERS.push({id:'jujutsu_kaisen',label:'Jujutsu Kaisen',img:'assets/jujutsu-kaisen-banner.webp',cost:300,animated:true});
+  }
 })();
 
 (function(){
