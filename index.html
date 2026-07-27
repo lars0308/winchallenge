@@ -2563,6 +2563,7 @@ function avatarHTML(name, size){
     // dieselbe Auflösung wie renderAccountAvatarHTML nutzen, statt den rohen String zu zeigen.
     return renderAccountAvatarHTML(val, size);
   }
+  if(typeof val === 'string' && val.indexOf('asset:') === 0) return renderAccountAvatarHTML(val, size);
   return `<span style="font-size:${Math.round(size*0.75)}px;">${val}</span>`;
 }
 let editingAvatarPlayer = null;
@@ -3026,11 +3027,16 @@ function renderAccountAvatarHTML(avatarVal, size){
     const g = GAMES.find(x=>x.id===avatarVal.slice(5).toLowerCase());
     return `<span style="font-size:${Math.round(size*0.8)}px;">${g ? g.icon : '😎'}</span>`;
   }
+  if(lowerVal.indexOf('asset:') === 0){
+    const asset = ASSET_AVATARS.find(a=>'asset:'+a.id===avatarVal);
+    if(asset) return `<img src="${asset.src}" alt="${asset.label}" style="width:${size}px;height:${size}px;border-radius:8px;object-fit:cover;vertical-align:middle;">`;
+  }
   // Unbekanntes/kaputtes Format: nie den rohen Referenz-String als Text anzeigen — lieber ein neutrales Fallback-Icon.
   if(avatarVal.length <= 4){ return `<span style="font-size:${Math.round(size*0.8)}px;">${avatarVal}</span>`; }
   return `<span style="font-size:${Math.round(size*0.8)}px;">😎</span>`;
 }
 const PROFILE_AVATAR_EMOJI = ['😎','🔥','🎮','🐺','🦊','🐉','👾','🤖','💀','👑','🥷','🍀','⚡','🎯','🛡️','🚀'];
+const ASSET_AVATARS = [{id:'pikachu', label:'Pikachu', src:'pikachu-avatar.gif'}];
 let profileAvatarChoice = '😎';
 let profileFavGameChoice = '';
 let profileOnboarding = false; // true = direkt nach der Registrierung geöffnet (anderer Text, springt danach zur Startseite statt einfach "Gespeichert!" zu zeigen)
@@ -3079,6 +3085,12 @@ function renderProfileAvatarGrid(){
     item.textContent = emo;
     item.addEventListener('click', ()=>{ profileAvatarChoice = emo; renderProfileAvatarGrid(); });
     grid.appendChild(item);
+  });
+  ASSET_AVATARS.forEach(asset=>{
+    const value='asset:'+asset.id;
+    const item=document.createElement('div'); item.className='avatar-grid-item'+(profileAvatarChoice===value?' selected':''); item.title=asset.label;
+    item.innerHTML=`<img src="${asset.src}" alt="${asset.label}" style="width:100%;height:100%;object-fit:cover;border-radius:12px;">`;
+    item.addEventListener('click', ()=>{ profileAvatarChoice=value; renderProfileAvatarGrid(); }); grid.appendChild(item);
   });
 }
 function renderProfileHeroAvatarGroups(){
@@ -4660,7 +4672,7 @@ function renderSabotagePanel(){
   const mirrorAction = mirrorBrought && !mirrorReady
     ? `<div class="settings-row-btn" style="margin:0 0 12px;"><span class="settings-row-icon">🪞</span><span class="settings-row-text"><span class="settings-row-title">Spiegel bereit</span><span class="settings-row-sub">Aktiviere ihn bewusst für diese Runde. Danach schützt er vor genau einer Sabotage.</span></span><button class="sb-btn" onclick="activateMirror()">Aktivieren</button></div>`
     : '';
-  const duckAction = (s.ducksCollected||0)>=50 ? `<div class="roll-zone" style="margin:0 0 12px;"><button class="sb-btn" onclick="sendDuckQuack()">🦆 Quak senden</button></div>` : '';
+  const duckAction = (s.ducksCollected||0)>=50 ? `<div class="roll-zone" style="margin:0 0 12px;"><button class="sb-btn" onclick="sendDuckQuack()">⚡ Pika senden</button></div>` : '';
   const spySwapHTML = renderSpySwapPanel();
   // In der laufenden Runde sind NUR die im Loadout mitgenommenen Items einsetzbar — so kann
   // niemand mitten in der Runde nachkaufen und sofort einsetzen. Modus-gebundene Items
@@ -4740,8 +4752,7 @@ function renderSpySwapPanel(){
     if(!target || !theirs.length) return;
     html += `<div class="setup-info" style="margin:12px 0 6px;text-align:left;color:var(--turquoise-bright);">${target.username}s Challenges</div>`;
     theirs.forEach(other=>{
-      const matches = mine.filter(own=>Number(own.points)===Number(other.points));
-      html += `<div class="settings-row-btn" style="margin:6px 0;"><span class="settings-row-text"><span class="settings-row-title">${other.text}</span><span class="settings-row-sub">${other.points} Punkte</span></span>${matches.length?`<span class="filter-row">${matches.map(own=>`<button class="filter-pill" onclick="swapSpiedChallenge('${own.id}','${other.id}')">Tauschen</button>`).join('')}</span>`:'<span class="settings-row-chev">kein gleicher Wert</span>'}</div>`;
+      html += `<div class="settings-row-btn" style="margin:6px 0;"><span class="settings-row-text"><span class="settings-row-title">${other.text}</span><span class="settings-row-sub">${other.points} Punkte</span></span><span class="filter-row">${mine.map(own=>`<button class="filter-pill" onclick="swapSpiedChallenge('${own.id}','${other.id}')">Tauschen</button>`).join('')}</span></div>`;
     });
   });
   return html+'</div></details>';
@@ -4750,15 +4761,16 @@ async function swapSpiedChallenge(ownItemId, otherItemId){
   if(!currentRound || !currentUser || !sb) return;
   const own = roundItems.find(it=>it.id===ownItemId && it.user_id===currentUser.id);
   const other = roundItems.find(it=>it.id===otherItemId);
-  if(!own || !other || own.result || other.result || Number(own.points)!==Number(other.points)){ showAlert('Diese Challenges können nicht getauscht werden.', '🔍'); return; }
+  if(!own || !other || own.result || other.result){ showAlert('Diese Challenges können nicht getauscht werden.', '🔍'); return; }
   const permitted = (currentRound.spied_pairs||[]).includes(currentUser.id+'>'+other.user_id);
   if(!permitted){ showAlert('Dafür muss zuerst Spionage gegen dieses Ziel eingesetzt werden.', '🔍'); return; }
-  if(!(await confirmAction(`„${own.text}“ gegen „${other.text}“ tauschen? Beide bleiben ${own.points} Punkte wert.`, '🔍'))) return;
-  const { error: a } = await sb.from('round_items').update({ user_id: other.user_id }).eq('id', own.id);
+  if(!(await confirmAction(`„${own.text}“ gegen „${other.text}“ tauschen? Jeder behält dabei seinen bisherigen Punktewert.`, '🔍'))) return;
+  const ownContent = { text:own.text, diff:own.diff };
+  const { error: a } = await sb.from('round_items').update({ text:other.text, diff:other.diff }).eq('id', own.id);
   if(a){ showAlert('Tausch fehlgeschlagen: '+a.message, '⚠️'); return; }
-  const { error: b } = await sb.from('round_items').update({ user_id: currentUser.id }).eq('id', other.id);
-  if(b){ await sb.from('round_items').update({ user_id: currentUser.id }).eq('id', own.id); showAlert('Tausch fehlgeschlagen: '+b.message, '⚠️'); return; }
-  await loadRoundItems(); renderTeamPage(); showLiveItemCard(`${currentUser.username} hat zwei gleichwertige Challenges getauscht.`, '🔍');
+  const { error: b } = await sb.from('round_items').update({ text:ownContent.text, diff:ownContent.diff }).eq('id', other.id);
+  if(b){ await sb.from('round_items').update(ownContent).eq('id', own.id); showAlert('Tausch fehlgeschlagen: '+b.message, '⚠️'); return; }
+  await loadRoundItems(); renderTeamPage(); showLiveItemCard(`${currentUser.username} hat zwei Challenges getauscht – die Punktewerte bleiben erhalten.`, '🔍');
 }
 let teamMirrorSyncedFor = null; // Round-ID + Bring-Status, für den dieses Gerät seinen Spiegel-Stand schon gemeldet hat
 async function syncMirrorReadyState(){
@@ -7613,8 +7625,9 @@ const SHOP_BANNERS = [
   {id:'decay', label:'🧟 Fäulnis-Fratze', img:BANNER_DECAY_GIF, cost:240, animated:true, horror:true},
   {id:'watcher_eyes', label:'👁️ Der Beobachter', img:BANNER_EYES_GIF, cost:0, animated:true, horror:true, requiresAllAchievements:true, prestige:true},
   {id:'pin_neon', label:'Neon-Anime', img:'https://i.pinimg.com/originals/7e/e6/87/7ee68785e912300b89900a6243419f3b.gif', cost:280, animated:true, rarity:'episch'},
+  {id:'jujutsu_red', label:'Jujutsu Kaisen Rot', img:'jujutsu-kaisen.gif', cost:300, animated:true, rarity:'legendär'},
   {id:'jujutsu_kaisen', label:'Jujutsu Kaisen', img:'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/c13c0d2f-1bc2-47e5-b959-70aaa89f724d/dfq0co7-ee8f85f7-33ea-4ad0-baf4-ead495e572f3.gif?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W3sicGF0aCI6Ii9mL2MxM2MwZDJmLTFiYzItNDdlNS1iOTU5LTcwYWFhODlmNzI0ZC9kZnEwY283LWVlOGY4NWY3LTMzZWEtNGFkMC1iYWY0LWVhZDQ5NWU1NzJmMy5naWYifV1dLCJhdWQiOlsidXJuOnNlcnZpY2U6ZmlsZS5kb3dubG9hZCJdfQ.vI2aD4IwANEsMUxQeZxbbSzkqH7sMRQgFom3EeWlno0', cost:300, animated:true, rarity:'legendär'},
-  {id:'duck_hunt', label:'Enten-Expedition', grad:'linear-gradient(120deg,#ffdd38,#ffb703,#58c7ff,#ffdd38)', cost:0, animated:true, requiresDucks:50},
+  {id:'duck_hunt', label:'Pikachu-Expedition', grad:'linear-gradient(120deg,#ffdd38,#ffb703,#58c7ff,#ffdd38)', cost:0, animated:true, requiresDucks:50},
 ];
 const SHOP_GLOWS = [
   {id:'cyan', icon:'✨', label:'Cyan-Glühen', color:'#5ee7ff', cost:130},
@@ -7765,7 +7778,7 @@ function renderShopPage(){
     const isEquipped = s && s.equippedBanner===b.id;
     const locked = (b.requiresAllAchievements && !hasAllAchievements(s)) || (b.requiresDucks && (s.ducksCollected||0) < b.requiresDucks);
     if(locked){
-        const need = b.requiresDucks ? `${b.requiresDucks} Enten finden` : `alle ${ACHIEVEMENTS_DEF.length} Achievements nötig`;
+        const need = b.requiresDucks ? `${b.requiresDucks} Pikachus finden` : `alle ${ACHIEVEMENTS_DEF.length} Achievements nötig`;
         html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · ${need}</span></button>`;
       return;
     }
@@ -9207,7 +9220,7 @@ function showItemScreenFlash(icon, label){
 function showLiveItemCard(message, icon){
   if(!message) return;
   if(message.includes('Spiegel')) showItemScreenFlash('🪞', 'Spiegel-Effekt');
-  else if(message.includes('🦆 Quak')) playDuckQuack();
+  else if(message.includes('⚡ Pika')) playDuckQuack();
   else if(message.includes('Team-Schild')) showItemScreenFlash('🛡️', 'Team-Schild');
   else if(message.includes('Helden-Tausch')) showItemScreenFlash('🔀', 'Helden getauscht');
   else if(message.includes('Zwangs-Reroll')) showItemScreenFlash('🎲', 'Neu ausgelost');
@@ -9246,21 +9259,21 @@ function renderDuckHunt(viewId){
   if(!currentUser) return;
   const s = duckStats(); if(!s) return;
   DUCK_SPAWNS.filter(d=>d.view===viewId && !s.ducksFound.includes(d.id)).forEach(d=>{
-    const btn = document.createElement('button'); btn.className='duck-hunt'; btn.type='button'; btn.textContent='🦆';
-    btn.style.left=d.x+'vw'; btn.style.top=d.y+'vh'; btn.setAttribute('aria-label','Versteckte Ente einsammeln');
+    const btn = document.createElement('button'); btn.className='duck-hunt'; btn.type='button'; btn.innerHTML='<img src="pikachu-blitz.gif" alt="" style="width:42px;height:42px;object-fit:cover;object-position:center;border-radius:50%;">';
+    btn.style.left=d.x+'vw'; btn.style.top=d.y+'vh'; btn.setAttribute('aria-label','Verstecktes Pikachu einsammeln');
     btn.onclick=()=>collectDuck(d.id, btn); document.body.appendChild(btn);
   });
 }
 function collectDuck(id, el){
   const s = duckStats(); if(!s || s.ducksFound.includes(id)) return;
   s.ducksFound.push(id); s.ducksCollected=s.ducksFound.length; saveStats();
-  el.remove(); showToast(`Ente ${s.ducksCollected}/50 gefunden!`, '🦆');
+  el.remove(); showToast(`Pikachu ${s.ducksCollected}/50 gefunden!`, '⚡');
   if(s.ducksCollected===50){
     s.shopOwned = s.shopOwned || {badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
     s.shopOwned.banners = s.shopOwned.banners || [];
     if(!s.shopOwned.banners.includes('duck_hunt')) s.shopOwned.banners.push('duck_hunt');
     s.equippedBanner='duck_hunt'; saveStats(); syncMyCosmeticsToProfile();
-    showLiveItemCard(`${currentUser.username} hat alle 50 Enten gefunden und den Enten-Banner freigeschaltet!`, '🦆');
+    showLiveItemCard(`${currentUser.username} hat alle 50 Pikachus gefunden und den Pikachu-Banner freigeschaltet!`, '⚡');
   }
 }
 function playDuckQuack(){
@@ -9269,8 +9282,8 @@ function playDuckQuack(){
 }
 async function sendDuckQuack(){
   if(!currentRound || !currentUser || !sb) return;
-  playDuckQuack(); showLiveItemCard(`${currentUser.username}: 🦆 Quak!`, '🦆');
-  const rows=teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>({target_user_id:m.user_id,from_user_id:currentUser.id,round_id:currentRound.id,icon:'🦆',message:`${currentUser.username}: 🦆 Quak!`}));
+  playDuckQuack(); showLiveItemCard(`${currentUser.username}: ⚡ Pika!`, '⚡');
+  const rows=teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>({target_user_id:m.user_id,from_user_id:currentUser.id,round_id:currentRound.id,icon:'⚡',message:`${currentUser.username}: ⚡ Pika!`}));
   if(rows.length) await sb.from('player_notifications').insert(rows);
 }
 /* ============================================================ INITIAL RENDER ============================================================ */
