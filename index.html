@@ -398,7 +398,7 @@
   /* Die vier kleinen Kosmetik-Kategorien teilen sich exakt dieselbe Gesamtbreite wie Banner. */
   @media(min-width:1000px){
     #view-shop .shop-catalog{ grid-template-columns:repeat(4,minmax(0,1fr)); }
-    #view-shop .shop-catalog .settings-card:nth-child(3){ grid-column:auto; }
+    #view-shop .shop-catalog .shop-category-banner{ grid-column:1 / -1; }
   }
   @media(min-width:681px) and (max-width:999px){ #view-shop .shop-catalog{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
   .shop-sabotage-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:10px; }
@@ -412,6 +412,7 @@
   #view-shop .shop-category-banner{ order:5; grid-column:1 / -1; }
   #view-shop .shop-category-banner .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); }
   .shop-luck-machine{ margin:16px 0; background:linear-gradient(135deg,rgba(77,44,120,.42),rgba(17,86,108,.32)); border-color:rgba(121,92,255,.52); }
+  .shop-luck-machine .setup-info:first-of-type::after{ content:"\A\A Gewinnreihen: 6× ✦ = 1 · 6× ◆ = 20 · 6× ★ = 50 · 6× 7 = 200 · 6× W = 1.000 Münzen"; display:block; color:var(--turquoise-bright); font-weight:700; line-height:1.5; }
   .shop-luck-machine .luck-machine-row{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; }
   .shop-luck-machine input{ width:92px; text-align:center; font:700 1rem Rajdhani,sans-serif; }
   .slot-machine{ max-width:760px; margin:14px auto 0; padding:14px; border:5px solid #f6c744; border-radius:22px; background:linear-gradient(145deg,#19132c,#080914 55%,#20103b); box-shadow:inset 0 0 0 2px #5d3d9d,0 16px 35px rgba(0,0,0,.45),0 0 24px rgba(245,199,68,.2); }
@@ -4093,12 +4094,13 @@ function renderTeamPage(){
   const mine=teamMembers.find(m=>currentUser&&m.user_id===currentUser.id);
   const members=teamMembers.map(m=>`<button class="filter-pill${m.ready?' active':''}" onclick="showMemberProfile('${m.user_id}')">${avatarHTML(m.username,22)} ${m.username}${m.user_id===myTeam.host_id?' 👑':''}${m.ready?' · bereit':''}</button>`).join('') || '<span class="empty-hint">Mitglieder werden geladen …</span>';
   const hostChoices=isHost&&hostTransferOpen ? `<div class="filter-row" style="margin-top:10px;">${teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>`<button class="filter-pill" onclick="transferHost('${m.user_id}','${m.username.replace(/'/g,"\\'")}')">An ${m.username} übergeben</button>`).join('')||'<span class="setup-info">Keine weiteren Mitglieder vorhanden.</span>'}</div>` : '';
+  const inviteButton=`<div class="roll-zone" style="margin-top:12px;"><button class="sb-btn" onclick="openFriendInviteModal()">Freund direkt einladen</button></div>`;
   if(currentRound){
     el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎮</span><div class="setup-step-title">Runde läuft gerade</div></div><p class="setup-info">${currentRound.game_id ? (GAME_NAME[currentRound.game_id]||currentRound.game_id) : 'Aktive Runde'} · ${campaignProgressLabel()}</p><div class="roll-zone"><button class="roll-btn" onclick="showView('session')">Zur aktuellen Runde</button></div></div>`;
     return;
   }
   const readyLabel=mine&&mine.ready?'Bereitschaft zurücknehmen':'Ich bin bereit';
-  el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div><div class="filter-row">${members}</div>${isHost?`<div class="roll-zone" style="margin-top:12px;"><button class="sb-btn" onclick="toggleHostTransferMenu()">Host übergeben</button></div>${hostChoices}`:''}</div><div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><p class="setup-info">${campaignSummaryText()}</p>${isHost?'<div id="team-round-picker"></div><div class="roll-zone" style="margin-top:14px;"><button class="roll-btn" onclick="startTeamRound()">Runde starten</button></div>':'<p class="setup-info">Der Host richtet die nächste Runde ein. Die Auswahl bleibt hier live sichtbar.</p>'}</div><div class="roll-zone"><button class="sb-btn" onclick="toggleMyTeamReady()">${readyLabel}</button></div>${renderLoadoutPicker()}`;
+  el.innerHTML=`<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">👥</span><div class="setup-step-title">Mitglieder</div></div><div class="filter-row">${members}</div>${inviteButton}${isHost?`<div class="roll-zone" style="margin-top:12px;"><button class="sb-btn" onclick="toggleHostTransferMenu()">Host übergeben</button></div>${hostChoices}`:''}</div><div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Lobby-Einstellungen</div></div><p class="setup-info">${campaignSummaryText()}</p>${isHost?'<div id="team-round-picker"></div><div class="roll-zone" style="margin-top:14px;"><button class="roll-btn" onclick="startTeamRound()">Runde starten</button></div>':'<p class="setup-info">Der Host richtet die nächste Runde ein. Die Auswahl bleibt hier live sichtbar.</p>'}</div><div class="roll-zone"><button class="sb-btn" onclick="toggleMyTeamReady()">${readyLabel}</button></div>${renderLoadoutPicker()}`;
   if(isHost) renderTeamRoundPicker();
 }
 function renderTeamRoundPicker(){
@@ -7076,6 +7078,10 @@ const ACHIEVEMENTS_DEF = [
   {id:'25_heroes', icon:'🦸‍♀️', label:'25 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=25, reward:18},
   {id:'all_ow_heroes', icon:'🛡️', label:'Alle Overwatch-Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('ow2:')).length>=(HERO_GAMES.ow2?HERO_GAMES.ow2.length:999), reward:40},
   {id:'all_r6_operators', icon:'💣', label:'Alle Rainbow-Six-Operatoren gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('r6:')).length>=(HERO_GAMES.r6?HERO_GAMES.r6.length:999), reward:40},
+  {id:'pika_scout', icon:'⚡', label:'Pikachu-Späher', test:s=>(s.ducksCollected||0)>=1, reward:3},
+  {id:'pika_tracker', icon:'⚡', label:'Pikachu-Finder', test:s=>(s.ducksCollected||0)>=10, reward:8},
+  {id:'pika_hunter', icon:'⚡', label:'Pikachu-Jäger', test:s=>(s.ducksCollected||0)>=25, reward:15},
+  {id:'pika_expedition', icon:'⚡', label:'Pikachu-Expedition', test:s=>(s.ducksCollected||0)>=50, reward:30},
 ];
 let achievementsSelectedPlayer = null;
 function renderAchievementsPage(){
@@ -7664,6 +7670,14 @@ function gambleShopCoins(){
     if(prize && !jackpot){
       s.totalPoints=(s.totalPoints||0)+prize.amount; saveStats();
       showLiveItemCard(`${name} gewinnt ${prize.amount} Shop-Münzen (${prize.label})!`, '✨');
+      // Die Gruppe bekommt einen kurzen, eindeutigen Hinweis auf den Shop-Gewinn.
+      if(myTeam && currentUser && sb){
+        const rows=teamMembers.filter(m=>m.user_id!==currentUser.id).map(m=>({
+          target_user_id:m.user_id, from_user_id:currentUser.id,
+          icon:'🎰', message:`${name} hat im Shop ${prize.amount} Münzen gewonnen.`
+        }));
+        if(rows.length) sb.from('player_notifications').insert(rows).catch(()=>{});
+      }
     }
     if(jackpot){ s.totalPoints=(s.totalPoints||0)+1000; saveStats(); machine.classList.add('jackpot'); showLiveItemCard(`${name} hat den 1.000-Münzen-Jackpot geknackt!`, '🎰'); }
     if(result) result.innerHTML = jackpot ? `<span style="color:#ffe36a;font-weight:800;">6× W — JACKPOT: +1.000 Münzen!</span>` : `<span style="color:var(--text-muted);">Kein 6× W. Einsatz: ${stake} Münzen.</span>`;
@@ -9233,7 +9247,9 @@ function renderDuckHunt(viewId){
 function collectDuck(id, el){
   const s = duckStats(); if(!s || s.ducksFound.includes(id)) return;
   s.ducksFound.push(id); s.ducksCollected=s.ducksFound.length; saveStats();
+  const earned = checkAchievements(currentUser.username);
   el.remove(); showToast(`Pikachu ${s.ducksCollected}/50 gefunden!`, '⚡');
+  earned.forEach(a=>showToast(`Achievement: ${a.label} (+${a.reward} Punkte)`, a.icon, 3600));
   if(s.ducksCollected===50){
     s.shopOwned = s.shopOwned || {badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
     s.shopOwned.banners = s.shopOwned.banners || [];
