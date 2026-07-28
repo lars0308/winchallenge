@@ -94,6 +94,8 @@
   .tile-icon{ position:absolute; top:18px; right:18px; font-size:3.4rem; z-index:1; opacity:0.9; filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5)); transition:transform 0.35s ease; }
   .tile-watermark{ position:absolute; font-size:9rem; right:-10px; bottom:-30px; opacity:0.14; z-index:0; transition:transform 0.5s ease; }
   .tile-body{ position:relative; z-index:1; padding:20px 22px; }
+  .tile-online-btn{ position:absolute; z-index:3; top:14px; right:14px; border:1px solid rgba(90,225,220,.65); border-radius:999px; padding:7px 10px; color:#081016; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); font-family:inherit; font-weight:800; cursor:pointer; box-shadow:0 6px 18px rgba(34,211,209,.22); }
+  .tile-online-btn:hover{ transform:translateY(-1px); filter:brightness(1.08); }
   .tile-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.5rem; }
   .tile-tag{ color:var(--text-muted); font-size:0.85rem; margin-top:3px; }
   .tile-arrow{ position:absolute; z-index:1; right:20px; bottom:20px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); display:flex; align-items:center; justify-content:center; transition:all 0.3s ease; }
@@ -8056,6 +8058,21 @@ function gameIconHTML(gameId, size){
   return `<span style="font-size:${Math.round(size*0.9)}px;">${GAME_ICON[gameId]||'🎮'}</span>`;
 }
 let tilePlayerFilter = 'all';
+async function startOnlineGameFromBrowse(gameId){
+  if(!currentUser || !sb){
+    showAlert('Für „Online spielen“ musst du dich zuerst einloggen.', '👤');
+    goToAuthForm('login');
+    return;
+  }
+  const game = GAMES.find(g=>g.id===gameId);
+  const teamName = `${game ? game.name : 'Spiel'} – ${currentUser.username}`;
+  await createTeam(teamName);
+  if(!myTeam) return;
+  teamRoundGameChoice = gameId;
+  teamRoundGameMode = (GAME_MODES[gameId]||[])[0]?.key || null;
+  teamSettingsOpen = true;
+  showView('team');
+}
 function renderTileGrid(){
   tileGrid.innerHTML = '';
   const filterRow = document.getElementById('tile-player-filter');
@@ -8108,6 +8125,10 @@ function renderTileGrid(){
     const go = ()=>showView(g.id);
     tile.addEventListener('click', go);
     tile.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); }});
+    const online = document.createElement('button');
+    online.type = 'button'; online.className = 'tile-online-btn'; online.textContent = 'Online spielen';
+    online.addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); startOnlineGameFromBrowse(g.id); });
+    tile.appendChild(online);
     tileGrid.appendChild(tile);
   });
 }
