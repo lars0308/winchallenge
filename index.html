@@ -371,11 +371,19 @@
   .settings-card:last-of-type{ margin-bottom:0; }
   /* Shop-Kategorien nutzen auf breiten Bildschirmen den verfügbaren Platz statt
      untereinander zu stehen. */
-  .shop-catalog{ display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; align-items:start; }
+  .shop-catalog{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-template-areas:'badges hats glows frames' 'banners banners banners banners'; gap:16px; align-items:stretch; }
   .shop-catalog .settings-card{ margin:0; height:100%; box-sizing:border-box; }
+  .shop-catalog .settings-card:nth-child(1){ grid-area:badges; }
+  .shop-catalog .settings-card:nth-child(2){ grid-area:hats; }
+  .shop-catalog .settings-card:nth-child(3){ grid-area:banners; }
+  .shop-catalog .settings-card:nth-child(4){ grid-area:glows; }
+  .shop-catalog .settings-card:nth-child(5){ grid-area:frames; }
+  .shop-catalog .settings-card:nth-child(3) .filter-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; align-items:stretch; }
+  .shop-catalog .settings-card:nth-child(3) .filter-pill{ width:100%; min-height:48px; justify-content:center; }
   .shop-sabotage-list{ display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:10px; }
   .shop-sabotage-list .settings-row-btn{ margin-top:0 !important; height:100%; box-sizing:border-box; }
-  @media(max-width:680px){ .shop-catalog{ grid-template-columns:1fr; } .shop-sabotage-list{ grid-template-columns:1fr; } }
+  @media(max-width:980px){ .shop-catalog{ grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-areas:'badges hats' 'glows frames' 'banners banners'; } }
+  @media(max-width:680px){ .shop-catalog{ grid-template-columns:1fr; grid-template-areas:'badges' 'hats' 'glows' 'frames' 'banners'; } .shop-sabotage-list{ grid-template-columns:1fr; } }
   .choice-card-row{ display:flex; flex-direction:column; gap:12px; max-width:460px; margin:0 auto; }
   .choice-card{ display:flex; align-items:center; gap:16px; text-align:left; background:var(--bg-card); border:1px solid var(--border-soft); border-radius:18px; padding:16px 18px; transition:all 0.2s ease; }
   .choice-card:hover{ border-color:var(--turquoise); box-shadow:0 10px 26px -12px rgba(34,211,209,0.4); transform:translateY(-1px); }
@@ -8250,6 +8258,9 @@ const ACHIEVEMENTS_DEF = [
   {id:'25_heroes', icon:'🦸‍♀️', label:'25 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=25, reward:18},
   {id:'all_ow_heroes', icon:'🛡️', label:'Alle Overwatch-Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('ow2:')).length>=(HERO_GAMES.ow2?HERO_GAMES.ow2.length:999), reward:40},
   {id:'all_r6_operators', icon:'💣', label:'Alle Rainbow-Six-Operatoren gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('r6:')).length>=(HERO_GAMES.r6?HERO_GAMES.r6.length:999), reward:40},
+  {id:'pikachu_expedition', icon:'⚡', label:'Pikachu-Expedition', test:s=>(s.pikachusFound||0)>=50, reward:50},
+  {id:'jackpot_winner', icon:'🎰', label:'Jackpot-Gewinner', test:s=>(s.jackpotWins||0)>=1, reward:25},
+  {id:'minigame_master', icon:'🕹️', label:'Minispiel-Profi', test:s=>(s.minigamesWon||0)>=3, reward:20},
 ];
 let achievementsSelectedPlayer = null;
 function renderAchievementsPage(){
@@ -8854,7 +8865,7 @@ function renderShopPage(){
     </div>`;
   });
   html += '</div></div>';
-  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎨</span><div class="setup-step-title">Banner-Farbe (Statistik-Karte)</div></div><div class="filter-row">';
+  html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎨</span><div class="setup-step-title">Banner</div></div><p class="setup-info" style="margin-top:0;">Breite Hintergründe für deine Profil- und Namenskarte.</p><div class="filter-row">';
   SHOP_BANNERS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
     const isOwned = owned.banners.includes(b.id);
     const isEquipped = s && s.equippedBanner===b.id;
@@ -10305,12 +10316,16 @@ renderHomeGreeting();
     card.className = 'settings-card';
     card.innerHTML = `<style>
       #w-jackpot-card{background:linear-gradient(115deg,#23143f,#092537);border-color:#7152d9;text-align:center;margin-bottom:18px}
+      #w-jackpot-card .wc-body{display:none;padding-top:4px} #w-jackpot-card.open .wc-body{display:block}
+      .wc-toggle{margin-left:auto;border:1px solid var(--border);border-radius:999px;background:rgba(8,8,16,.42);color:var(--text);padding:7px 11px;font-weight:700;cursor:pointer}
       .wc-slot{max-width:680px;margin:12px auto;padding:10px;border:3px solid #ffd64a;border-radius:18px;background:#0b0915;box-shadow:0 0 0 3px #402176,0 0 24px rgba(255,214,74,.35)}
       .wc-slot-head{display:flex;justify-content:space-between;color:#ffe16b;font-size:.75rem;font-weight:900;letter-spacing:.1em;padding:0 4px 8px}
       .wc-reels{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
       .wc-reel{min-height:64px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(#fff,#aab1d0);color:#171522;font-size:2rem;font-weight:1000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
       .wc-reel.spinning{animation:wc-spin .11s linear infinite;background:linear-gradient(#64e7ff,#9668ff);color:#fff}
+      .wc-reel.wc-landed{animation:wc-land .34s ease-out;box-shadow:0 0 0 2px #ffd64a,0 0 18px rgba(255,214,74,.7)}
       @keyframes wc-spin{to{transform:translateY(3px);filter:hue-rotate(80deg)}}
+      @keyframes wc-land{0%{transform:translateY(-14px) scale(1.08)}100%{transform:translateY(0) scale(1)}}
       .wc-prizes{color:#5af7ff;font-size:.78rem;font-weight:800;line-height:1.6;margin-top:8px}
     </style>
       <div class="setup-step-head"><span class="setup-step-icon">&#127922;</span><div class="setup-step-title">W-JACKPOT</div></div>
@@ -10319,6 +10334,22 @@ renderHomeGreeting();
       <div class="wc-prizes">Mögliche Gewinne: 1 · 5 · 10 · 20 · 50 · 100 · 200 · 500 · 1.000 Münzen</div>
       <div class="filter-row" style="justify-content:center;margin-top:12px"><label for="wc-bet">Einsatz</label><input id="wc-bet" type="number" min="1" max="50" value="1" style="width:72px;text-align:center"><button class="roll-btn" style="margin:0" onclick="spinWJackpot()">Drehen</button></div>
       <p class="setup-info" id="wc-result" style="min-height:20px;margin:10px 0 0"></p>`;
+    const jackpotHead = card.querySelector('.setup-step-head');
+    const jackpotBody = document.createElement('div');
+    jackpotBody.className = 'wc-body';
+    jackpotBody.style.display = 'none';
+    while(jackpotHead.nextSibling) jackpotBody.appendChild(jackpotHead.nextSibling);
+    card.appendChild(jackpotBody);
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'wc-toggle';
+    toggle.textContent = 'Gewinne ansehen';
+    toggle.onclick = ()=>{
+      const open = card.classList.toggle('open');
+      jackpotBody.style.display = open ? 'block' : 'none';
+      toggle.textContent = open ? 'Schließen' : 'Gewinne ansehen';
+    };
+    jackpotHead.appendChild(toggle);
     content.prepend(card);
   };
 
@@ -10341,16 +10372,32 @@ renderHomeGreeting();
     const finals = prize===1000 ? Array(6).fill('W') : Array.from({length:6},()=>symbols[Math.floor(Math.random()*symbols.length)]);
     if(prize && prize!==1000) finals[Math.floor(Math.random()*6)] = prize>=100 ? '7' : prize>=20 ? '♦' : '★';
     const reels = Array.from(document.querySelectorAll('#wc-reels .wc-reel'));
-    reels.forEach(r=>r.classList.add('spinning'));
+    const spinTimers = reels.map((reel,index)=>{
+      reel.classList.add('spinning');
+      return window.setInterval(()=>{ reel.textContent = symbols[Math.floor(Math.random()*symbols.length)]; }, 62 + index * 13);
+    });
     result.textContent = 'Die Walzen drehen …';
     window.setTimeout(()=>{
-      reels.forEach((r,i)=>{ r.classList.remove('spinning'); r.textContent=finals[i]; });
-      if(prize){ s.shopBonus = (s.shopBonus||0)+prize; result.textContent = `Gewonnen: ${prize} Shop-Münzen!`; showToast(`${name} hat ${prize} Münzen im W-Jackpot gewonnen.`, '🎰'); }
+      reels.forEach((r,i)=>window.setTimeout(()=>{
+        window.clearInterval(spinTimers[i]);
+        r.classList.remove('spinning');
+        r.textContent=finals[i];
+        r.classList.add('wc-landed');
+      }, i*150));
+      window.setTimeout(()=>{
+      if(prize){
+        s.shopBonus = (s.shopBonus||0)+prize;
+        s.jackpotWins = (s.jackpotWins||0)+1;
+        result.textContent = `Gewonnen: ${prize} Shop-Münzen!`;
+        showToast(`${name} hat ${prize} Münzen im W-Jackpot gewonnen.`, '🎰');
+        notifyNewAchievements(checkAchievements(name));
+      }
       else result.textContent = `Kein Gewinn – Einsatz: ${bet} Münzen.`;
       saveStats();
       if(btn) btn.disabled=false;
       renderShopPage();
-    }, 1050);
+      }, reels.length*150 + 120);
+    }, 1200);
   };
 })();
 
@@ -10395,7 +10442,11 @@ renderHomeGreeting();
       showAlert('Dieses Minispiel wurde nicht für diese Runde mitgenommen.','🎯'); return;
     }
     if(id==='reaction_duel'){
-      if(await runReactionDuel()){ await consumeMiniCard(id); await refreshMiniCard(); }
+      if(await runReactionDuel()){
+        s.minigamesWon=(s.minigamesWon||0)+1;
+        notifyNewAchievements(checkAchievements(currentUser.username));
+        await consumeMiniCard(id); await refreshMiniCard();
+      }
       return;
     }
     if(id==='risk_card'){
@@ -10405,6 +10456,8 @@ renderHomeGreeting();
         if(!item){ showAlert('Keine offene Challenge für die Risiko-Karte.','🎲'); return; }
         const {error}=await sb.from('round_items').update({points:(item.points||0)*2}).eq('id',item.id);
         if(error){ showAlert('Risiko-Karte konnte nicht gespeichert werden: '+error.message); return; }
+        s.minigamesWon=(s.minigamesWon||0)+1;
+        notifyNewAchievements(checkAchievements(currentUser.username));
         showToast('Risiko-Karte gewonnen: Punkte einer offenen Challenge wurden verdoppelt!','🎲');
       }else{
         const pool=personalPoolFor(currentRound.game_id,currentRound.game_mode).filter(x=>x.diff==='leicht');
@@ -10415,12 +10468,14 @@ renderHomeGreeting();
       }
       await consumeMiniCard(id); await refreshMiniCard(); return;
     }
-    const guess=Number.parseInt(window.prompt('Zahlenraten: Wähle eine Zahl von 1 bis 10.'),10);
-    if(!Number.isInteger(guess)||guess<1||guess>10){ showAlert('Bitte eine Zahl von 1 bis 10 eingeben.','🔢'); return; }
+    const guess=await openNumberGuessGame();
+    if(!Number.isInteger(guess)){ return; }
     const answer=1+Math.floor(Math.random()*10);
     if(guess===answer){
       const {error}=await sb.from('round_items').insert({round_id:currentRound.id,user_id:currentUser.id,scope:'personal',text:'Zahlenraten: +3 Punkte',diff:'leicht',points:3,result:'success',struck:true});
       if(error){ showAlert('Punktebonus konnte nicht gespeichert werden: '+error.message); return; }
+      s.minigamesWon=(s.minigamesWon||0)+1;
+      notifyNewAchievements(checkAchievements(currentUser.username));
       showToast('Richtig geraten! +3 Punkte.','🔢');
     }else showAlert('Leider falsch – gesucht war '+answer+'.','🔢');
     await consumeMiniCard(id); await refreshMiniCard();
@@ -10441,6 +10496,7 @@ renderHomeGreeting();
   };
   function readFound(){ try{return JSON.parse(localStorage.getItem(PIKA_KEY)||'[]');}catch(e){return [];} }
   function placePikachu(viewId){
+    if(window.__pikaV2) return;
     const view = document.getElementById('view-'+viewId);
     if(!view || view.querySelector('.pika-hidden')) return;
     const found = readFound();
@@ -10450,6 +10506,8 @@ renderHomeGreeting();
     pika.type='button'; pika.className='pika-hidden'; pika.title=''; pika.setAttribute('aria-label','Verstecktes Pikachu');
     pika.textContent='⚡';
     pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${120+(index%7)*67}px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:#facc15;color:#111;box-shadow:0 0 10px #facc15;cursor:pointer;opacity:.72;font-size:13px`;
+    pika.innerHTML='<img src="assets/pikachu-avatar.gif" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">';
+    pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${120+(index%7)*67}px;width:28px;height:28px;padding:0;border:2px solid #facc15;border-radius:50%;background:#facc15;box-shadow:0 0 12px #facc15;cursor:pointer;opacity:.82;overflow:hidden`;
     pika.onclick=()=>{
       const next = [...new Set([...readFound(),index])];
       localStorage.setItem(PIKA_KEY,JSON.stringify(next)); pika.remove();
@@ -10464,6 +10522,85 @@ renderHomeGreeting();
     view.style.position = view.style.position || 'relative';
     view.appendChild(pika);
   }
+})();
+/* ==================================================== ZAHLENRATEN ==================================================== */
+function openNumberGuessGame(){
+  return new Promise(resolve=>{
+    let modal=document.getElementById('number-guess-modal');
+    if(!modal){
+      modal=document.createElement('div');
+      modal.id='number-guess-modal';
+      modal.className='custom-alert-backdrop';
+      document.body.appendChild(modal);
+    }
+    const close=()=>{ modal.classList.add('hidden'); resolve(null); };
+    modal.innerHTML=`<div class="custom-alert-box" style="max-width:430px;text-align:center;" onclick="event.stopPropagation();">
+      <button class="member-modal-close" aria-label="Schließen">✕</button>
+      <div class="custom-alert-icon">🔢</div>
+      <div class="setup-step-title" style="font-size:1.35rem;">Zahlenraten</div>
+      <p>Wähle deine Glückszahl. Triffst du die geheime Zahl von 1 bis 10, bekommst du sofort <strong style="color:var(--turquoise)">+3 Punkte</strong>.</p>
+      <div class="number-guess-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:18px 0;">${Array.from({length:10},(_,i)=>`<button class="filter-pill" data-number="${i+1}" style="min-height:46px;justify-content:center;font-size:1.05rem;">${i+1}</button>`).join('')}</div>
+      <div class="setup-info" style="margin:0;">Ein Versuch pro Karte.</div>
+    </div>`;
+    modal.classList.remove('hidden');
+    modal.onclick=e=>{ if(e.target===modal) close(); };
+    modal.querySelector('.member-modal-close').onclick=close;
+    modal.querySelectorAll('[data-number]').forEach(button=>button.onclick=()=>{ modal.classList.add('hidden'); resolve(Number(button.dataset.number)); });
+  });
+}
+
+/* ==================================================== VERSTECKTE PIKACHUS ==================================================== */
+(function(){
+  window.__pikaV2 = true;
+  const key = 'winchallenge_pikachu_expedition_v1';
+  const views = ['home','shop','players','teams-list','friends','browse','achievements','user-settings','dice','custom-challenges'];
+  const spots = Array.from({length:50}, (_,id)=>({
+    id, view:views[id%views.length], left:(5+((id*19)%86))+'%', top:(12+((id*29)%76))+'%'
+  }));
+  const read = ()=>{ try{return JSON.parse(localStorage.getItem(key)||'[]');}catch(e){return [];} };
+  function collect(id, button){
+    const found = [...new Set([...read(),id])];
+    localStorage.setItem(key,JSON.stringify(found));
+    button.remove();
+    if(currentUser && statsStore[currentUser.username]){
+      const s = statsStore[currentUser.username];
+      s.pikachusFound = found.length;
+      notifyNewAchievements(checkAchievements(currentUser.username));
+      saveStats();
+    }
+    showToast(`Pikachu gefunden: ${found.length}/50`, '⚡');
+    if(found.length===50){
+      const s = currentUser && statsStore[currentUser.username];
+      if(s){
+        s.shopOwned=s.shopOwned||{badges:[],banners:[],hats:[],glows:[],frames:[],sabotage:{}};
+        s.shopOwned.banners=s.shopOwned.banners||[];
+        if(!s.shopOwned.banners.includes('pikachu_expedition')) s.shopOwned.banners.push('pikachu_expedition');
+        saveStats();
+      }
+      showAlert('Pikachu-Expedition abgeschlossen! Banner, Blitz-Sound und Achievement sind freigeschaltet.', '⚡');
+    }
+  }
+  function paint(viewId){
+    const host = document.getElementById('view-'+viewId);
+    if(!host) return;
+    host.style.position = 'relative';
+    const found = new Set(read());
+    spots.filter(spot=>spot.view===viewId && !found.has(spot.id)).forEach(spot=>{
+      if(host.querySelector(`[data-pika-id="${spot.id}"]`)) return;
+      const button = document.createElement('button');
+      button.type='button'; button.className='pika-hidden'; button.dataset.pikaId=spot.id;
+      button.setAttribute('aria-label','Verstecktes Pikachu');
+      button.innerHTML='<img src="assets/pikachu-avatar.gif" alt="" style="display:block;width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+      button.style.cssText=`position:absolute;z-index:21;left:${spot.left};top:${spot.top};width:18px;height:18px;padding:0;border:0;border-radius:50%;background:transparent;opacity:.38;filter:saturate(.8);cursor:pointer;overflow:hidden;transition:opacity .18s,transform .18s`;
+      button.onmouseenter=()=>{button.style.opacity='.9';button.style.transform='scale(1.18)';};
+      button.onmouseleave=()=>{button.style.opacity='.38';button.style.transform='';};
+      button.onclick=()=>collect(spot.id,button);
+      host.appendChild(button);
+    });
+  }
+  const showViewBeforePika = showView;
+  showView = function(id, skipHistory){ const result=showViewBeforePika(id,skipHistory); window.setTimeout(()=>paint(id),90); return result; };
+  window.setTimeout(()=>paint('home'),160);
 })();
 </script>
 </body>
