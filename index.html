@@ -102,6 +102,8 @@
   .team-card-effect-title{ font-family:'Rajdhani',sans-serif; font-weight:800; font-size:1.36rem; text-transform:uppercase; letter-spacing:.06em; }
   .team-card-effect-sub{ color:var(--text-muted); margin-top:6px; font-size:.92rem; }
   @keyframes team-card-pop{to{transform:translateY(0) scale(1)}}
+  .team-card-effect::before,.team-card-effect::after{content:'';position:absolute;inset:0;pointer-events:none}.team-card-effect::before{background:radial-gradient(circle at center,rgba(94,231,255,.20),transparent 34%);animation:effect-flash-kf 2.45s ease-out forwards}.team-card-effect::after{inset:14%;border:2px solid rgba(94,231,255,.42);border-radius:50%;animation:effect-ring-kf 1.2s ease-out forwards}.team-card-effect-card{position:relative;z-index:2}.team-card-effect.effect-team_shield::after{border-radius:18%;border-color:#5ee7ff;animation:shield-slam-kf 1.5s cubic-bezier(.15,1.15,.35,1) forwards}.team-card-effect.effect-mirror::before{background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.88) 49%,transparent 68%);animation:mirror-sweep-kf 1.45s ease-out forwards}.team-card-effect.effect-spy_glass::after{border-radius:50%;border:5px solid #6ee7ff;box-shadow:0 0 34px #22d3ee;animation:spy-scan-kf 1.7s ease-out forwards}.team-card-effect.effect-hero_steal::after{border-style:dashed;animation:effect-spin-kf 1.5s linear infinite}.team-card-effect.effect-force_reroll::after,.team-card-effect.effect-risk_card::after{border-color:#c084fc;animation:effect-spin-kf .72s linear infinite}.team-card-effect.effect-lock_joker::after{border-radius:14px;border-color:#fb7185;animation:lock-drop-kf 1.5s ease-out forwards}.team-card-effect.effect-point_thief::before{background:radial-gradient(circle,rgba(250,204,21,.35),transparent 40%);animation:coin-pulse-kf 1.15s ease-in-out infinite}.team-card-effect.effect-delete_challenge::after{border-radius:0;border-color:#fb7185;transform:rotate(-15deg);animation:strike-kf 1.1s ease-out forwards}.team-card-effect.effect-reaction_duel::before{background:linear-gradient(90deg,transparent 20%,rgba(250,204,21,.95),transparent 80%);animation:lightning-kf .6s steps(2) 2}.team-card-effect.effect-lucky::after{border-color:#86efac;animation:effect-spin-kf 2s linear infinite}
+  @keyframes effect-flash-kf{0%{opacity:0;transform:scale(.2)}18%{opacity:1}100%{opacity:0;transform:scale(2)}}@keyframes effect-ring-kf{0%{opacity:0;transform:scale(.2)}25%{opacity:1}100%{opacity:0;transform:scale(1.7)}}@keyframes mirror-sweep-kf{0%{opacity:0;transform:translateX(-100%)}35%{opacity:1}100%{opacity:0;transform:translateX(100%)}}@keyframes shield-slam-kf{0%{opacity:0;transform:scale(2.6)}35%{opacity:1;transform:scale(.82)}55%{transform:scale(1.08)}100%{opacity:0;transform:scale(1)}}@keyframes spy-scan-kf{0%{opacity:0;transform:scale(.2) translate(-40%,-30%)}45%{opacity:1}100%{opacity:0;transform:scale(2.1) translate(30%,20%)}}@keyframes effect-spin-kf{to{transform:rotate(360deg)}}@keyframes lock-drop-kf{0%{opacity:0;transform:translateY(-70%) scale(1.8)}35%{opacity:1;transform:translateY(0) scale(.9)}100%{opacity:0;transform:scale(1)}}@keyframes coin-pulse-kf{50%{opacity:.9;transform:scale(1.35)}}@keyframes strike-kf{0%{opacity:0;transform:scale(.2) rotate(-15deg)}35%{opacity:1;transform:scale(1.4) rotate(-15deg)}100%{opacity:0;transform:scale(1.8) rotate(-15deg)}}@keyframes lightning-kf{50%{opacity:1}100%{opacity:0}}@keyframes mirror-icon-kf{0%{transform:rotateY(90deg) scale(.4);opacity:0}45%{opacity:1}100%{transform:rotateY(720deg) scale(1);opacity:1}}@keyframes shield-icon-kf{0%{transform:translateY(-100%) scale(1.7);opacity:0}55%{transform:translateY(0) scale(.9);opacity:1}75%{transform:scale(1.12)}100%{transform:scale(1)}}@keyframes spy-icon-kf{0%{transform:scale(.2) translate(-80%,-50%);opacity:0}50%{opacity:1}100%{transform:scale(1.1) translate(20%,10%)}}@keyframes swap-icon-kf{0%,100%{transform:translateX(0) rotate(0)}30%{transform:translateX(-28px) rotate(-18deg)}70%{transform:translateX(28px) rotate(18deg)}}@keyframes dice-icon-kf{0%,100%{transform:rotate(0) scale(1)}25%{transform:rotate(120deg) scale(1.25)}65%{transform:rotate(480deg) scale(.85)}}@keyframes lock-icon-kf{0%{transform:translateY(-100px) scale(1.5);opacity:0}55%{transform:translateY(0) scale(.9);opacity:1}100%{transform:scale(1)}}@keyframes coin-icon-kf{0%{transform:translateX(90vw) rotate(0);opacity:0}35%{opacity:1}100%{transform:translateX(0) rotate(720deg);opacity:1}}@keyframes strike-icon-kf{0%{transform:scale(.2) rotate(-35deg);opacity:0}45%{transform:scale(1.35) rotate(10deg);opacity:1}100%{transform:scale(1) rotate(0)}}@keyframes lightning-icon-kf{0%,100%{transform:scale(.8);opacity:.3}50%{transform:scale(1.35);opacity:1}}@keyframes luck-icon-kf{0%,100%{transform:rotate(-12deg) scale(.9)}50%{transform:rotate(12deg) scale(1.25)}}
   @keyframes team-card-fade{0%,78%{opacity:1}100%{opacity:0}}
   .tile-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.5rem; }
   .tile-tag{ color:var(--text-muted); font-size:0.85rem; margin-top:3px; }
@@ -761,7 +763,15 @@
      Statuszeile nicht überschreiben: Sie gehört wieder an den unteren Rand
      des Banners statt vor den Karteninhalt. */
   .member-modal-card > .banner-motto-stamp{ position:absolute; bottom:10px; left:10px; right:10px; z-index:3; }
-  .member-modal-card{ position:relative; isolation:isolate; overflow:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; width:100%; max-width:380px; max-height:calc(100vh - 40px); margin:auto 0; background:rgba(27,27,38,0.88); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
+  .member-modal-card{ position:relative; isolation:isolate; overflow:hidden; overflow-y:auto; -webkit-overflow-scrolling:touch; width:100%; max-width:520px; max-height:calc(100vh - 40px); margin:auto 0; background:rgba(27,27,38,0.88); border:1px solid var(--border-soft); border-radius:22px; padding:28px 24px 24px; text-align:center; box-shadow:0 24px 60px -20px rgba(0,0,0,0.6); }
+  .member-stats-details{ text-align:left; }.member-stats-details summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;}.member-stats-details summary::-webkit-details-marker{display:none}.member-stats-details summary::after{content:'Anzeigen';font-size:.72rem;color:var(--turquoise-bright);font-weight:800}.member-stats-details[open] summary::after{content:'Schließen'}.member-stats-details .setup-step-head{margin:0}.member-stats-details-body{padding-top:14px}
+  @media(max-width:560px){.member-modal-card{max-width:420px;padding:25px 18px 20px;}}
+  /* GIF-Banner in Profilkarten müssen wirklich die ganze Karte ausfüllen. Die allgemeine
+     Modal-Regel setzt sonst jedes direkte Kind wieder auf position:relative und macht daraus
+     nur einen schmalen Bildstreifen oben. */
+  .member-modal-card.stat-card-gif-banner{ background:rgba(4,4,10,.42); }
+  .member-modal-card > img.banner-gif-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; opacity:.78; }
+  .member-modal-card.stat-card-gif-banner::after{ content:''; position:absolute; inset:0; z-index:1; pointer-events:none; background:linear-gradient(180deg,rgba(3,3,8,.15),rgba(3,3,8,.48) 48%,rgba(3,3,8,.84)); }
   .member-modal-close{ position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%; background:var(--bg-elevated); border:1px solid var(--border); color:var(--text); font-size:1rem; display:flex; align-items:center; justify-content:center; }
   .member-modal-avatar{ font-size:3.2rem; margin-bottom:8px; }
   .member-modal-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.4rem; display:flex; align-items:center; justify-content:center; gap:6px; }
@@ -769,6 +779,7 @@
   .member-modal-facts{ display:flex; flex-direction:column; gap:8px; margin-top:18px; text-align:left; }
   .member-modal-fact{ display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; font-size:0.88rem; }
   .member-modal-fact .fact-label{ color:var(--text-faint); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em; display:block; }
+.challenge-picker-list{display:grid;gap:10px;max-height:min(52vh,430px);overflow:auto;padding:2px 4px 4px}.challenge-picker-option{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;text-align:left;padding:13px 14px;border:1px solid #292b42;border-radius:14px;background:linear-gradient(135deg,#171827,#202238);color:#f6f7ff;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s}.challenge-picker-option:hover{transform:translateY(-2px);border-color:#37d9e2;box-shadow:0 8px 24px rgba(34,211,209,.14)}.challenge-picker-option strong{color:#46ead9;white-space:nowrap}.challenge-picker-text{font-weight:700;line-height:1.25}.difficulty-tag{font-size:.66rem;font-weight:900;letter-spacing:.06em;border-radius:999px;padding:5px 7px}.difficulty-tag.leicht{background:#1ed8c3;color:#07131a}.difficulty-tag.mittel{background:#9c6cff;color:#160929}.difficulty-tag.schwer{background:#dbad58;color:#211707}
 </style>
 </head>
 <body>
@@ -813,15 +824,23 @@
 
 <!-- Spielvorschlag direkt aus dem Startmenü -->
 <div class="custom-alert-backdrop hidden" id="game-suggestion-modal" onclick="if(event.target===this) closeGameSuggestionModal();">
-  <div class="custom-alert-box" style="text-align:left;max-width:480px;position:relative;">
-    <button class="member-modal-close" onclick="closeGameSuggestionModal()" aria-label="Schließen" style="position:absolute;top:12px;right:12px;">✕</button>
-    <div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">💡</span><div class="setup-step-title">Spiel vorschlagen</div></div>
-    <p class="setup-info" style="margin:0 0 14px;">Welches Spiel wünschst du dir für WIN CHALLENGE?</p>
-    <input type="text" id="suggest-game-name" placeholder="Spielname" maxlength="80" style="width:100%;box-sizing:border-box;margin-bottom:9px;">
-    <input type="url" id="suggest-game-steam" placeholder="Steam-Seite (optional)" style="width:100%;box-sizing:border-box;margin-bottom:9px;">
-    <textarea id="suggest-game-desc" placeholder="Kleiner Hinweis: Genre, Spieleranzahl oder warum das Spiel gut passt …" rows="3" style="width:100%;box-sizing:border-box;margin-bottom:10px;resize:vertical;"></textarea>
-    <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="submitGameSuggestion()">📨 Vorschlag senden</button></div>
-    <div id="my-game-suggestions" style="margin-top:14px;"></div>
+  <div class="custom-alert-box" style="text-align:left;max-width:520px;position:relative;padding:0;overflow:hidden;border-color:rgba(94,231,255,.48);">
+    <button class="member-modal-close" onclick="closeGameSuggestionModal()" aria-label="Schließen" style="position:absolute;top:12px;right:12px;z-index:4;">✕</button>
+    <div style="padding:24px 28px 18px;background:linear-gradient(125deg,rgba(139,92,246,.32),rgba(34,211,238,.19));border-bottom:1px solid rgba(255,255,255,.09);">
+      <div style="font-size:.72rem;letter-spacing:.14em;color:#8ff8ff;font-weight:900;text-transform:uppercase;">Community-Wunschliste</div>
+      <div class="setup-step-title" style="margin-top:5px;font-size:1.42rem;">Spiel vorschlagen</div>
+      <p class="setup-info" style="margin:6px 0 0;">Welches Spiel macht euren nächsten Abend besser?</p>
+    </div>
+    <div style="padding:20px 28px 24px;">
+      <label style="display:block;font-size:.73rem;font-weight:800;letter-spacing:.06em;color:var(--text-muted);margin:0 0 6px;">SPIEL</label>
+      <input type="text" id="suggest-game-name" placeholder="z. B. Deep Rock Galactic" maxlength="80" style="width:100%;box-sizing:border-box;margin-bottom:13px;">
+      <label style="display:block;font-size:.73rem;font-weight:800;letter-spacing:.06em;color:var(--text-muted);margin:0 0 6px;">STEAM-LINK <span style="font-weight:500;letter-spacing:0;">(optional)</span></label>
+      <input type="url" id="suggest-game-steam" placeholder="https://store.steampowered.com/..." style="width:100%;box-sizing:border-box;margin-bottom:13px;">
+      <label style="display:block;font-size:.73rem;font-weight:800;letter-spacing:.06em;color:var(--text-muted);margin:0 0 6px;">WARUM PASST ES?</label>
+      <textarea id="suggest-game-desc" placeholder="Genre, Spieleranzahl oder eure beste Idee dafür …" rows="3" style="width:100%;box-sizing:border-box;margin-bottom:14px;resize:vertical;"></textarea>
+      <div class="roll-zone" style="margin-bottom:0;"><button class="roll-btn" onclick="submitGameSuggestion()">📨 Vorschlag senden</button></div>
+      <div id="my-game-suggestions" style="margin-top:17px;border-top:1px solid var(--border-soft);padding-top:12px;"></div>
+    </div>
   </div>
 </div>
 
@@ -1016,6 +1035,7 @@
       </div>
       <div class="setup-label" style="text-align:center;color:var(--text-muted);font-size:0.78rem;text-transform:uppercase;margin-bottom:8px;">Oder Helden-Bild verwenden</div>
       <div id="profile-hero-avatar-groups" style="margin-bottom:18px;"></div>
+      <div id="profile-hero-favorites" style="margin-bottom:18px;"></div>
       <div class="auth-input-col">
         <input type="text" id="profile-username" placeholder="Anzeigename" maxlength="20">
         <input type="text" id="profile-motto" placeholder="Motto / Status (optional, max. 25 Zeichen)" maxlength="25">
@@ -1801,7 +1821,7 @@ function saveTeamCampaignState(){
       teamRoundSessionModeChoice, teamRoundDifficulty, teamRoundCount, teamRoundSelectedGames,
       teamRoundGameSequence, teamRoundGameModeChoices, teamRoundRandomOrder, teamRoundsPerGame, teamRoundFunChallenges,
       teamRoundPointGoalChoice, teamRoundCustomGoalValue, teamRoundClassicMode,
-      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment, teamRoundHeroLockMode, teamSkippedGames,
+      teamCampaignIndex, teamCampaignHistory, teamRoundHeroAssignment, teamRoundHeroLockMode, teamRoundUseHeroFavorites, teamSkippedGames,
     }));
   }catch(e){}
 }
@@ -1837,6 +1857,7 @@ function restoreTeamCampaignState(teamId){
   teamCampaignHistory = saved.teamCampaignHistory || teamCampaignHistory;
   teamRoundHeroAssignment = saved.teamRoundHeroAssignment || null;
   teamRoundHeroLockMode = saved.teamRoundHeroLockMode || teamRoundHeroLockMode;
+  teamRoundUseHeroFavorites = typeof saved.teamRoundUseHeroFavorites === 'boolean' ? saved.teamRoundUseHeroFavorites : teamRoundUseHeroFavorites;
   teamSkippedGames = saved.teamSkippedGames || teamSkippedGames;
 }
 function saveSetupState(){ try{ localStorage.setItem(LS_SETUP, JSON.stringify({ setupState, stepIndex })); }catch(e){} }
@@ -2931,6 +2952,7 @@ function renderAccountAvatarHTML(avatarVal, size){
 const PROFILE_AVATAR_EMOJI = ['😎','🔥','🎮','🐺','🦊','🐉','👾','🤖','💀','👑','🥷','🍀','⚡','🎯','🛡️','🚀'];
 let profileAvatarChoice = '😎';
 let profileFavGameChoice = '';
+let profileHeroFavorites = {};
 let profileOnboarding = false; // true = direkt nach der Registrierung geöffnet (anderer Text, springt danach zur Startseite statt einfach "Gespeichert!" zu zeigen)
 function openProfilePage(){
   if(!currentUser) return;
@@ -2938,6 +2960,7 @@ function openProfilePage(){
   document.getElementById('profile-username').value = currentUser.username || '';
   document.getElementById('profile-motto').value = currentUser.bio || '';
   profileFavGameChoice = currentUser.favorite_game || '';
+  profileHeroFavorites = JSON.parse(JSON.stringify(currentUser.hero_favorites || {}));
   renderProfileFavGamePicker();
   document.getElementById('profile-role').value = currentUser.preferred_role || '';
   document.getElementById('profile-skill').value = currentUser.skill_level || '';
@@ -2945,6 +2968,7 @@ function openProfilePage(){
   document.getElementById('profile-error').textContent = '';
   renderProfileAvatarGrid();
   renderProfileHeroAvatarGroups();
+  renderProfileHeroFavorites();
   const intro = document.getElementById('profile-onboarding-intro');
   const saveBtn = document.getElementById('profile-save-btn');
   if(intro) intro.style.display = profileOnboarding ? 'block' : 'none';
@@ -2979,11 +3003,15 @@ function renderProfileAvatarGrid(){
     grid.appendChild(item);
   });
   const pikachu = 'asset:assets/pikachu-avatar.gif';
+  const pikaUnlocked = !!(currentUser && statsStore[currentUser.username] && (statsStore[currentUser.username].pikachusFound||0) >= 50);
   const pikaItem = document.createElement('div');
-  pikaItem.className = 'avatar-grid-item'+(profileAvatarChoice===pikachu?' selected':'');
-  pikaItem.title = 'Pikachu';
-  pikaItem.innerHTML = '<img src="assets/pikachu-avatar.gif" style="width:100%;height:100%;object-fit:cover;">';
-  pikaItem.addEventListener('click', ()=>{ profileAvatarChoice = pikachu; renderProfileAvatarGrid(); });
+  pikaItem.className = 'avatar-grid-item'+(profileAvatarChoice===pikachu && pikaUnlocked?' selected':'');
+  pikaItem.title = pikaUnlocked ? 'Pikachu' : 'Erst nach 50 gefundenen Pikachus freigeschaltet';
+  pikaItem.innerHTML = pikaUnlocked
+    ? '<img src="assets/pikachu-avatar.gif" style="width:100%;height:100%;object-fit:cover;">'
+    : '<span style="font-size:1.35rem;">🔒</span><small style="font-size:.52rem;text-align:center;color:var(--text-muted);">50 Pikachus</small>';
+  if(pikaUnlocked) pikaItem.addEventListener('click', ()=>{ profileAvatarChoice = pikachu; renderProfileAvatarGrid(); });
+  else pikaItem.style.opacity='.48';
   grid.appendChild(pikaItem);
 }
 function renderProfileHeroAvatarGroups(){
@@ -3033,6 +3061,38 @@ function renderProfileHeroAvatarGroups(){
     wrap.appendChild(details);
   });
 }
+function renderProfileHeroFavorites(){
+  const wrap = document.getElementById('profile-hero-favorites');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="setup-label" style="text-align:left;color:var(--text-muted);font-size:.78rem;text-transform:uppercase;margin:8px 2px;">Helden-Favoriten · maximal 2 je Rolle</div><p class="setup-info" style="margin:0 0 10px;">Diese Helden werden bei deiner passenden Rollenwahl in der Lobby bevorzugt ausgelost.</p>';
+  Object.entries(HERO_GAMES).forEach(([gameId,heroes])=>{
+    const details=document.createElement('details'); details.className='hero-avatar-group';
+    const summary=document.createElement('summary'); summary.innerHTML=`${gameIconHTML(gameId,18)} ${GAME_NAME[gameId]}`; details.appendChild(summary);
+    (rolesForGame(gameId)||[]).forEach(role=>{
+      const key=gameId+':'+role;
+      const chosen=profileHeroFavorites[key]||[];
+      const section=document.createElement('div'); section.style.marginTop='10px';
+      section.innerHTML=`<div class="setup-info" style="margin:0 0 5px;">${ROLE_META[role]?.icon||'•'} ${role} · ${chosen.length}/2</div>`;
+      const row=document.createElement('div'); row.className='filter-row';
+      heroes.filter(h=>h[1]===role).forEach(([hero])=>{
+        const button=document.createElement('button');
+        const active=chosen.includes(hero); button.className='filter-pill'+(active?' active':''); button.textContent=hero;
+        button.onclick=()=>{
+          const list=[...(profileHeroFavorites[key]||[])];
+          const ix=list.indexOf(hero);
+          if(ix>=0) list.splice(ix,1);
+          else if(list.length<2) list.push(hero);
+          else { showAlert('Pro Rolle kannst du maximal zwei Helden vormerken.','🎯'); return; }
+          profileHeroFavorites[key]=list;
+          renderProfileHeroFavorites();
+        };
+        row.appendChild(button);
+      });
+      section.appendChild(row); details.appendChild(section);
+    });
+    wrap.appendChild(details);
+  });
+}
 document.getElementById('profile-photo-input').addEventListener('change', e=>{
   const file = e.target.files[0]; if(!file) return;
   resizeImageToDataUrl(file, 128, dataUrl=>{
@@ -3051,17 +3111,20 @@ async function saveProfile(){
   const preferred_role = document.getElementById('profile-role').value || null;
   const skill_level = document.getElementById('profile-skill').value || null;
   const preferred_mode = document.getElementById('profile-preferred-mode').value || null;
+  if(profileAvatarChoice==='asset:assets/pikachu-avatar.gif' && (!statsStore[currentUser.username] || (statsStore[currentUser.username].pikachusFound||0)<50)){
+    errEl.textContent = 'Das Pikachu-Profilbild wird erst nach 50 gefundenen Pikachus freigeschaltet.'; return;
+  }
   if(!/^[a-zA-Z0-9_]{3,20}$/.test(username)){ errEl.textContent = 'Anzeigename: 3–20 Zeichen, nur Buchstaben/Zahlen/_.'; return; }
   const btn = document.getElementById('profile-save-btn');
   btn.disabled = true; btn.textContent = 'Speichert…';
-  const { error } = await sb.from('profiles').update({ username, avatar: profileAvatarChoice, bio, favorite_game, preferred_role, skill_level, preferred_mode }).eq('id', currentUser.id);
+  const { error } = await sb.from('profiles').update({ username, avatar: profileAvatarChoice, bio, favorite_game, preferred_role, skill_level, preferred_mode, hero_favorites: profileHeroFavorites }).eq('id', currentUser.id);
   btn.disabled = false; btn.textContent = '💾 Speichern';
   if(error){
     errEl.textContent = 'Fehler beim Speichern: ' + error.message + ' — führt in Supabase im SQL Editor aus: alter table profiles add column if not exists bio text, add column if not exists favorite_game text, add column if not exists preferred_role text, add column if not exists skill_level text, add column if not exists preferred_mode text;';
     return;
   }
   currentUser.username = username; currentUser.avatar = profileAvatarChoice; currentUser.bio = bio;
-  currentUser.favorite_game = favorite_game; currentUser.preferred_role = preferred_role;
+  currentUser.favorite_game = favorite_game; currentUser.preferred_role = preferred_role; currentUser.hero_favorites = profileHeroFavorites;
   currentUser.skill_level = skill_level; currentUser.preferred_mode = preferred_mode;
   // Lokale avatarMap sofort mitziehen — sonst zeigen Podium/Leaderboard/Statistik-Seiten
   // (die alle avatarFor() nutzen) den alten Avatar, bis irgendwann ein Team-Refresh
@@ -3319,7 +3382,7 @@ function stopTeamsListPolling(){
 let lastTeamMembersSignature = null;
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active, stats)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, hero_favorites, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active, stats)').eq('team_id', myTeam.id).order('joined_at');
   let changed = true;
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
@@ -3337,7 +3400,7 @@ async function refreshTeamMembers(){
     // ohnehin fälligen Re-Render nach.
     const signature = JSON.stringify(data.map(r=>[r.id, r.ready, r.round_role, r.profiles && [
       r.profiles.username, r.profiles.avatar, r.profiles.bio, r.profiles.favorite_game, r.profiles.preferred_role,
-      r.profiles.skill_level, r.profiles.preferred_mode, r.profiles.equipped_badge, r.profiles.equipped_hat,
+      r.profiles.skill_level, r.profiles.preferred_mode, r.profiles.hero_favorites, r.profiles.equipped_badge, r.profiles.equipped_hat,
       r.profiles.equipped_banner, r.profiles.equipped_glow, r.profiles.equipped_frame,
     ]]));
     changed = signature !== lastTeamMembersSignature;
@@ -3348,6 +3411,7 @@ async function refreshTeamMembers(){
       bio: r.profiles ? r.profiles.bio : null, favorite_game: r.profiles ? r.profiles.favorite_game : null,
       preferred_role: r.profiles ? r.profiles.preferred_role : null, skill_level: r.profiles ? r.profiles.skill_level : null,
       preferred_mode: r.profiles ? r.profiles.preferred_mode : null,
+      hero_favorites: r.profiles ? (r.profiles.hero_favorites || {}) : {},
       last_active: r.profiles ? r.profiles.last_active : null,
       stats: r.profiles ? r.profiles.stats : null,
     }));
@@ -3384,6 +3448,7 @@ function handleRemovedFromTeam(){
 let currentRound = null, roundItems = [], roundVotes = {}, teamRoundGameChoice = null, teamRoundModeChoice = 'versus', teamRoundSessionModeChoice = 'challenge';
 let teamRoundClassicMode = false; // "WinChallenge Classic": Challenge-Punkte zählen nur, wenn das Match/die Runde am Ende auch als Sieg markiert wurde (nur Team-Modus)
 let teamRoundDifficulty = 'Mittel';
+let teamRoundUseHeroFavorites = true;
 let teamRoundGameMode = null;
 let teamHeroRevealedFor = null; // Spiegel des Server-Status (hero_revealed) für die lokale Idle-Cache-Logik
 let teamRoundRenderLocked = false; // true während das Roulette gerade dreht — verhindert, dass Polling/Realtime die Animation mitten drin abbricht
@@ -3465,6 +3530,7 @@ async function subscribeTeam(teamId){
   if(teamChannel) sb.removeChannel(teamChannel);
   teamChannel = sb.channel('team-'+teamId)
     .on('broadcast', { event:'card-effect' }, ({payload})=>{ if(payload) showTeamCardEffect(payload); })
+    .on('broadcast', { event:'pikachu-sound' }, ({payload})=>{ playPikachuGroupSound(payload); })
     .on('postgres_changes', { event:'*', schema:'public', table:'team_members', filter:`team_id=eq.${teamId}` }, ()=>{ refreshTeamMembers(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'teams', filter:`id=eq.${teamId}` }, ()=>{ refreshTeamDraftSettings(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'game_rounds', filter:`team_id=eq.${teamId}` }, ()=>{ checkActiveRound(); })
@@ -3483,21 +3549,54 @@ async function subscribeTeam(teamId){
   startTeamPolling();
 }
 function showTeamCardEffect(payload){
+  const visuals={
+    mirror:'🪞', team_shield:'🛡️', spy_glass:'🔍', hero_steal:'🔄', force_reroll:'🎲',
+    lock_joker:'🚫', point_thief:'🦝', delete_challenge:'🗑️', team_spirit:'🤝', lucky:'🍀',
+    extra_hard:'💀', hero_pick:'🎯', reaction_duel:'⚡', risk_card:'🎲', number_guess:'🔢'
+  };
   const previous = document.querySelector('.team-card-effect');
   if(previous) previous.remove();
   const layer = document.createElement('div');
-  layer.className = 'team-card-effect';
+  layer.className = 'team-card-effect effect-'+String(payload.id||'generic').replace(/[^a-z0-9_-]/gi,'');
+  layer.style.cssText='position:fixed!important;inset:0!important;z-index:2147483647!important;display:flex!important;align-items:center!important;justify-content:center!important;opacity:1!important;background:radial-gradient(circle,rgba(34,211,209,.14),rgba(4,5,12,.08) 52%,rgba(4,5,12,.18))!important;backdrop-filter:blur(1px)!important;pointer-events:none!important;';
   const card = document.createElement('div'); card.className='team-card-effect-card';
-  const icon = document.createElement('div'); icon.className='team-card-effect-icon'; icon.textContent=payload.icon||'🎯';
-  const title = document.createElement('div'); title.className='team-card-effect-title'; title.textContent=payload.title||'Karte eingesetzt';
-  const sub = document.createElement('div'); sub.className='team-card-effect-sub'; sub.textContent=payload.sub||'';
+  card.style.cssText='width:min(540px,90vw)!important;padding:18px!important;background:transparent!important;border:0!important;box-shadow:none!important;text-shadow:0 3px 18px #000,0 0 26px rgba(34,211,209,.9)!important;';
+  const iconAnimations={mirror:'mirror-icon-kf 1.6s ease-out',team_shield:'shield-icon-kf 1.3s cubic-bezier(.15,1.2,.35,1)',spy_glass:'spy-icon-kf 1.7s ease-out',hero_steal:'swap-icon-kf 1.3s ease-in-out',force_reroll:'dice-icon-kf 1.35s ease-in-out',risk_card:'dice-icon-kf 1.35s ease-in-out',lock_joker:'lock-icon-kf 1.2s ease-out',point_thief:'coin-icon-kf 1.25s ease-out',delete_challenge:'strike-icon-kf 1.1s ease-out',reaction_duel:'lightning-icon-kf .52s steps(2) 2',lucky:'luck-icon-kf 1.6s ease-in-out',team_spirit:'luck-icon-kf 1.6s ease-in-out'};
+  const icon = document.createElement('div'); icon.className='team-card-effect-icon'; icon.style.cssText=`font-size:clamp(7rem,19vw,14rem)!important;filter:drop-shadow(0 0 26px rgba(34,211,209,.95))!important;animation:${iconAnimations[payload.id]||'team-card-pop .42s cubic-bezier(.2,1.2,.4,1) forwards'};`;
+  if(payload.id==='pikachu') icon.innerHTML='<img src="assets/pikachu-avatar.gif" alt="Pikachu" style="display:block;width:clamp(9rem,24vw,16rem);height:clamp(9rem,24vw,16rem);object-fit:cover;border-radius:50%;border:3px solid #facc15;box-shadow:0 0 32px #facc15;">';
+  else icon.textContent=visuals[payload.id]||payload.icon||'🎯';
+  const title = document.createElement('div'); title.className='team-card-effect-title'; title.style.cssText='font-size:clamp(1.35rem,4vw,2.4rem)!important;color:#fff!important;'; title.textContent=payload.title||'Karte eingesetzt';
+  const sub = document.createElement('div'); sub.className='team-card-effect-sub'; sub.style.cssText='color:#d7fbff!important;font-size:clamp(.9rem,2.5vw,1.15rem)!important;'; sub.textContent=payload.sub||'';
   card.append(icon,title,sub); layer.appendChild(card); document.body.appendChild(layer);
   window.setTimeout(()=>layer.remove(),2450);
 }
 function broadcastTeamCardEffect(item, targetName){
-  const payload={ icon:item.icon||'🎯', title:item.label||'Karte eingesetzt', sub:`${currentUser?.username||'Jemand'} hat ${item.label||'eine Karte'}${targetName?` für ${targetName}`:''} eingesetzt.` };
+  const actor=currentUser?.username||'Jemand';
+  const payload={ id:item.id||'', icon:item.icon||'🎯', title:item.label||'Karte eingesetzt', sub:targetName ? `${actor} greift ${targetName} an.` : `${actor} aktiviert diesen Vorteil.` };
   showTeamCardEffect(payload);
   if(teamChannel) teamChannel.send({type:'broadcast',event:'card-effect',payload}).catch(()=>{});
+}
+function hasPikachuSound(){
+  const s=currentUser && statsStore[currentUser.username];
+  return !!(s && ((s.pikachusFound||0)>=50 || (s.shopOwned&&s.shopOwned.banners||[]).includes('pikachu_expedition')));
+}
+function playPikachuGroupSound(payload){
+  showTeamCardEffect({id:'pikachu',icon:'⚡',title:'Pikachu!',sub:(payload&&payload.name?payload.name+' ruft Pikachu!':'Pikachu!')});
+  if(!userPrefs.soundVibration) return;
+  try{
+    const ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const osc=ctx.createOscillator(), gain=ctx.createGain();
+    osc.type='square'; osc.frequency.setValueAtTime(880,ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(1280,ctx.currentTime+.17);
+    gain.gain.setValueAtTime(.13,ctx.currentTime); gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.42);
+    osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.44);
+  }catch(e){}
+  try{navigator.vibrate&&navigator.vibrate([45,30,70]);}catch(e){}
+}
+function sendPikachuGroupSound(){
+  if(!hasPikachuSound()){ showAlert('Finde erst alle 50 Pikachus, um den Pikachu-Sound freizuschalten.','⚡'); return; }
+  const payload={name:currentUser?.username||'Jemand'};
+  playPikachuGroupSound(payload);
+  if(teamChannel) Promise.resolve(teamChannel.send({type:'broadcast',event:'pikachu-sound',payload})).catch(()=>{});
 }
 let draftSyncTimer = null;
 function syncDraftSettings(){
@@ -3511,7 +3610,7 @@ function syncDraftSettings(){
       gameSequence:teamRoundGameSequence, gameModeChoices:teamRoundGameModeChoices, randomOrder:teamRoundRandomOrder,
       roundsPerGame:teamRoundsPerGame, funChallenges:teamRoundFunChallenges,
       pointGoalChoice:teamRoundPointGoalChoice, customGoalValue:teamRoundCustomGoalValue,
-      heroLockMode:teamRoundHeroLockMode, confirmed:!teamSettingsOpen
+      heroLockMode:teamRoundHeroLockMode, useHeroFavorites:teamRoundUseHeroFavorites, confirmed:!teamSettingsOpen
     } }).eq('id', myTeam.id); }
     catch(e){ console.error(e); }
   }, 500);
@@ -3549,6 +3648,7 @@ async function refreshTeamDraftSettings(){
         teamRoundPointGoalChoice = d.pointGoalChoice || teamRoundPointGoalChoice;
         teamRoundCustomGoalValue = d.customGoalValue || teamRoundCustomGoalValue;
         teamRoundHeroLockMode=d.heroLockMode||teamRoundHeroLockMode;
+        teamRoundUseHeroFavorites=typeof d.useHeroFavorites==='boolean' ? d.useHeroFavorites : teamRoundUseHeroFavorites;
       }
       if(!currentRound && !teamSettingsOpen) renderTeamPage();
       else if(!teamSettingsOpen && pendingChanged) renderTeamPage();
@@ -3607,9 +3707,9 @@ function renderMemberStatsSummaryHTML(m){
   const gamesPlayedHTML = gamesPlayedList.length
     ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>🎮 Gespielte Spiele:</strong></div><div class="filter-row" style="margin-bottom:4px;">${gamesPlayedList.map(([g,c])=>`<span class="filter-pill" style="cursor:default;">${gameIconHTML(g,16)} ${GAME_NAME[g]||g} · ${c}x</span>`).join('')}</div>`
     : '';
-  return `<div class="settings-card" style="margin-top:12px;">
-    <div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Statistik</div></div>
-    <div class="stat-grid">
+  return `<details class="settings-card member-stats-details" style="margin-top:12px;">
+    <summary><div class="setup-step-head"><span class="setup-step-icon">📊</span><div class="setup-step-title">Statistik</div></div></summary>
+    <div class="member-stats-details-body"><div class="stat-grid">
       <div class="stat-mini"><div class="stat-mini-val">${st.totalPoints}</div><div class="stat-mini-label">Coins insgesamt</div></div>
       <div class="stat-mini"><div class="stat-mini-val">${st.roundsPlayed}</div><div class="stat-mini-label">Runden</div></div>
       <div class="stat-mini"><div class="stat-mini-val">${rate}%</div><div class="stat-mini-label">Erfolgsquote</div></div>
@@ -3619,7 +3719,7 @@ function renderMemberStatsSummaryHTML(m){
     ${gamesPlayedHTML}
     ${(st.topDone&&st.topDone.length) ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>✅ Klappen meistens:</strong></div>${st.topDone.map(e=>rowHTML(e,'won')).join('')}` : ''}
     ${(st.topMissed&&st.topMissed.length) ? `<div class="setup-info" style="margin:8px 0 2px;"><strong>❌ Scheitern oft:</strong></div>${st.topMissed.map(e=>rowHTML(e,'lost')).join('')}` : ''}
-  </div>`;
+  </div></details>`;
 }
 async function addTeammateAsFriend(userId, username){
   const result = await sendFriendRequest(userId, username);
@@ -3837,7 +3937,8 @@ function openHostTransferPicker(){
   if(!candidates.length){ showAlert('Für die Host-Übergabe wird mindestens ein weiteres Mitglied benötigt.','👑'); return; }
   let modal=document.getElementById('host-transfer-modal');
   if(!modal){
-    modal=document.createElement('div'); modal.id='host-transfer-modal'; modal.className='modal-backdrop hidden';
+    modal=document.createElement('div'); modal.id='host-transfer-modal'; modal.className='member-modal-backdrop hidden';
+    modal.onclick=(event)=>{ if(event.target===modal) modal.classList.add('hidden'); };
     document.body.appendChild(modal);
   }
   modal.innerHTML=`<div class="member-modal-card" onclick="event.stopPropagation();" style="max-width:460px;">
@@ -4178,6 +4279,26 @@ function renderTeamRoundPicker(){
         : 'Jede Runde bekommt jede/r einen neu ausgelosten Helden.';
     }
   }
+  const heroFavoritesStep = document.getElementById('team-round-herofavorites-step');
+  if(heroFavoritesStep){
+    const showFavorites = !!HERO_GAMES[teamRoundGameChoice] && teamRoundSessionModeChoice!=='chaos';
+    heroFavoritesStep.style.display = showFavorites ? 'block' : 'none';
+    if(showFavorites){
+      const row=document.getElementById('team-round-herofavorites-picker');
+      if(row){
+        row.innerHTML='';
+        [{key:true,label:'⭐ Favoriten bevorzugen'},{key:false,label:'🎲 Ganz zufällig'}].forEach(it=>{
+          const button=document.createElement('button');
+          button.className='filter-pill'+(teamRoundUseHeroFavorites===it.key?' active':'');
+          button.textContent=it.label;
+          button.onclick=()=>{ teamRoundUseHeroFavorites=it.key; renderTeamRoundPicker(); };
+          row.appendChild(button);
+        });
+      }
+      const desc=document.getElementById('team-round-herofavorites-desc');
+      if(desc) desc.textContent=teamRoundUseHeroFavorites ? 'Bei der passenden Rollenwahl werden die im Profil vorgemerkten Helden bevorzugt ausgelost.' : 'Alle passenden Helden haben die gleiche Chance.';
+    }
+  }
   syncDraftSettings();
 }
 function confirmTeamSettings(){
@@ -4208,7 +4329,7 @@ function confirmTeamSettings(){
   saveTeamCampaignState();
   if(sb && myTeam){
     const gid = (teamRoundScope==='rounds' || teamRoundScope==='match') ? teamRoundGameChoice : null;
-    sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, scope:teamRoundScope, gameMode:teamRoundGameMode, mode:teamRoundModeChoice, sessionMode:teamRoundSessionModeChoice, difficulty:teamRoundDifficulty, count:teamRoundCount, selectedGames:teamRoundSelectedGames, gameSequence:teamRoundGameSequence, gameModeChoices:teamRoundGameModeChoices, randomOrder:teamRoundRandomOrder, roundsPerGame:teamRoundsPerGame, funChallenges:teamRoundFunChallenges, pointGoalChoice:teamRoundPointGoalChoice, customGoalValue:teamRoundCustomGoalValue, heroLockMode:teamRoundHeroLockMode, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
+    sb.from('teams').update({ draft_settings: { confirmed:true, gameId: gid, scope:teamRoundScope, gameMode:teamRoundGameMode, mode:teamRoundModeChoice, sessionMode:teamRoundSessionModeChoice, difficulty:teamRoundDifficulty, count:teamRoundCount, selectedGames:teamRoundSelectedGames, gameSequence:teamRoundGameSequence, gameModeChoices:teamRoundGameModeChoices, randomOrder:teamRoundRandomOrder, roundsPerGame:teamRoundsPerGame, funChallenges:teamRoundFunChallenges, pointGoalChoice:teamRoundPointGoalChoice, customGoalValue:teamRoundCustomGoalValue, heroLockMode:teamRoundHeroLockMode, useHeroFavorites:teamRoundUseHeroFavorites, at: Date.now() } }).eq('id', myTeam.id).then(()=>{});
   }
   renderTeamPage();
 }
@@ -4443,10 +4564,18 @@ async function requestJoker(type, forSelf){
 }
 const LS_LOADOUT = 'winchallenge_sabotage_loadout_v1';
 let sabotageLoadout = (function(){ try{ return JSON.parse(localStorage.getItem(LS_LOADOUT)||'{}'); }catch(e){ return {}; } })();
-const LOADOUT_MAX_TOTAL = 2;   // max. Vorteile pro Runde/Match insgesamt
+const LOADOUT_MAX_TOTAL = 3;   // max. Vorteile pro Runde/Match insgesamt
 const LOADOUT_MAX_PER_ITEM = 1; // max. 1x dasselbe Item pro Runde/Match
 function saveLoadout(){ try{ localStorage.setItem(LS_LOADOUT, JSON.stringify(sabotageLoadout)); }catch(e){} }
-function loadoutTotal(){ return Object.values(sabotageLoadout).reduce((a,b)=>a+(b||0),0); }
+function loadoutTotal(){
+  const s = statsStore[currentUser && currentUser.username];
+  const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
+  const activeMode = (currentRound && currentRound.mode) || teamRoundModeChoice;
+  return Object.entries(sabotageLoadout).reduce((sum,[id,count])=>{
+    const item = SHOP_SABOTAGE.find(x=>x.id===id);
+    return sum + (item && (owned[id]||0)>0 && (!item.mode || item.mode===activeMode) ? Math.min(1,Number(count)||0) : 0);
+  },0);
+}
 function toggleLoadoutItem(itemId){
   const s = statsStore[currentUser && currentUser.username];
   const ownedCount = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage[itemId]) || 0;
@@ -4481,7 +4610,11 @@ function renderLoadoutPicker(){
   const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
   const ownedItems = SHOP_SABOTAGE.filter(item => (owned[item.id]||0) > 0);
   // Nicht mehr besessene Items aus einem alten Loadout entfernen.
-  Object.keys(sabotageLoadout).forEach(id=>{ if(!(owned[id]>0)) delete sabotageLoadout[id]; });
+  Object.keys(sabotageLoadout).forEach(id=>{
+    const item=SHOP_SABOTAGE.find(x=>x.id===id);
+    if(!(owned[id]>0) || !item || (item.mode && item.mode!==teamRoundModeChoice)) delete sabotageLoadout[id];
+    else sabotageLoadout[id]=Math.min(1,Number(sabotageLoadout[id])||0);
+  });
   if(!ownedItems.length){
     return `<div class="settings-card">
       <div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteile für die nächste Runde</div></div>
@@ -4495,14 +4628,14 @@ function renderLoadoutPicker(){
   }
   let html = `<div class="settings-card">
     <div class="setup-step-head"><span class="setup-step-icon">🎯</span><div class="setup-step-title">Vorteile für die nächste Runde</div></div>
-    <p class="setup-info" style="margin-top:0;">Wählt hier VOR dem Start, welche Vorteile ihr mitnehmt (max. ${LOADOUT_MAX_TOTAL}, je 1x pro Item). Während der Runde gekaufte Items zählen erst ab der nächsten Runde.</p>
-    <div class="filter-row">`;
+    <p class="setup-info" style="margin-top:0;">Wählt vor dem Start bis zu ${LOADOUT_MAX_TOTAL} Karten. Während der Runde gekaufte Karten gelten erst in der nächsten Runde.</p>
+    <details class="hero-avatar-group" style="margin-top:10px;"><summary>Vorteile auswählen · ${loadoutTotal()}/${LOADOUT_MAX_TOTAL} mitgenommen</summary><div class="filter-row" style="padding:12px;">`;
   ownedItems.forEach(item=>{
     if(item.mode && item.mode!==teamRoundModeChoice) return;
     const inLoadout = (sabotageLoadout[item.id]||0) > 0;
     html += `<button class="filter-pill${inLoadout?' active':''}" onclick="toggleLoadoutItem('${item.id}')">${item.icon} ${item.label} (${owned[item.id]}x)</button>`;
   });
-  html += `</div><p class="setup-info" style="margin:8px 0 0;">Mitgenommen: ${loadoutTotal()}/${LOADOUT_MAX_TOTAL}</p><button class="settings-row-btn" onclick="goToShopSabotage()" style="margin-top:10px;"><span class="settings-row-icon">🛒</span><span class="settings-row-text"><span class="settings-row-title">Weitere Vorteile kaufen</span><span class="settings-row-sub">Du kannst auch vorhandene Vorteile bis zu 10× stapeln.</span></span><span class="settings-row-chev">›</span></button></div>`;
+  html += `</div></details><p class="setup-info" style="margin:8px 0 0;">Mitgenommen: ${loadoutTotal()}/${LOADOUT_MAX_TOTAL}</p><button class="settings-row-btn" onclick="goToShopSabotage()" style="margin-top:10px;"><span class="settings-row-icon">🛒</span><span class="settings-row-text"><span class="settings-row-title">Weitere Vorteile kaufen</span><span class="settings-row-sub">Du kannst auch vorhandene Vorteile bis zu 10× stapeln.</span></span><span class="settings-row-chev">›</span></button></div>`;
   return html;
 }
 function renderSabotagePanel(){
@@ -4533,13 +4666,9 @@ function renderSabotagePanel(){
       if(item.id==='delete_challenge'){
         const myItems = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
         if(!myItems.length){
-          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen (schwere Challenges gehen nicht).</div>`;
+          html += `<div class="empty-hint" style="margin-bottom:8px;">Keine offene eigene Challenge zum Streichen.</div>`;
         } else {
-          html += `<div class="filter-row" style="margin-bottom:8px;">`;
-          myItems.forEach(it=>{
-            html += `<button class="filter-pill" ${dis} onclick="useSabotageItem('${item.id}','${currentUser.id}','${it.id}')">${it.text.slice(0,28)}${it.text.length>28?'…':''}</button>`;
-          });
-          html += `</div>`;
+          html += `<div class="roll-zone" style="margin-bottom:8px;"><button class="sb-btn" ${dis} onclick="openDeleteChallengePicker()">🗑️ Challenge auswählen</button><div class="setup-info" style="margin-top:7px;">Öffnet eine Auswahl aller offenen eigenen Challenges – auch schwere.</div></div>`;
         }
       } else if(item.id==='team_shield'){
         const openShared = roundItems.filter(it=>it.scope==='shared' && !it.result);
@@ -4596,6 +4725,27 @@ async function syncMirrorReadyState(){
     if(!error) currentRound.mirror_holders = Array.from(list);
   }catch(e){ console.error(e); }
 }
+function openDeleteChallengePicker(){
+  if(!currentRound || !currentUser) return;
+  const choices = roundItems.filter(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result);
+  if(!choices.length){ showAlert('Du hast keine offene eigene Challenge zum Streichen.','🗑️'); return; }
+  let modal=document.getElementById('delete-challenge-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='delete-challenge-modal';
+    modal.className='member-modal-backdrop hidden';
+    modal.onclick=(event)=>{ if(event.target===modal) modal.classList.add('hidden'); };
+    document.body.appendChild(modal);
+  }
+  const difficulty = {leicht:'LEICHT',mittel:'MITTEL',schwer:'SCHWER'};
+  modal.innerHTML=`<div class="member-modal-card" onclick="event.stopPropagation();" style="max-width:620px;">
+    <button class="member-modal-close" onclick="document.getElementById('delete-challenge-modal').classList.add('hidden')">✕</button>
+    <div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">🗑️</span><div class="setup-step-title">Challenge streichen</div></div>
+    <p class="setup-info" style="margin:0 12px 16px;">Wähle die Challenge, die sofort als geschafft zählt. Die Punkte bleiben erhalten – auch bei schweren Challenges.</p>
+    <div class="challenge-picker-list">${choices.map(it=>`<button class="challenge-picker-option" onclick="document.getElementById('delete-challenge-modal').classList.add('hidden');useSabotageItem('delete_challenge','${currentUser.id}','${it.id}')"><span class="difficulty-tag ${it.diff||'leicht'}">${difficulty[it.diff]||'CHALLENGE'}</span><span class="challenge-picker-text">${it.text}</span><strong>+${it.points||0}</strong></button>`).join('')}</div>
+  </div>`;
+  modal.classList.remove('hidden');
+}
 async function useSabotageItem(itemId, targetUserId, extraId){
   if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
   if((currentRound.sabotaged_no_joker||[]).includes(currentUser.id)){ showAlert('Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.', '🙅'); return; }
@@ -4610,6 +4760,9 @@ async function useSabotageItem(itemId, targetUserId, extraId){
   let transferredPoints = 0;
   const confirmMsg = item.selfOnly ? `"${item.label}" einsetzen? Wird dabei aus eurem Bestand verbraucht.` : `"${item.label}" gegen ${target.username} einsetzen? Wird dabei aus eurem Bestand verbraucht.`;
   if(!(await confirmAction(confirmMsg))) return;
+  // Sofortige Rückmeldung auf dem auslösenden Gerät; nach erfolgreichem Speichern
+  // wird derselbe Effekt zusätzlich live an die gesamte Gruppe gesendet.
+  showTeamCardEffect({ id:itemId, icon:item.icon, title:item.label, sub:item.selfOnly ? `${currentUser.username} aktiviert diesen Vorteil.` : `${currentUser.username} greift ${target.username} an.` });
   // Spiegel-Check: Hat das Ziel einen aktiven Spiegel (passives Item, siehe mirror_holders — wird
   // beim Rundenstart je Gerät selbst eingetragen), trifft der Effekt stattdessen den Angreifer
   // selbst zurück. Der Spiegel wird dabei verbraucht (aus der geteilten, rundenweiten Liste entfernt).
@@ -5057,6 +5210,10 @@ async function setSharedResult(itemId, result){
   renderTeamPage();
 }
 const MATCH_WIN_BONUS_POINTS = 5; // Extra-Punkte, wenn die Runde/das Match als "Gewonnen" markiert wurde (s. match_result)
+function versusMatchResults(value){
+  if(!value || typeof value!=='string' || !value.trim().startsWith('{')) return {};
+  try{ const parsed=JSON.parse(value); return parsed && typeof parsed==='object' ? parsed : {}; }catch(e){ return {}; }
+}
 function computeTeamRoundResults(round, items){
   const winBonus = round.match_result === 'win' ? MATCH_WIN_BONUS_POINTS : 0;
   if(round.mode === 'team'){
@@ -5071,7 +5228,8 @@ function computeTeamRoundResults(round, items){
   // Nie die optionale profiles-Relation als Identität verwenden: je nach RLS/Realtime-Event
   // kann sie leer sein. Die user_id ist die stabile Quelle; damit erscheint niemand als "?"
   // und es werden keine Ergebnisse verschiedener Spieler zusammengelegt.
-  const byPlayer = Object.fromEntries(teamMembers.map(m=>[m.user_id,{ name:m.username, userId:m.user_id, score:winBonus }]));
+  const personalMatchResults = versusMatchResults(round.match_result);
+  const byPlayer = Object.fromEntries(teamMembers.map(m=>[m.user_id,{ name:m.username, userId:m.user_id, score:personalMatchResults[m.user_id]==='win' ? MATCH_WIN_BONUS_POINTS : 0 }]));
   items.filter(it=>it.scope==='personal').forEach(it=>{
     if(!it.user_id) return;
     const member = teamMembers.find(m=>m.user_id===it.user_id);
@@ -5081,14 +5239,21 @@ function computeTeamRoundResults(round, items){
   });
   return Object.values(byPlayer).sort((a,b)=>b.score-a.score || a.name.localeCompare(b.name));
 }
-// Jedes Teammitglied kann live markieren, ob die Runde/das Match gewonnen oder verloren wurde —
-// zählt sofort als Bonus mit (s. MATCH_WIN_BONUS_POINTS), lässt sich beliebig umklicken bis
-// die Runde abgeschlossen wird. Erfordert game_rounds.match_result (text, nullable) in Supabase.
+// Im Team-Modus markiert der Host das gemeinsame Ergebnis. Bei Jeder gegen Jeden markiert jede
+// Person ihr eigenes Match-Ergebnis; beides liegt kompatibel in game_rounds.match_result (text).
 async function setMatchResult(result){
-  if(!currentRound || !sb || !myTeam || !currentUser || myTeam.host_id !== currentUser.id){ showAlert('Nur der Team-Ersteller (👑) kann festlegen, ob gewonnen oder verloren wurde.'); return; }
-  const { error } = await sb.from('game_rounds').update({ match_result: result }).eq('id', currentRound.id);
+  if(!currentRound || !sb || !myTeam || !currentUser) return;
+  if(currentRound.mode==='team' && myTeam.host_id !== currentUser.id){ showAlert('Nur der Team-Ersteller (👑) kann das Team-Ergebnis festlegen.'); return; }
+  let nextValue=result;
+  if(currentRound.mode==='versus'){
+    const latest = await sb.from('game_rounds').select('match_result').eq('id',currentRound.id).single();
+    const results=versusMatchResults(latest.data && latest.data.match_result ? latest.data.match_result : currentRound.match_result);
+    results[currentUser.id]=result;
+    nextValue=JSON.stringify(results);
+  }
+  const { error } = await sb.from('game_rounds').update({ match_result: nextValue }).eq('id', currentRound.id);
   if(error){ showAlert('Fehler: ' + error.message); return; }
-  currentRound.match_result = result;
+  currentRound.match_result = nextValue;
   renderTeamPage();
 }
 function renderMatchResultToggle(){
@@ -5096,6 +5261,10 @@ function renderMatchResultToggle(){
   const uw = unitWord(currentRound.scope, false);
   const cur = currentRound.match_result;
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
+  if(currentRound.mode==='versus'){
+    const mine=versusMatchResults(cur)[currentUser.id];
+    return `<div class="filter-row" style="margin-bottom:14px;justify-content:center;"><span class="setup-info" style="margin:0 10px 0 0;align-self:center;">🏆 Dein ${uw}-Ergebnis:</span><button class="filter-pill${mine==='win'?' active':''}" onclick="setMatchResult('win')">✅ Gewonnen (+${MATCH_WIN_BONUS_POINTS})</button><button class="filter-pill${mine==='loss'?' active':''}" onclick="setMatchResult('loss')">❌ Verloren</button></div>`;
+  }
   if(!isHost){
     const statusText = cur==='win' ? `✅ Als Sieg markiert (+${MATCH_WIN_BONUS_POINTS})` : cur==='loss' ? '❌ Als Niederlage markiert' : '⏳ Noch nicht markiert — wartet auf den Team-Ersteller (👑)';
     return `<div class="filter-row" style="margin-bottom:14px;"><span class="setup-info" style="margin:0;">🏆 ${uw} gewonnen? ${statusText}</span></div>`;
@@ -5217,7 +5386,7 @@ function renderTeamRoundHeader(){
   return `<div class="team-unit-banner">${unitLabel}</div>
   <div class="scoreboard-head" style="margin-bottom:14px;">
     <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
-    <div class="scoreboard-actions">${hostMenu}${memberLeaveMenu}</div>
+    <div class="scoreboard-actions">${hasPikachuSound()?'<button class="header-menu-btn" onclick="sendPikachuGroupSound()" title="Pikachu-Sound für die Gruppe">⚡</button>':''}${hostMenu}${memberLeaveMenu}</div>
   </div>`;
 }
 function extendTeamCampaign(){
@@ -5603,7 +5772,11 @@ function renderTeamRoundSection(){
     const campaignDoneForMember = !isHost && !!syncedSummary;
     const uwDone = unitWord(currentRound.scope);
     const doneTitle = isHost ? `${uwDone} ${currentRound.scope==='points' ? campaignProgressLabel() : teamCampaignIndex+1+'/'+total} abgeschlossen` : `${uwDone} abgeschlossen`;
-    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon confetti-burst" id="team-done-confetti">🏁</span><div class="setup-step-title">${doneTitle}</div></div>`;
+    const topScore = currentRound.mode==='versus' && results.length ? results[0].score : null;
+    const winners = topScore===null ? [] : results.filter(entry=>entry.score===topScore && topScore>0);
+    const iWonVersus = currentRound.mode==='versus' && winners.some(entry=>entry.userId===currentUser.id);
+    const versusOutcome = currentRound.mode==='versus' ? `<div class="${iWonVersus?'winner-pop':''}" style="margin:4px auto 16px;max-width:520px;padding:16px 20px;border-radius:16px;text-align:center;border:1px solid ${iWonVersus?'var(--win)':'var(--lose)'};background:${iWonVersus?'rgba(42,214,164,.09)':'rgba(255,92,112,.08)'};"><strong style="font-size:1.2rem;color:${iWonVersus?'var(--win)':'var(--lose)'};">${iWonVersus?'🏆 Du hast gewonnen!':'Du hast verloren.'}</strong><div class="setup-info" style="margin:5px 0 0;">${iWonVersus?`Mit ${topScore} Punkten auf Platz 1.`:`Gewonnen hat ${winners.map(entry=>entry.name).join(' & ')||'niemand'}${topScore!==null?` mit ${topScore} Punkten`:''}.`}</div></div>` : '';
+    let html = header + `<div class="panel-block" style="margin-top:20px;"><div class="setup-step-head"><span class="setup-step-icon${iWonVersus?' confetti-burst':''}" id="team-done-confetti">${iWonVersus?'🏆':'🏁'}</span><div class="setup-step-title">${doneTitle}</div></div>${versusOutcome}`;
     if(hasNext){
       // Punkte oben & groß, gespielter Held darunter kompakt — vorher andersrum, aber die Punkte
       // sind das eigentlich Wichtige am Rundenabschluss, nicht der (schon bekannte) Held.
@@ -5651,7 +5824,7 @@ function renderTeamRoundSection(){
     const myCumulative = isHost ? teamCampaignCumulativeScore() : (campaignDoneForMember ? teamCampaignCumulativeScore(syncedSummary.history) : null);
     if(!campaignHasNext && myCumulative !== null && teamCelebratedFor !== currentRound.id){
       teamCelebratedFor = currentRound.id;
-      if(myCumulative > 0){
+      if(myCumulative > 0 && (currentRound.mode==='team' || iWonVersus)){
         // Nur im Jeder-gegen-Jeden-Modus gibt es einen echten Top-Spieler (im Team-Modus ist das
         // Ergebnis geteilt) — nur dann kann das UFO-Flyby statt des normalen Feuerwerks greifen.
         const topName = currentRound.mode !== 'team' && results[0] ? results[0].name : null;
@@ -5971,6 +6144,11 @@ function renderTeamSettingsScreen(){
       <div class="setup-step-head"><span class="setup-step-icon">🔒</span><div class="setup-step-title">Held über mehrere Runden</div></div>
       <div class="filter-row" id="team-round-herolock-picker"></div>
       <p class="setup-info" id="team-round-herolock-desc" style="margin-top:8px;margin-bottom:0;"></p>
+    </div>
+    <div class="settings-card" id="team-round-herofavorites-step">
+      <div class="setup-step-head"><span class="setup-step-icon">⭐</span><div class="setup-step-title">Heldenfavoriten</div></div>
+      <div class="filter-row" id="team-round-herofavorites-picker"></div>
+      <p class="setup-info" id="team-round-herofavorites-desc" style="margin-top:8px;margin-bottom:0;"></p>
     </div>
 
     <div class="setup-warning" id="team-settings-warning"></div>
@@ -6742,6 +6920,11 @@ function assignHeroesByPlayerRoles(gameId, playerKeys, roleMap){
     let choices = pool.filter(h=> h[1]===role && !used.has(h[0]));
     if(!choices.length) choices = pool.filter(h=>h[1]===role); // Pool zu klein: Wiederholung erlauben
     if(!choices.length) choices = pool; // Rolle existiert in diesem Spiel nicht -> Fallback
+    const member = teamMembers.find(m=>m.user_id===k);
+    const favorites = (member && member.hero_favorites && member.hero_favorites[gameId+':'+role]) ||
+      ((currentUser && (k===currentUser.id || k===currentUser.username) && currentUser.hero_favorites && currentUser.hero_favorites[gameId+':'+role]) || []);
+    const preferredChoices = teamRoundUseHeroFavorites ? choices.filter(h=>favorites.includes(h[0])) : [];
+    if(preferredChoices.length) choices = preferredChoices;
     const hero = pickHeroAvoidingRecent(choices, k, gameId);
     result[k] = hero; used.add(hero[0]);
   });
@@ -8299,15 +8482,20 @@ const ACHIEVEMENTS_DEF = [
   {id:'50_rounds', icon:'🎮', label:'50 Runden gespielt', test:s=>s.roundsPlayed>=50, reward:18},
   {id:'25_wins', icon:'🥇', label:'25 Rundensiege', test:s=>s.roundWins>=25, reward:18},
   {id:'1000_points', icon:'💎', label:'1000 Punkte insgesamt', test:s=>s.totalPoints>=1000, reward:20},
+  {id:'2500_points', icon:'💠', label:'2500 Punkte insgesamt', test:s=>s.totalPoints>=2500, reward:35},
   {id:'6_games', icon:'🗺️', label:'6 verschiedene Spiele gespielt', test:s=>Object.keys(s.gamesPlayed||{}).length>=6, reward:15},
+  {id:'10_games', icon:'🧭', label:'10 verschiedene Spiele gespielt', test:s=>Object.keys(s.gamesPlayed||{}).length>=10, reward:22},
   {id:'all_games', icon:'🌐', label:'Alle Spiele mindestens einmal gespielt', test:s=>Object.keys(s.gamesPlayed||{}).length>=SESSION_GAMES.length, reward:30},
   {id:'10_heroes', icon:'🦸', label:'10 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=10, reward:12},
   {id:'25_heroes', icon:'🦸‍♀️', label:'25 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=25, reward:18},
+  {id:'50_heroes', icon:'🌟', label:'50 verschiedene Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).length>=50, reward:30},
   {id:'all_ow_heroes', icon:'🛡️', label:'Alle Overwatch-Helden gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('ow2:')).length>=(HERO_GAMES.ow2?HERO_GAMES.ow2.length:999), reward:40},
   {id:'all_r6_operators', icon:'💣', label:'Alle Rainbow-Six-Operatoren gespielt', test:s=>Object.keys(s.heroesPlayed||{}).filter(k=>k.startsWith('r6:')).length>=(HERO_GAMES.r6?HERO_GAMES.r6.length:999), reward:40},
   {id:'pikachu_expedition', icon:'⚡', label:'Pikachu-Expedition', test:s=>(s.pikachusFound||0)>=50, reward:50},
   {id:'jackpot_winner', icon:'🎰', label:'Jackpot-Gewinner', test:s=>(s.jackpotWins||0)>=1, reward:25},
+  {id:'jackpot_regular', icon:'🎲', label:'Glückssträhne', test:s=>(s.jackpotWins||0)>=10, reward:30},
   {id:'minigame_master', icon:'🕹️', label:'Minispiel-Profi', test:s=>(s.minigamesWon||0)>=3, reward:20},
+  {id:'minigame_legend', icon:'⚡', label:'Minispiel-Legende', test:s=>(s.minigamesWon||0)>=10, reward:35},
 ];
 let achievementsSelectedPlayer = null;
 function renderAchievementsPage(){
@@ -10349,6 +10537,7 @@ renderHomeGreeting();
 /* ============================================================ W-JACKPOT ============================================================
    Isoliert von der Rundenlogik: Fehler im Shop dürfen niemals Login, Lobby oder Runde blockieren. */
 (function(){
+  window.__wcOpen = false;
   const baseShopBalance = shopBalance;
   shopBalance = function(name){
     const s = statsStore[name];
@@ -10370,10 +10559,10 @@ renderHomeGreeting();
       .wc-slot{max-width:680px;margin:12px auto;padding:10px;border:3px solid #ffd64a;border-radius:18px;background:#0b0915;box-shadow:0 0 0 3px #402176,0 0 24px rgba(255,214,74,.35)}
       .wc-slot-head{display:flex;justify-content:space-between;color:#ffe16b;font-size:.75rem;font-weight:900;letter-spacing:.1em;padding:0 4px 8px}
       .wc-reels{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-      .wc-reel{min-height:64px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(#fff,#aab1d0);color:#171522;font-size:2rem;font-weight:1000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
-      .wc-reel.spinning{animation:wc-spin .11s linear infinite;background:linear-gradient(#64e7ff,#9668ff);color:#fff}
-      .wc-reel.wc-landed{animation:wc-land .34s ease-out;box-shadow:0 0 0 2px #ffd64a,0 0 18px rgba(255,214,74,.7)}
-      @keyframes wc-spin{to{transform:translateY(3px);filter:hue-rotate(80deg)}}
+      .wc-reel{min-height:64px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(145deg,#1d1546,#062c43);color:#fff;font-size:2rem;font-weight:1000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18),0 0 10px rgba(34,211,238,.3)}
+      .wc-reel.spinning{animation:wc-spin .32s linear infinite;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 18px currentColor}
+      .wc-reel.wc-landed{animation:wc-land .46s cubic-bezier(.2,1.3,.4,1);box-shadow:0 0 0 2px #ffd64a,0 0 25px rgba(255,214,74,.82)}
+      @keyframes wc-spin{0%{transform:translateY(-9px) scale(.94);filter:hue-rotate(0deg)}100%{transform:translateY(9px) scale(1.05);filter:hue-rotate(150deg)}}
       @keyframes wc-land{0%{transform:translateY(-14px) scale(1.08)}100%{transform:translateY(0) scale(1)}}
       .wc-prizes{color:#5af7ff;font-size:.78rem;font-weight:800;line-height:1.6;margin-top:8px}
     </style>
@@ -10395,10 +10584,12 @@ renderHomeGreeting();
     toggle.textContent = 'Gewinne ansehen';
     toggle.onclick = ()=>{
       const open = card.classList.toggle('open');
+      window.__wcOpen = open;
       jackpotBody.style.display = open ? 'block' : 'none';
       toggle.textContent = open ? 'Schließen' : 'Gewinne ansehen';
     };
     jackpotHead.appendChild(toggle);
+    if(window.__wcOpen){ card.classList.add('open'); jackpotBody.style.display='block'; toggle.textContent='Schließen'; }
     content.prepend(card);
   };
 
@@ -10413,6 +10604,8 @@ renderHomeGreeting();
     if(shopBalance(name) < bet){ result.textContent = 'Nicht genug Shop-Münzen für diesen Einsatz.'; return; }
     const btn = document.querySelector('#w-jackpot-card .roll-btn');
     if(btn && btn.disabled) return;
+    const card=document.getElementById('w-jackpot-card');
+    if(card){ window.__wcOpen=true; card.classList.add('open'); const body=card.querySelector('.wc-body'); if(body) body.style.display='block'; const toggle=card.querySelector('.wc-toggle'); if(toggle) toggle.textContent='Schließen'; }
     if(btn) btn.disabled = true;
     s.spent = (s.spent||0) + bet;
     const roll = Math.random();
@@ -10421,9 +10614,12 @@ renderHomeGreeting();
     const finals = prize===1000 ? Array(6).fill('W') : Array.from({length:6},()=>symbols[Math.floor(Math.random()*symbols.length)]);
     if(prize && prize!==1000) finals[Math.floor(Math.random()*6)] = prize>=100 ? '7' : prize>=20 ? '♦' : '★';
     const reels = Array.from(document.querySelectorAll('#wc-reels .wc-reel'));
+    const neonColors = {W:['#8b5cf6','#22d3ee'],7:['#fb7185','#f97316'],'♦':['#facc15','#fb7185'],'★':['#34d399','#22d3ee'],C:['#60a5fa','#8b5cf6'],'?':['#e879f9','#22d3ee']};
     const spinTimers = reels.map((reel,index)=>{
       reel.classList.add('spinning');
-      return window.setInterval(()=>{ reel.textContent = symbols[Math.floor(Math.random()*symbols.length)]; }, 62 + index * 13);
+      reel.style.background=`linear-gradient(145deg,${['#7c3aed','#06b6d4','#ec4899','#22c55e','#f59e0b','#2563eb'][index]},#11162f)`;
+      reel.style.color='#fff'; reel.style.textShadow='0 0 9px #fff,0 0 20px currentColor';
+      return window.setInterval(()=>{ reel.textContent = symbols[Math.floor(Math.random()*symbols.length)]; }, 145 + index * 24);
     });
     result.textContent = 'Die Walzen drehen …';
     window.setTimeout(()=>{
@@ -10431,8 +10627,12 @@ renderHomeGreeting();
         window.clearInterval(spinTimers[i]);
         r.classList.remove('spinning');
         r.textContent=finals[i];
+        const pair=neonColors[finals[i]]||['#22d3ee','#8b5cf6'];
+        r.style.background=`linear-gradient(145deg,${pair[0]},${pair[1]})`;
+        r.style.color='#fff';
+        r.style.textShadow=`0 0 12px #fff,0 0 24px ${pair[0]}`;
         r.classList.add('wc-landed');
-      }, i*150));
+      }, i*230));
       window.setTimeout(()=>{
       if(prize){
         s.shopBonus = (s.shopBonus||0)+prize;
@@ -10444,9 +10644,10 @@ renderHomeGreeting();
       else result.textContent = `Kein Gewinn – Einsatz: ${bet} Münzen.`;
       saveStats();
       if(btn) btn.disabled=false;
-      renderShopPage();
-      }, reels.length*150 + 120);
-    }, 1200);
+      const balance=document.getElementById('shop-balance');
+      if(balance) balance.textContent = `💰 Guthaben von ${name}: ${shopBalance(name)} Punkte`;
+      }, reels.length*230 + 180);
+    }, 4100);
   };
 })();
 
@@ -10475,13 +10676,36 @@ renderHomeGreeting();
   async function runReactionDuel(){
     const light = roundItems.find(it=>it.scope==='personal' && it.user_id===currentUser.id && !it.result && it.diff==='leicht');
     if(!light){ showAlert('Für das Reaktionsduell brauchst du eine offene leichte Challenge.','⚡'); return false; }
-    const started = Date.now();
-    await new Promise(resolve=>window.setTimeout(resolve,900+Math.floor(Math.random()*1100)));
-    const clicked = await confirmAction('JETZT klicken! Schaffst du die Reaktion in unter einer Sekunde?');
-    if(!clicked || Date.now()-started>4000){ showAlert('Zu spät – keine Challenge wurde gestrichen.','⚡'); return false; }
+    const reaction = await new Promise(resolve=>{
+      let modal=document.getElementById('reaction-duel-modal');
+      if(!modal){ modal=document.createElement('div'); modal.id='reaction-duel-modal'; modal.className='member-modal-backdrop'; document.body.appendChild(modal); }
+      let active=false, startedAt=0, timer=null, finished=false;
+      const finish=(value)=>{ if(finished) return; finished=true; if(timer) clearTimeout(timer); modal.classList.add('hidden'); resolve(value); };
+      modal.innerHTML=`<div class="member-modal-card" onclick="event.stopPropagation();" style="max-width:500px;text-align:center;">
+        <button class="member-modal-close" id="reaction-duel-cancel">✕</button>
+        <div style="font-size:4rem;line-height:1;filter:drop-shadow(0 0 18px #facc15)">⚡</div>
+        <div class="setup-step-title" style="margin:10px 0 6px;">Reaktionsduell</div>
+        <p id="reaction-duel-text" class="setup-info" style="margin:0 0 18px;">Warte auf das Neon-Signal. Erst dann klicken!</p>
+        <button id="reaction-duel-go" class="primary-btn" disabled style="min-width:220px;opacity:.45;cursor:wait;">WARTEN …</button>
+        <p class="setup-info" style="margin:14px 0 0;font-size:.78rem;">Gewinn: „${light.text}" wird als geschafft gewertet.</p>
+      </div>`;
+      modal.classList.remove('hidden');
+      modal.querySelector('#reaction-duel-cancel').onclick=()=>finish(null);
+      const go=modal.querySelector('#reaction-duel-go');
+      const text=modal.querySelector('#reaction-duel-text');
+      go.onclick=()=>{ if(!active) return; finish(performance.now()-startedAt); };
+      timer=window.setTimeout(()=>{
+        active=true; startedAt=performance.now();
+        text.textContent='JETZT! Klick so schnell du kannst.';
+        go.disabled=false; go.textContent='⚡ JETZT KLICKEN'; go.style.opacity='1'; go.style.cursor='pointer';
+        go.style.boxShadow='0 0 26px rgba(34,211,209,.9),0 0 48px rgba(168,85,247,.55)';
+      },1300+Math.floor(Math.random()*1700));
+    });
+    if(reaction===null) return false;
+    if(reaction>1150){ showAlert(`Knapp zu spät (${Math.round(reaction)} ms) – keine Challenge wurde gestrichen.`,'⚡'); return false; }
     const {error} = await sb.from('round_items').update({result:'success',points:0,struck:true}).eq('id',light.id);
     if(error){ showAlert('Reaktionsduell konnte nicht gespeichert werden: '+error.message); return false; }
-    showToast('Reaktionsduell gewonnen: eine leichte Challenge wurde gestrichen.','⚡'); return true;
+    showToast(`Reaktionsduell gewonnen (${Math.round(reaction)} ms): eine leichte Challenge wurde gestrichen.`,'⚡'); return true;
   }
   useSabotageItem = async function(id,target,extra){
     if(!['reaction_duel','risk_card','number_guess'].includes(id)) return baseUseSabotage(id,target,extra);
