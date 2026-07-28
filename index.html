@@ -96,6 +96,13 @@
   .tile-body{ position:relative; z-index:1; padding:20px 22px; }
   .tile-online-btn{ position:absolute; z-index:3; top:14px; right:14px; border:1px solid rgba(90,225,220,.65); border-radius:999px; padding:7px 10px; color:#081016; background:linear-gradient(90deg,var(--purple-bright),var(--turquoise-bright)); font-family:inherit; font-weight:800; cursor:pointer; box-shadow:0 6px 18px rgba(34,211,209,.22); }
   .tile-online-btn:hover{ transform:translateY(-1px); filter:brightness(1.08); }
+  .team-card-effect{ position:fixed; inset:0; z-index:700; display:flex; align-items:center; justify-content:center; pointer-events:none; background:radial-gradient(circle,rgba(12,15,28,.14),rgba(3,4,10,.76)); animation:team-card-fade 2.45s ease forwards; }
+  .team-card-effect-card{ width:min(360px,82vw); padding:26px 24px; text-align:center; border:1px solid var(--turquoise-bright); border-radius:24px; background:linear-gradient(135deg,rgba(27,20,54,.96),rgba(7,38,49,.96)); box-shadow:0 0 42px rgba(34,211,209,.45); transform:translateY(16px) scale(.92); animation:team-card-pop .42s cubic-bezier(.2,1.2,.4,1) forwards; }
+  .team-card-effect-icon{ font-size:3.4rem; line-height:1; margin-bottom:10px; filter:drop-shadow(0 0 12px rgba(255,255,255,.35)); }
+  .team-card-effect-title{ font-family:'Rajdhani',sans-serif; font-weight:800; font-size:1.36rem; text-transform:uppercase; letter-spacing:.06em; }
+  .team-card-effect-sub{ color:var(--text-muted); margin-top:6px; font-size:.92rem; }
+  @keyframes team-card-pop{to{transform:translateY(0) scale(1)}}
+  @keyframes team-card-fade{0%,78%{opacity:1}100%{opacity:0}}
   .tile-name{ font-family:'Rajdhani',sans-serif; font-weight:700; font-size:1.5rem; }
   .tile-tag{ color:var(--text-muted); font-size:0.85rem; margin-top:3px; }
   .tile-arrow{ position:absolute; z-index:1; right:20px; bottom:20px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); display:flex; align-items:center; justify-content:center; transition:all 0.3s ease; }
@@ -3457,6 +3464,7 @@ async function subscribeTeam(teamId){
   if(!sb) return;
   if(teamChannel) sb.removeChannel(teamChannel);
   teamChannel = sb.channel('team-'+teamId)
+    .on('broadcast', { event:'card-effect' }, ({payload})=>{ if(payload) showTeamCardEffect(payload); })
     .on('postgres_changes', { event:'*', schema:'public', table:'team_members', filter:`team_id=eq.${teamId}` }, ()=>{ refreshTeamMembers(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'teams', filter:`id=eq.${teamId}` }, ()=>{ refreshTeamDraftSettings(); })
     .on('postgres_changes', { event:'*', schema:'public', table:'game_rounds', filter:`team_id=eq.${teamId}` }, ()=>{ checkActiveRound(); })
@@ -3473,6 +3481,23 @@ async function subscribeTeam(teamId){
   await checkActiveRound();
   await refreshTeamDraftSettings();
   startTeamPolling();
+}
+function showTeamCardEffect(payload){
+  const previous = document.querySelector('.team-card-effect');
+  if(previous) previous.remove();
+  const layer = document.createElement('div');
+  layer.className = 'team-card-effect';
+  const card = document.createElement('div'); card.className='team-card-effect-card';
+  const icon = document.createElement('div'); icon.className='team-card-effect-icon'; icon.textContent=payload.icon||'🎯';
+  const title = document.createElement('div'); title.className='team-card-effect-title'; title.textContent=payload.title||'Karte eingesetzt';
+  const sub = document.createElement('div'); sub.className='team-card-effect-sub'; sub.textContent=payload.sub||'';
+  card.append(icon,title,sub); layer.appendChild(card); document.body.appendChild(layer);
+  window.setTimeout(()=>layer.remove(),2450);
+}
+function broadcastTeamCardEffect(item, targetName){
+  const payload={ icon:item.icon||'🎯', title:item.label||'Karte eingesetzt', sub:`${currentUser?.username||'Jemand'} hat ${item.label||'eine Karte'}${targetName?` für ${targetName}`:''} eingesetzt.` };
+  showTeamCardEffect(payload);
+  if(teamChannel) teamChannel.send({type:'broadcast',event:'card-effect',payload}).catch(()=>{});
 }
 let draftSyncTimer = null;
 function syncDraftSettings(){
@@ -4740,6 +4765,7 @@ async function useSabotageItem(itemId, targetUserId, extraId){
       ? `🪞 ${originalTargetName} hatte einen Spiegel aktiv — „${item.label}“ hat stattdessen dich getroffen!`
       : (item.selfOnly ? `Du hast „${item.label}“ benutzt.` : `${item.label} gegen ${target.username} eingesetzt.`);
     showToast(ownAction, mirrored ? '🪞' : item.icon);
+    broadcastTeamCardEffect(item, mirrored ? currentUser.username : (item.selfOnly ? '' : target.username));
     if(!item.selfOnly){
       // Nicht nur das direkte Ziel, sondern die gesamte Gruppe (außer dem Auslöser selbst) soll
       // mitbekommen, wenn jemand etwas gegen einen anderen einsetzt (bzw. wenn ein Spiegel zurückschlägt).
@@ -8482,7 +8508,7 @@ function mergeStatsForRestore(local, cloud){
   if(!cloud) return local || null;
   if(!local) return cloud;
   const merged = JSON.parse(JSON.stringify(local));
-  ['totalPoints','spent','roundsPlayed','roundWins','challengesWon','challengesLost','currentRoundStreak','bestRoundStreak'].forEach(k=>{
+  ['totalPoints','spent','roundsPlayed','roundWins','challengesWon','challengesLost','currentRoundStreak','bestRoundStreak','shopBonus','pikachusFound','jackpotWins','minigamesWon'].forEach(k=>{
     merged[k] = Math.max(local[k]||0, cloud[k]||0);
   });
   const localBest = (typeof local.bestRoundScore==='number' && isFinite(local.bestRoundScore)) ? local.bestRoundScore : -Infinity;
@@ -8888,11 +8914,13 @@ function renderShopPage(){
   html += '</div></div>';
   html += '<div class="settings-card"><div class="setup-step-head"><span class="setup-step-icon">🎨</span><div class="setup-step-title">Banner</div></div><p class="setup-info" style="margin-top:0;">Breite Hintergründe für deine Profil- und Namenskarte.</p><div class="filter-row">';
   SHOP_BANNERS.slice().sort((a,b)=>a.cost-b.cost).forEach(b=>{
-    const isOwned = owned.banners.includes(b.id);
+    const pikaComplete = !!b.requiresPikachu && (s.pikachusFound||0) >= 50;
+    const isOwned = owned.banners.includes(b.id) || pikaComplete;
     const isEquipped = s && s.equippedBanner===b.id;
-    const locked = (b.requiresAllAchievements && !hasAllAchievements(s)) || (b.requiresPikachu && !(owned.banners||[]).includes(b.id));
+    const locked = (b.requiresAllAchievements && !hasAllAchievements(s)) || (b.requiresPikachu && !pikaComplete);
     if(locked){
-      html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · alle ${ACHIEVEMENTS_DEF.length} Achievements nötig</span></button>`;
+      const requirement = b.requiresPikachu ? '50 Pikachus finden' : `alle ${ACHIEVEMENTS_DEF.length} Achievements nötig`;
+      html += `<button class="filter-pill" style="background:radial-gradient(circle at 30% 30%, #2a2a38, #0d0d14);border:2px dashed var(--border-soft);color:var(--text-muted);opacity:0.6;" disabled><span style="position:relative;z-index:2;">🔒 ${b.label} · ${requirement}</span></button>`;
       return;
     }
     const btnStyle = `${bannerStyleFor(b)}border:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);`;
@@ -10466,6 +10494,7 @@ renderHomeGreeting();
       if(await runReactionDuel()){
         s.minigamesWon=(s.minigamesWon||0)+1;
         notifyNewAchievements(checkAchievements(currentUser.username));
+        broadcastTeamCardEffect(SHOP_SABOTAGE.find(x=>x.id===id)||{icon:'⚡',label:'Reaktionsduell'}, '');
         await consumeMiniCard(id); await refreshMiniCard();
       }
       return;
@@ -10487,6 +10516,7 @@ renderHomeGreeting();
         if(error){ showAlert('Risiko-Karte konnte nicht gespeichert werden: '+error.message); return; }
         showToast('Risiko-Karte verloren: eine Zusatz-Challenge wurde gezogen.','🎲');
       }
+      broadcastTeamCardEffect(SHOP_SABOTAGE.find(x=>x.id===id)||{icon:'🎲',label:'Risiko-Karte'}, '');
       await consumeMiniCard(id); await refreshMiniCard(); return;
     }
     const guess=await openNumberGuessGame();
@@ -10499,6 +10529,7 @@ renderHomeGreeting();
       notifyNewAchievements(checkAchievements(currentUser.username));
       showToast('Richtig geraten! +3 Punkte.','🔢');
     }else showAlert('Leider falsch – gesucht war '+answer+'.','🔢');
+    broadcastTeamCardEffect(SHOP_SABOTAGE.find(x=>x.id===id)||{icon:'🔢',label:'Zahlenraten'}, '');
     await consumeMiniCard(id); await refreshMiniCard();
   };
 })();
