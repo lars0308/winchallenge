@@ -2771,6 +2771,12 @@ let remoteCosmeticsCache = {}; // username -> {badge, hat, banner, glow} (IDs) �
 // Kosmetik sofort rendern können, bevor der Shop-Abschnitt erreicht ist.
 var SHOP_BADGES = [], SHOP_HATS = [], SHOP_BANNERS = [], SHOP_GLOWS = [], SHOP_FRAMES = [], SHOP_SABOTAGE = [];
 var shopSelectedPlayer = null;
+// Diese Zustände werden bereits beim automatischen Login benötigt. Leere
+// Startwerte verhindern TDZ-Fehler, bis die gespeicherten Daten weiter unten
+// geladen werden.
+var statsStore = {};
+var gameHistory = [];
+var session = null;
 // Leichter Cache der eigenen Freundes-IDs — damit die Profilkarte synchron entscheiden kann, ob
 // "Als Freund hinzufügen" überhaupt noch Sinn ergibt, statt es immer anzuzeigen und erst beim Klick
 // (per Server-Antwort) zu merken, dass man schon befreundet ist.
@@ -8209,8 +8215,8 @@ renderDiceCountRow();
 setupDiceScenes();
 
 /* ============================================================ STATS / ACHIEVEMENTS ============================================================ */
-let statsStore = loadStats();
-let gameHistory = loadGameHistory();
+statsStore = loadStats();
+gameHistory = loadGameHistory();
 function getPlayerStats(name){
   if(!statsStore[name]){
     statsStore[name] = { totalPoints:0, roundsPlayed:0, roundWins:0, challengesWon:0, challengesLost:0, bestRoundScore:-Infinity, currentRoundStreak:0, bestRoundStreak:0, gamesPlayed:{} };
@@ -9492,7 +9498,7 @@ function buildPersonalChallengeSet(gameId, difficultyKey, sessionMode, playerKey
 }
 
 /* ============================================================ SESSION / ROUNDS ============================================================ */
-let session = loadSession();
+session = loadSession();
 if(session && session.totalRounds === undefined){
   session.scope = session.scope || 'rounds';
   session.sessionMode = session.sessionMode || 'challenge';
