@@ -2790,6 +2790,17 @@ function openTeamSabotageAllowedMenu(){
     {label:'✅ An', active: !!teamRoundSabotageAllowed, onClick: ()=>{ teamRoundSabotageAllowed=true; syncDraftSettings(); renderTeamRoundPicker(); }},
   ]);
 }
+function openTeamSabotageLimitMenu(){
+  openValueMenuModal('🎯','Max. Vorteile/Sabotagen pro Runde/Match', [1,2,3,4,5].map(n=>({
+    label:String(n), active: n===teamRoundSabotageLimit, onClick: ()=>{ teamRoundSabotageLimit = n; syncDraftSettings(); renderTeamRoundPicker(); }
+  })));
+}
+function openTeamHeroFavoritesMenu(){
+  openValueMenuModal('⭐','Heldenfavoriten', [
+    {label:'⭐ Favoriten bevorzugen', active: !!teamRoundUseHeroFavorites, onClick: ()=>{ teamRoundUseHeroFavorites=true; renderTeamRoundPicker(); }},
+    {label:'🎲 Ganz zufällig', active: !teamRoundUseHeroFavorites, onClick: ()=>{ teamRoundUseHeroFavorites=false; renderTeamRoundPicker(); }},
+  ]);
+}
 function openTeamDifficultyMenu(){
   const order=['Leicht','Mittel','Schwer'];
   openValueMenuModal('📊','Schwierigkeit', order.map(d=>({
@@ -3035,32 +3046,12 @@ function renderTeamRoundPicker(){
   }
   const diffValue = document.getElementById('team-round-difficulty-value');
   if(diffValue) diffValue.innerHTML = `${teamRoundDifficulty} <span class="chev">›</span>`;
-  const sabAllowedRow = document.getElementById('team-round-sabotageallowed-picker');
-  if(sabAllowedRow){
-    sabAllowedRow.innerHTML = '';
-    [[true,'⭐ Erlaubt'],[false,'🚫 Nicht erlaubt']].forEach(([val,label])=>{
-      const btn = document.createElement('button');
-      btn.className = 'filter-pill'+(val===teamRoundSabotageAllowed?' active':'');
-      btn.textContent = label;
-      btn.addEventListener('click', ()=>{ teamRoundSabotageAllowed = val; syncDraftSettings(); renderTeamRoundPicker(); });
-      sabAllowedRow.appendChild(btn);
-    });
-  }
   const sabValue = document.getElementById('team-round-sabotageallowed-value');
   if(sabValue) sabValue.innerHTML = teamRoundSabotageAllowed ? `Erlaubt ⭐ <span class="chev">›</span>` : `Nicht erlaubt 🚫 <span class="chev">›</span>`;
   const sabLimitWrap = document.getElementById('team-round-sabotagelimit-wrap');
   if(sabLimitWrap) sabLimitWrap.style.display = teamRoundSabotageAllowed ? 'block' : 'none';
-  const sabLimitRow = document.getElementById('team-round-sabotagelimit-picker');
-  if(sabLimitRow){
-    sabLimitRow.innerHTML = '';
-    [1,2,3,4,5].forEach(n=>{
-      const btn = document.createElement('button');
-      btn.className = 'filter-pill'+(n===teamRoundSabotageLimit?' active':'');
-      btn.textContent = n;
-      btn.addEventListener('click', ()=>{ teamRoundSabotageLimit = n; syncDraftSettings(); renderTeamRoundPicker(); });
-      sabLimitRow.appendChild(btn);
-    });
-  }
+  const sabLimitValue = document.getElementById('team-round-sabotagelimit-value');
+  if(sabLimitValue) sabLimitValue.innerHTML = `${teamRoundSabotageLimit} <span class="chev">›</span>`;
   const privacyRow = document.getElementById('team-round-privacy-picker');
   if(privacyRow && myTeam){
     privacyRow.innerHTML = '';
@@ -3122,19 +3113,8 @@ function renderTeamRoundPicker(){
     const showFavorites = !!HERO_GAMES[teamRoundGameChoice] && teamRoundSessionModeChoice!=='chaos';
     heroFavoritesStep.style.display = showFavorites ? 'block' : 'none';
     if(showFavorites){
-      const row=document.getElementById('team-round-herofavorites-picker');
-      if(row){
-        row.innerHTML='';
-        [{key:true,label:'⭐ Favoriten bevorzugen'},{key:false,label:'🎲 Ganz zufällig'}].forEach(it=>{
-          const button=document.createElement('button');
-          button.className='filter-pill'+(teamRoundUseHeroFavorites===it.key?' active':'');
-          button.textContent=it.label;
-          button.onclick=()=>{ teamRoundUseHeroFavorites=it.key; renderTeamRoundPicker(); };
-          row.appendChild(button);
-        });
-      }
-      const desc=document.getElementById('team-round-herofavorites-desc');
-      if(desc) desc.textContent=teamRoundUseHeroFavorites ? 'Bei der passenden Rollenwahl werden die im Profil vorgemerkten Helden bevorzugt ausgelost.' : 'Alle passenden Helden haben die gleiche Chance.';
+      const value=document.getElementById('team-round-herofavorites-value');
+      if(value) value.innerHTML = teamRoundUseHeroFavorites ? `⭐ Favoriten bevorzugen <span class="chev">›</span>` : `🎲 Ganz zufällig <span class="chev">›</span>`;
     }
   }
   syncDraftSettings();
@@ -4517,7 +4497,7 @@ function renderTeamRoundSection(){
     }
     const html = header + `<div class="panel-block" style="margin-top:20px;">
       <div class="section-lead" style="padding-top:0;">
-        <div class="eyebrow">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · Helden-Auslosung</div>
+        <div class="eyebrow">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · ${currentRound.difficulty||'Mittel'} · Helden-Auslosung</div>
         <h2 style="font-size:1.7rem;display:flex;align-items:center;gap:10px;">${gameIconHTML(currentRound.game_id,30)} ${GAME_NAME[currentRound.game_id]}</h2>
         <p style="margin:2px 0 0;color:var(--text-muted);">Dein Held${roleLine}</p>
       </div>
@@ -4569,7 +4549,8 @@ function renderTeamRoundSection(){
     const jokerLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
     const jokerLockAttrs = 'disabled style="opacity:.45;text-decoration:line-through;cursor:not-allowed;" title="Joker-Sperre aktiv — diese Runde kein Reroll mehr"';
     let html = header + `<div class="panel-block round-active-panel${isNewRoundView?' round-fade-in':''}" style="margin-top:20px;">
-      <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>`;
+      <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>
+      <p class="setup-info" style="margin:-8px 0 12px;">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · ${currentRound.difficulty||'Mittel'}</p>`;
     html += renderJokerVoteBanner();
     html += renderSkipVoteBanner();
     if(!currentRound.pending_joker && !currentRound.pending_skip){
@@ -5133,10 +5114,11 @@ function renderTeamSettingsScreen(){
         <span class="settings-value-left"><span class="setup-step-icon">🎯</span><span>Vorteile / Sabotagen</span></span>
         <span class="settings-value-current" id="team-round-sabotageallowed-value"></span>
       </div>
-      <div class="filter-row" id="team-round-sabotageallowed-picker" style="display:none;"></div>
       <div id="team-round-sabotagelimit-wrap">
-        <p class="setup-info" style="margin:10px 0 8px;">Wie viele Vorteile/Sabotagen darf jeder pro Runde/Match maximal mitnehmen?</p>
-        <div class="filter-row" id="team-round-sabotagelimit-picker"></div>
+        <div class="settings-value-row" style="margin-top:8px;" onclick="openTeamSabotageLimitMenu()">
+          <span class="settings-value-left"><span>Max. pro Runde/Match</span></span>
+          <span class="settings-value-current" id="team-round-sabotagelimit-value"></span>
+        </div>
       </div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-herolock-step">
@@ -5145,10 +5127,10 @@ function renderTeamSettingsScreen(){
       <p class="setup-info" id="team-round-herolock-desc" style="margin-top:8px;margin-bottom:0;"></p>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-herofavorites-step">
-      <details class="settings-details" open>
-        <summary><span class="setup-step-head" style="border-bottom:none;padding-bottom:0;margin-bottom:8px;"><span class="setup-step-icon">⭐</span><span class="setup-step-title">Heldenfavoriten</span></span><span class="settings-row-chev">▾</span></summary>
-        <div class="filter-row" id="team-round-herofavorites-picker" style="margin-top:12px;"></div>
-      </details>
+      <div class="settings-value-row" onclick="openTeamHeroFavoritesMenu()">
+        <span class="settings-value-left"><span class="setup-step-icon">⭐</span><span>Heldenfavoriten</span></span>
+        <span class="settings-value-current" id="team-round-herofavorites-value"></span>
+      </div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-privacy-step">
       <div class="settings-value-row" onclick="openTeamPrivacyMenu()">
@@ -7266,7 +7248,7 @@ const MATCH_STYLE_COMPOSITION = {
 };
 /* Team-Runde: einfache, gestaffelte Punktzahl statt der großen lokalen DIFF_POINTS-Werte. */
 const TEAM_ROUND_DIFF_POINTS = { leicht:1, mittel:3, schwer:5 };
-const TEAM_ROUND_PERSONAL_DIFF_POINTS = { leicht:2, mittel:4, schwer:7 }; // Namenbasierte Challenges: leicht/mittel +1, schwer +2
+const TEAM_ROUND_PERSONAL_DIFF_POINTS = { leicht:1, mittel:3, schwer:5 };
 // Verlorene Challenges kosten nicht mehr den vollen Punktewert zurück (das fühlte sich zu hart an),
 // sondern einen festen, milderen Abzug: leicht/mittel -1, schwer -3 — unabhängig vom Punktewert.
 const FAIL_PENALTY = { leicht:1, mittel:1, schwer:3 };

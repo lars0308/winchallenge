@@ -1051,7 +1051,7 @@
 #view-home #home-greeting{max-width:464px;margin:0 auto 18px!important;padding:0 28px}
 #view-home .home-greeting-card{position:relative;isolation:isolate;display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid rgba(94,231,255,.24);border-radius:18px;background:linear-gradient(115deg,rgba(83,58,151,.24),rgba(12,43,59,.28));box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 10px 25px rgba(0,0,0,.16);overflow:hidden}
 #view-home .home-greeting-card.has-banner{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important}
-#view-home .home-greeting-card.has-banner::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(90deg,rgba(7,10,18,.66),rgba(7,10,18,.24))}
+#view-home .home-greeting-card.has-banner::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(90deg,rgba(7,10,18,.38),rgba(7,10,18,.1))}
 #view-home .home-greeting-card.has-banner>*{position:relative;z-index:1}
 #view-home .home-greeting-card.has-banner>.banner-gif-img{position:absolute;inset:0;z-index:0!important;width:100%;height:100%;object-fit:cover;opacity:.95}
 #view-home .home-greeting-avatar{width:42px;height:42px;flex:0 0 42px;display:inline-flex;align-items:center;justify-content:center;border-radius:13px;background:rgba(9,15,27,.62);box-shadow:0 0 0 2px rgba(34,211,238,.24),0 0 17px rgba(118,91,242,.23);overflow:hidden}#view-home .home-greeting-avatar img{width:42px!important;height:42px!important;border-radius:13px!important}
