@@ -3165,6 +3165,18 @@ function renderTeamRoundPicker(){
       if(value) value.innerHTML = teamRoundUseHeroFavorites ? `⭐ Favoriten bevorzugen <span class="chev">›</span>` : `🎲 Ganz zufällig <span class="chev">›</span>`;
     }
   }
+  // Feste Presets (alles außer "🎛️ Freie Wahl") speichern ihre Ablauf-Einstellungen fest vor —
+  // die zugehörigen Menüs sollen dann gar nicht erst aufrufbar sein, damit niemand versehentlich
+  // an einer eigentlich vorgegebenen Kombination herumschraubt. Übrig bleiben nur die 5 Punkte,
+  // die auch bei einem festen Preset noch sinnvoll individuell einstellbar sind.
+  if(teamModePreset && teamModePreset !== 'free'){
+    ['team-round-mode-card','team-round-sessionmode-card','team-round-community-card',
+     'team-round-herofavorites-step','team-round-gamesmulti-step','team-round-herolock-step',
+     'team-round-gamemode-step','team-round-blitzduration-step'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+  }
   syncDraftSettings();
 }
 function confirmTeamSettings(){
