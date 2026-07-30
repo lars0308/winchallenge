@@ -10728,7 +10728,7 @@ renderHomeGreeting();
   const oldShowView = showView;
   showView = function(id, skipHistory){
     const answer = oldShowView(id, skipHistory);
-    window.setTimeout(()=>placePikachu(id), 80);
+    window.setTimeout(()=>placePikachu(id), 140);
     return answer;
   };
   function readFound(){ try{return JSON.parse(localStorage.getItem(PIKA_KEY)||'[]');}catch(e){return [];} }
@@ -10743,9 +10743,15 @@ renderHomeGreeting();
     const pika = document.createElement('button');
     pika.type='button'; pika.className='pika-hidden'; pika.title=''; pika.setAttribute('aria-label','Verstecktes Sammelobjekt');
     // Auf der Startseite liegt oben die Begrüßungskarte mit dem Banner — das Sammelobjekt landete
-    // dort teils direkt darüber und sah aus, als wäre es fest ins Banner eingebacken. Deshalb auf
-    // der Startseite mit größerem Grundabstand platzieren, damit es den Banner nicht überlappt.
-    const topBase = viewId==='home' ? 300 : 120;
+    // dort teils direkt darüber/darauf und sah aus, als wäre es fest ins Banner eingebacken. Ein
+    // fester Pixel-Wert (zuletzt 300) hat sich als nicht robust genug erwiesen, weil die Banner-Karte
+    // je nach Gerät/Bildschirmgröße unterschiedlich hoch ist. Deshalb jetzt die tatsächliche Höhe der
+    // Begrüßungskarte per DOM messen und das Sammelobjekt zuverlässig darunter platzieren.
+    let topBase = 120;
+    if(viewId==='home'){
+      const greetingCard = view.querySelector('.home-greeting-card') || document.getElementById('home-greeting');
+      topBase = greetingCard ? (greetingCard.offsetTop + greetingCard.offsetHeight + 24) : 420;
+    }
     pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${topBase+(index%7)*67}px;width:28px;height:28px;padding:0;border:2px solid #facc15;border-radius:50%;background:#facc15;box-shadow:0 0 12px #facc15;cursor:pointer;opacity:.82;overflow:hidden;font-size:15px;display:flex;align-items:center;justify-content:center;`;
     pika.innerHTML = variant.img
       ? `<img src="${variant.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:50%;">`
