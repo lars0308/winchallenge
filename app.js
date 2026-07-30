@@ -481,25 +481,6 @@ async function addFriendByCode(){
     await renderFriendRequests();
   }catch(e){ warn.textContent = 'Fehler: ' + e.message; }
 }
-async function searchFriendsByName(){
-  const input = document.getElementById('friend-search-input');
-  const warn = document.getElementById('friend-search-warning');
-  const resultsEl = document.getElementById('friend-search-results');
-  warn.textContent = ''; resultsEl.innerHTML = '';
-  const q = input.value.trim();
-  if(!q){ warn.textContent = 'Bitte einen Namen eingeben.'; return; }
-  if(!currentUser || !sb) return;
-  resultsEl.innerHTML = '<div class="empty-hint">Sucht…</div>';
-  try{
-    const { data, error } = await sb.from('profiles').select('id, username, avatar').ilike('username', `%${q}%`).neq('id', currentUser.id).limit(10);
-    if(error) throw error;
-    if(!data || !data.length){ resultsEl.innerHTML = '<div class="empty-hint">Niemand mit diesem Namen gefunden.</div>'; return; }
-    resultsEl.innerHTML = data.map(p=>`<div class="chip readonly" style="width:100%;box-sizing:border-box;justify-content:space-between;">
-      <span>${renderAccountAvatarHTML(p.avatar,20)} ${p.username}</span>
-      <button class="header-menu-btn" style="width:auto;border-radius:14px;padding:0 10px;font-size:0.72rem;" onclick="sendFriendRequestFromSearch('${p.id}','${p.username}')">➕ Anfragen</button>
-    </div>`).join('');
-  }catch(e){ resultsEl.innerHTML = '<div class="empty-hint">Suche fehlgeschlagen.</div>'; console.error(e); }
-}
 async function sendFriendRequestFromSearch(targetId, targetUsername){
   const result = await sendFriendRequest(targetId, targetUsername);
   showAlert(result.msg, result.ok ? '🤝' : '⚠️');
@@ -610,16 +591,6 @@ async function declineTeamInvite(inviteId){
   if(!sb) return;
   try{ await sb.from('team_invites').update({ status: 'declined' }).eq('id', inviteId); }catch(e){ console.error(e); }
   await renderPendingInvites();
-}
-function togglePref(key){
-  userPrefs[key] = !userPrefs[key];
-  savePrefs();
-  applyUserPrefs();
-  if(key==='showOnlineStatus'){
-    if(userPrefs.showOnlineStatus) startPresenceHeartbeat();
-    else stopPresenceHeartbeat();
-  }
-  renderUserSettingsPage();
 }
 // Schalter in den Einstellungen sollen nicht mehr direkt beim Antippen umschalten, sondern
 // erst ein kleines Menü mit An/Aus öffnen (gleiches Popup wie bei den Team-Auswahlen).
@@ -1328,10 +1299,6 @@ function openAdminBadgeMenu(){
     {label:'❌ Aus', active: userPrefs.showAdminBadge===false, onClick: ()=>{ userPrefs.showAdminBadge=false; savePrefs(); updateAdminBadgeToggleDisplay(); renderHomeGreeting(); if(currentActiveViewId()==='shop') renderShopPage(); }},
   ]);
 }
-function bannerMottoStampHTML(banner, bio){
-  if(!banner || !bio) return '';
-  return `<div class="banner-motto-stamp">„${bio}“</div>`;
-}
 // Einzigartiger, leicht animierter Spruch für die Namenskarte — Teil des Horror-Elite-Sets,
 // erscheint nur bei Spielern mit WIRKLICH ALLEN Achievements (siehe hasAllAchievements/
 // grantAllAchievementsRewardIfNeeded weiter unten), nicht käuflich.
@@ -1975,12 +1942,6 @@ let teamCelebratedFor = null; // Round-ID, für die die Gewinn-Animation auf die
 let teamRoundWinCelebratedFor = null; // dito, aber pro einzelner gewonnener Runde/Match (nicht nur am Kampagnenende)
 let teamRenameEditing = false; // ob das Team-Namen-Bearbeitungsfeld (Host) gerade offen ist
 let teamHeroRevealDone = false, teamHeroRevealRoundId = null; // Roulette-Reveal ist pro Gerät/Runde einmalig
-function ensureHeroRevealState(){
-  if(currentRound && currentRound.id !== teamHeroRevealRoundId){
-    teamHeroRevealRoundId = currentRound.id;
-    teamHeroRevealDone = false;
-  }
-}
 let teamPollInterval = null;
 /* ---- Screen-Steuerung Team-Bereich: eigene Screens statt alles gestapelt ---- */
 let teamEntryMode = null;     // null | 'create' | 'join'  -> Einstiegs-Screen (kein Team)
@@ -2736,8 +2697,6 @@ function __valueMenuSelect(i){
   if(opt && opt.onClick) opt.onClick();
   closeTeamPickerModal();
 }
-function toggleTeamFunChallenges(){ teamRoundFunChallenges = !teamRoundFunChallenges; renderTeamRoundPicker(); }
-function toggleTeamCommunityChallenges(){ teamRoundCommunityChallenges = !teamRoundCommunityChallenges; renderTeamRoundPicker(); }
 function openTeamFunChallengesMenu(){
   openValueMenuModal('🎭','Persönlichkeits-Challenges', [
     {label:'❌ Aus', active: !teamRoundFunChallenges, onClick: ()=>{ teamRoundFunChallenges=false; renderTeamRoundPicker(); }},
@@ -2980,7 +2939,9 @@ function renderTeamRoundPicker(){
       });
     }
     window.setTimeout(()=>{
-      const targetId = teamRoundGameChoice || SESSION_GAMES[0];
+      const targetId = isMultiGame
+        ? (teamRoundSelectedGames[teamRoundSelectedGames.length-1] || SESSION_GAMES[0])
+        : (teamRoundGameChoice || SESSION_GAMES[0]);
       const cards = Array.from(gameRow.querySelectorAll(`[data-game-id="${targetId}"]`));
       const middle = cards[1] || cards[0];
       if(middle) middle.scrollIntoView({inline:'center', block:'nearest'});
@@ -2989,6 +2950,12 @@ function renderTeamRoundPicker(){
     updateGameRouletteCentering(gameRow);
   const gameStepTitle = document.querySelector('#team-round-game-step .setup-step-title');
   if(gameStepTitle) gameStepTitle.textContent = isMultiGame ? `Spiele auswählen (${teamRoundSelectedGames.length} ausgewählt)` : 'Spiel auswählen';
+  const selectedList = document.getElementById('team-round-game-selected-list');
+  if(selectedList){
+    selectedList.innerHTML = isMultiGame && teamRoundSelectedGames.length
+      ? teamRoundSelectedGames.map(id=>`<span class="filter-pill active" style="cursor:default;">${GAME_NAME[id]||id}</span>`).join('')
+      : '';
+  }
   const step2NextBtn = document.getElementById('team-round-step2-next');
   if(step2NextBtn) step2NextBtn.textContent = isMultiGame ? `Weiter mit ${teamRoundSelectedGames.length} Spiel${teamRoundSelectedGames.length===1?'':'en'}` : 'Weiter: Einstellungen';
   }
@@ -3293,10 +3260,6 @@ function campaignSummaryText(){
   const smLabel = teamRoundSessionModeChoice==='chaos' ? '🌀 Chaos' : '🎯 Challenge';
   const diffLabel = teamRoundSessionModeChoice==='chaos' ? '' : ` · 📊 ${teamRoundDifficulty}`;
   return `${gameLabel}${gmLabel} · ${modeLabel} · ${smLabel}${diffLabel} · <strong>${campaignProgressLabel()}</strong>`;
-}
-function allMembersReady(){
-  const others = teamMembers.filter(m=>m.user_id !== myTeam.host_id);
-  return others.every(m=>m.ready);
 }
 let teamRoundTransitioning = false;
 // round_items/round_votes lösen bei JEDEM einzelnen Klick (eigenem oder fremdem) ein Realtime-Event
@@ -4145,12 +4108,6 @@ async function castVote(itemId, success){
   // (debouncedRoundItemsRefresh). Das doppelte Rendering direkt hintereinander war die Hauptursache
   // fürs Flackern beim Klicken.
 }
-async function setSharedResult(itemId, result){
-  if(!currentUser || !myTeam || myTeam.host_id !== currentUser.id || !sb) return;
-  await sb.from('round_items').update({ result }).eq('id', itemId);
-  await loadRoundItems();
-  renderTeamPage();
-}
 const MATCH_WIN_BONUS_POINTS = 5; // Extra-Punkte, wenn die Runde/das Match als "Gewonnen" markiert wurde (s. match_result)
 function versusMatchResults(value){
   if(!value || typeof value!=='string' || !value.trim().startsWith('{')) return {};
@@ -4303,7 +4260,6 @@ function recordMyLocalStatsForRound(){
   notifyNewAchievements(checkAchievements(currentUser.username));
   syncStatsToCloud(currentUser.username);
 }
-function dismissRound(){ unlockTeamRoundRender(); currentRound = null; roundItems = []; roundVotes = {}; renderTeamPage(); }
 function renderTeamRoundHeader(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
   const unitLabel = currentRound.scope==='match' ? '🏆 MATCH' : isGamesFlow(currentRound.scope) ? '🎮 SPIEL' : '🔁 RUNDE';
@@ -5115,51 +5071,7 @@ async function renameTeam(){
   teamRenameEditing = false;
   renderTeamPage();
 }
-function startSessionWithTeam(){
-  teamMembers.forEach(m=>{
-    if(!globalPlayers.includes(m.username)) globalPlayers.push(m.username);
-    avatarMap[m.username] = m.avatar || avatarFor(m.username);
-  });
-  savePlayers(); saveAvatars();
-  startFreshSetup();
-  setupState.count = Math.min(6, Math.max(3, teamMembers.length));
-  setupState.selectedPlayers = teamMembers.map(m=>m.username).slice(0, setupState.count);
-  renderSetupPage(); showStep();
-}
 /* ---- Screen 1: Einstieg (kein Team) — Raum erstellen ODER Raum beitreten ---- */
-function renderTeamEntryScreen(){
-  if(teamEntryMode === 'create'){
-    return `<div class="panel-block">
-      <div class="setup-step-head"><span class="setup-step-icon">🆕</span><div class="setup-step-title">Raum erstellen</div></div>
-      <div class="player-input-row" style="max-width:320px;margin:0 auto 16px;">
-        <input type="text" id="team-create-name" placeholder="Team-Name (optional)" maxlength="24">
-      </div>
-      <div class="roll-zone" style="margin-bottom:12px;"><button class="roll-btn" onclick="createTeam()">🚀 Raum erstellen &amp; Einstellungen festlegen</button></div>
-      <div style="text-align:center;"><button class="empty-hint-link" style="display:inline-block;" onclick="teamEntryMode=null; renderTeamPage();">← Zurück</button></div>
-    </div>`;
-  }
-  if(teamEntryMode === 'join'){
-    return `<div class="panel-block">
-      <div class="setup-step-head"><span class="setup-step-icon">🔑</span><div class="setup-step-title">Raum beitreten</div></div>
-      <div class="player-input-row" style="max-width:300px;margin:0 auto;">
-        <input type="text" id="team-join-code" placeholder="Code eingeben" maxlength="6" style="text-transform:uppercase;">
-        <button onclick="joinTeam(document.getElementById('team-join-code').value)">Beitreten</button>
-      </div>
-      <div class="setup-warning" id="team-join-error"></div>
-      <div style="text-align:center;margin-top:6px;"><button class="empty-hint-link" style="display:inline-block;" onclick="teamEntryMode=null; renderTeamPage();">← Zurück</button></div>
-    </div>`;
-  }
-  return `<div class="landing-actions" style="max-width:460px;margin:0 auto;padding:0;">
-    <button class="landing-btn primary" onclick="teamEntryMode='create'; renderTeamPage();">
-      <span class="landing-btn-icon">🆕</span>
-      <span class="landing-btn-text"><span class="landing-btn-title">Raum erstellen</span><span class="landing-btn-sub">Ihr seid Host: Regeln &amp; Modus einstellen, dann Freunde einladen</span></span>
-    </button>
-    <button class="landing-btn" onclick="teamEntryMode='join'; renderTeamPage();">
-      <span class="landing-btn-icon">🔑</span>
-      <span class="landing-btn-text"><span class="landing-btn-title">Raum beitreten</span><span class="landing-btn-sub">Ihr habt einen Einladungs-Code bekommen</span></span>
-    </button>
-  </div>`;
-}
 /* ---- Screen 2: Einstellungen (nur Host, vor der Lobby/vor neuer Kampagne) ---- */
 function renderTeamSettingsScreen(){
   const step = teamSettingsStep || 1;
@@ -5192,6 +5104,7 @@ function renderTeamSettingsScreen(){
           <div class="game-roulette" id="team-round-game-picker"></div>
           <button type="button" class="game-roulette-arrow right" onclick="scrollGameRoulette(1)" aria-label="Nach rechts">›</button>
         </div>
+        <div class="filter-row" id="team-round-game-selected-list" style="margin-top:10px;"></div>
       </div>
       <div class="team-wizard-nav"><button class="roll-btn" onclick="goTeamSettingsStep(3)" id="team-round-step2-next">Weiter: Einstellungen</button></div>
     </div>
@@ -5487,12 +5400,6 @@ function renderTeamChatModal(){
   modal.innerHTML=`<section class="team-chat-modal-card" role="dialog" aria-modal="true" aria-label="Team-Chat" onclick="event.stopPropagation();"><div class="team-chat-modal-head"><span>💬 Team-Chat</span><button class="team-chat-modal-close" onclick="closeTeamChatModal()" aria-label="Chat schließen">✕</button></div><div class="team-chat-body"><div id="team-chat-feed" class="team-chat-feed">${rows||'<div class="empty-hint">Noch keine Nachrichten. Schreib den ersten Satz!</div>'}</div><form class="team-chat-form" onsubmit="event.preventDefault();sendTeamChat(this)"><input maxlength="500" required placeholder="Nachricht an dein Team …"><button class="roll-btn" type="submit">Senden</button></form></div></section>`;
   modal.classList.remove('hidden');
   const feed=modal.querySelector('#team-chat-feed'); if(feed) feed.scrollTop=feed.scrollHeight;
-}
-function renderTeamChatHTML(){
-  if(!myTeam) return '';
-  const rows=teamChatMessages.map(m=>`<div class="team-chat-message">${renderAccountAvatarHTML(m.profiles?.avatar,22)}<div>${teamChatNameHTML(m)}<span>${messageEscape(m.body)}</span></div><time>${messageDate(m.created_at)}</time></div>`).join('');
-  const unread=unreadTeamChatCount();
-  return `<section class="settings-card team-chat" style="margin-top:0;"><button class="team-chat-toggle" onclick="toggleTeamChat()"><span>Team-Chat <b class="team-chat-unread" ${unread?'':'hidden'}>${unread||''}</b></span><small>${teamChatExpanded?'Einklappen':'Öffnen'}</small></button>${teamChatExpanded?`<div class="team-chat-body"><div id="team-chat-feed" class="team-chat-feed">${rows||'<div class="empty-hint">Noch keine Nachrichten. Schreib den ersten Satz!</div>'}</div><form class="team-chat-form" onsubmit="event.preventDefault();sendTeamChat(this)"><input maxlength="500" required placeholder="Nachricht an dein Team …"><button class="roll-btn" type="submit">Senden</button></form></div>`:''}</section>`;
 }
 async function refreshTeamChat(){
   if(!myTeam||!sb) return;
@@ -6375,12 +6282,6 @@ const ROLE_WEIGHTS = { ow2:{Tank:1,Damage:2,Support:2}, mr:{Tank:1,Damage:2,Supp
 function rolesForGame(gameId){ const w = ROLE_WEIGHTS[gameId]; return w ? Object.keys(w) : null; }
 /* Held-Pool ggf. auf eine einzelne Rolle einschränken (für den Rollen-Filter oder für einen
    Joker-Reroll, der konsistent innerhalb derselben Rolle bleiben soll). */
-function heroPoolForRole(gameId, role){
-  const base = HERO_GAMES[gameId];
-  if(!base || !role || role==='all') return base;
-  const filtered = base.filter(h=>h[1]===role);
-  return filtered.length ? filtered : base;
-}
 function hasAnyRoleChoice(roleMap){ return !!roleMap && Object.values(roleMap).some(r=>r && r!=='all'); }
 /* Jede/r Spieler:in kann ihre/seine eigene Wunschrolle wählen (statt dass das ganze Team dieselbe
    Rolle bekommt). roleMap ordnet jedem Spieler-Key (user_id im Team-Modus, Spielername lokal)
@@ -7141,7 +7042,6 @@ function libraryDisabledKey(){ return currentUser ? `winchallenge_library_disabl
 function loadLibraryDisabled(){ try{ return new Set(JSON.parse(localStorage.getItem(libraryDisabledKey())||'[]')); }catch(e){ return new Set(); } }
 function saveLibraryDisabled(set){ try{ localStorage.setItem(libraryDisabledKey(), JSON.stringify([...set])); }catch(e){} }
 function challengeKey(gameId, text){ return gameId+'::'+text; }
-function isChallengeDisabled(gameId, text){ return loadLibraryDisabled().has(challengeKey(gameId, text)); }
 function toggleChallengeDisabled(gameId, text){
   const set=loadLibraryDisabled(); const key=challengeKey(gameId, text);
   if(set.has(key)) set.delete(key); else set.add(key);
@@ -7520,7 +7420,6 @@ function spawnUFOFlyby(){
   setTimeout(()=>{ if(overlay && !overlay.childElementCount) overlay.remove(); }, 11500);
 }
 function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
-function pickN(arr, n){ return shuffle(arr).slice(0,n); }
 function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
 function initials(name){ return name.split(/[\s:()]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
 function hashHue(str){ let h=0; for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) % 360; } return h; }
@@ -10843,7 +10742,11 @@ renderHomeGreeting();
     const variant = PIKA_VARIANTS[Math.floor(Math.random()*PIKA_VARIANTS.length)];
     const pika = document.createElement('button');
     pika.type='button'; pika.className='pika-hidden'; pika.title=''; pika.setAttribute('aria-label','Verstecktes Sammelobjekt');
-    pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${120+(index%7)*67}px;width:28px;height:28px;padding:0;border:2px solid #facc15;border-radius:50%;background:#facc15;box-shadow:0 0 12px #facc15;cursor:pointer;opacity:.82;overflow:hidden;font-size:15px;display:flex;align-items:center;justify-content:center;`;
+    // Auf der Startseite liegt oben die Begrüßungskarte mit dem Banner — das Sammelobjekt landete
+    // dort teils direkt darüber und sah aus, als wäre es fest ins Banner eingebacken. Deshalb auf
+    // der Startseite mit größerem Grundabstand platzieren, damit es den Banner nicht überlappt.
+    const topBase = viewId==='home' ? 300 : 120;
+    pika.style.cssText=`position:absolute;z-index:20;right:${18+(index%4)*19}px;top:${topBase+(index%7)*67}px;width:28px;height:28px;padding:0;border:2px solid #facc15;border-radius:50%;background:#facc15;box-shadow:0 0 12px #facc15;cursor:pointer;opacity:.82;overflow:hidden;font-size:15px;display:flex;align-items:center;justify-content:center;`;
     pika.innerHTML = variant.img
       ? `<img src="${variant.img}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:50%;">`
       : variant.emoji;
@@ -10863,32 +10766,6 @@ renderHomeGreeting();
     view.appendChild(pika);
   }
 })();
-/* ==================================================== ZAHLENRATEN ==================================================== */
-function openNumberGuessGame(){
-  return new Promise(resolve=>{
-    let modal=document.getElementById('number-guess-modal');
-    if(!modal){
-      modal=document.createElement('div');
-      modal.id='number-guess-modal';
-      modal.className='custom-alert-backdrop';
-      document.body.appendChild(modal);
-    }
-    const close=()=>{ modal.classList.add('hidden'); resolve(null); };
-    modal.innerHTML=`<div class="custom-alert-box" style="max-width:430px;text-align:center;" onclick="event.stopPropagation();">
-      <button class="member-modal-close" aria-label="Schließen">✕</button>
-      <div class="custom-alert-icon">🔢</div>
-      <div class="setup-step-title" style="font-size:1.35rem;">Zahlenraten</div>
-      <p>Wähle deine Glückszahl. Triffst du die geheime Zahl von 1 bis 10, bekommst du sofort <strong style="color:var(--turquoise)">+3 Punkte</strong>.</p>
-      <div class="number-guess-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:9px;margin:18px 0;">${Array.from({length:10},(_,i)=>`<button class="filter-pill" data-number="${i+1}" style="min-height:46px;justify-content:center;font-size:1.05rem;">${i+1}</button>`).join('')}</div>
-      <div class="setup-info" style="margin:0;">Ein Versuch pro Karte.</div>
-    </div>`;
-    modal.classList.remove('hidden');
-    modal.onclick=e=>{ if(e.target===modal) close(); };
-    modal.querySelector('.member-modal-close').onclick=close;
-    modal.querySelectorAll('[data-number]').forEach(button=>button.onclick=()=>{ modal.classList.add('hidden'); resolve(Number(button.dataset.number)); });
-  });
-}
-
 /* ==================================================== MITTEILUNGSZENTRUM ==================================================== */
 let messageCenterChannel = null;
 let messageCenterItems = [];
