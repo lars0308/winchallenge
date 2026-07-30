@@ -2629,14 +2629,42 @@ function renderModeCarousel(){
     }
   }
 }
+function applyTeamGroupDefaults(isPublic, maxPlayers){
+  if(!myTeam || !sb) return;
+  const patch = {};
+  if(myTeam.is_public !== isPublic){ myTeam.is_public = isPublic; patch.is_public = isPublic; }
+  if(myTeam.max_players !== maxPlayers){ myTeam.max_players = maxPlayers; patch.max_players = maxPlayers; }
+  if(Object.keys(patch).length) sb.from('teams').update(patch).eq('id', myTeam.id).then(()=>{});
+}
 function selectTeamModePreset(id){
   teamModePreset = id;
-  if(id==='classic'){ teamRoundScope='games'; teamRoundSessionModeChoice='challenge'; teamRoundClassicMode=true; teamRoundDifficulty='Mittel'; teamRoundSabotageAllowed=true; }
-  else if(id==='volatile'){ teamRoundScope='rounds'; teamRoundSessionModeChoice='chaos'; teamRoundClassicMode=false; teamRoundDifficulty='Schwer'; }
+  if(id==='classic'){
+    // "Classic": dieselben Standard-Einstellungen wie unten, nur mit "Punkte zählen bei Sieg" an.
+    teamRoundScope='games'; teamRoundModeChoice='team'; teamRoundRandomOrder=false; teamRoundSessionModeChoice='challenge';
+    teamRoundClassicMode=true; teamRoundDifficulty='Mittel'; teamRoundFunChallenges=false; teamRoundCommunityChallenges=false;
+    teamRoundSabotageAllowed=true; teamRoundSabotageLimit=3; teamRoundUseHeroFavorites=false;
+    applyTeamGroupDefaults(true, 6);
+  }
+  else if(id==='volatile'){
+    // "Hier habe ich noch keinen Namen" (Durcheinander-artiger Modus).
+    teamRoundScope='rounds'; teamRoundModeChoice='versus'; teamRoundCount=2; teamRoundSessionModeChoice='chaos';
+    teamRoundClassicMode=false; teamRoundFunChallenges=true; teamRoundCommunityChallenges=true;
+    teamRoundSabotageAllowed=true; teamRoundSabotageLimit=5; teamRoundDifficulty='Schwer';
+    applyTeamGroupDefaults(false, 10);
+  }
   else if(id==='chaos'){ teamRoundScope='rounds'; teamRoundSessionModeChoice='chaos'; teamRoundClassicMode=false; teamRoundDifficulty='Mittel'; }
-  else if(id==='blitz'){ teamRoundScope='blitz'; teamRoundClassicMode=false; }
-  else if(id==='points'){ teamRoundScope='points'; teamRoundClassicMode=false; teamRoundDifficulty='Mittel'; if(!teamRoundPointGoalChoice) teamRoundPointGoalChoice=250; }
-  else if(id==='matchOrRounds'){ teamRoundScope = (teamRoundScope==='match') ? 'match' : 'rounds'; teamRoundClassicMode=false; teamRoundDifficulty='Mittel'; }
+  else if(id==='blitz'){
+    teamRoundScope='blitz'; teamRoundClassicMode=false; teamRoundBlitzSeconds=60; teamRoundDifficulty='Mittel';
+    teamRoundSabotageAllowed=true; teamRoundFunChallenges=false; teamRoundCommunityChallenges=false;
+    applyTeamGroupDefaults(true, myTeam?myTeam.max_players:10);
+  }
+  else if(id==='points'){
+    teamRoundScope='points'; teamRoundPointGoalChoice=250; teamRoundRandomOrder=true; teamRoundsPerGame=1;
+    teamRoundModeChoice='team'; teamRoundClassicMode=false; teamRoundCommunityChallenges=true; teamRoundFunChallenges=false;
+    teamRoundDifficulty='Mittel'; teamRoundSabotageAllowed=true; teamRoundSabotageLimit=3;
+    applyTeamGroupDefaults(false, 10);
+  }
+  else if(id==='matchOrRounds'){ teamRoundScope = (teamRoundScope==='match') ? 'match' : 'rounds'; teamRoundClassicMode=false; teamRoundDifficulty='Mittel'; teamRoundCount=2; }
   // 'free' lässt die zuletzt gewählte Ablauf-Einstellung unverändert — die Feineinstellung darunter übernimmt.
   renderTeamRoundPicker();
 }
@@ -2920,10 +2948,18 @@ function renderTeamRoundPicker(){
     for(let rep=0; rep<3; rep++){ SESSION_GAMES.forEach(id=>gameRow.appendChild(buildCard(id))); }
     if(!gameRow.dataset.scrollBound){
       gameRow.dataset.scrollBound = '1';
-      let scrollTimer=null;
+      let ticking = false, wrapTimer = null;
       gameRow.addEventListener('scroll', ()=>{
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(()=>{ updateGameRouletteCentering(gameRow); wrapGameRouletteScroll(gameRow); }, 90);
+        // Zentrierung (Skalierung/Deckkraft der Karten) läuft jetzt live per requestAnimationFrame
+        // mit, statt erst 90ms nach Scroll-Ende — fühlt sich beim Ziehen/Wischen viel flüssiger an.
+        // Der endlose-Loop-Sprung (wrapGameRouletteScroll) bleibt bewusst debounced, da er die
+        // Scroll-Position hart versetzt und mitten im Wischen stören würde.
+        if(!ticking){
+          ticking = true;
+          requestAnimationFrame(()=>{ updateGameRouletteCentering(gameRow); ticking = false; });
+        }
+        clearTimeout(wrapTimer);
+        wrapTimer = setTimeout(()=>{ wrapGameRouletteScroll(gameRow); }, 120);
       });
     }
     window.setTimeout(()=>{
@@ -3297,7 +3333,7 @@ async function startTeamRound(skipReadyCheck){
   // gelten dann von Anfang an als "haben ihren Helden schon gesehen", und es geht direkt und
   // nahtlos mit den neuen Challenges weiter.
   const heroRevealedAtStart = canReuseLockedHeroes ? memberIds : null;
-  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById, hero_revealed: heroRevealedAtStart, left_players: waitingMemberIds, classic_mode: mode==='team' ? teamRoundClassicMode : false }).select().single();
+  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById, hero_revealed: heroRevealedAtStart, left_players: waitingMemberIds, classic_mode: mode==='team' ? teamRoundClassicMode : false, blitz_deadline: teamRoundScope==='blitz' ? new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString() : null }).select().single();
   if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
 
   let items = [];
@@ -3502,28 +3538,48 @@ function renderSabotagePanel(){
   const others = teamMembers.filter(m=>m.user_id !== currentUser.id);
   const s = statsStore[currentUser.username];
   const owned = (s && s.shopOwned && s.shopOwned.sabotage) || {};
-  const mirrorReady = (currentRound.mirror_holders||[]).includes(currentUser.id);
-  const mirrorNote = mirrorReady ? `<p class="setup-info" style="margin:0 0 14px;text-align:left;color:var(--turquoise-bright);">🪞 Euer Spiegel ist aktiv — die nächste Sabotage gegen euch trifft automatisch stattdessen den Angreifer.</p>` : '';
+  const mirrorInLoadout = (sabotageLoadout['mirror']||0) > 0 && (owned['mirror']||0) > 0;
+  const mirrorArmed = (currentRound.mirror_holders||[]).includes(currentUser.id);
   // In der laufenden Runde sind NUR die im Loadout mitgenommenen Items einsetzbar — so kann
   // niemand mitten in der Runde nachkaufen und sofort einsetzen. Modus-gebundene Items
-  // erscheinen nur, wenn der aktuelle Runden-Modus passt.
-  const available = SHOP_SABOTAGE.filter(item => (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode) && !item.passive);
-  if(!available.length){
-    return mirrorNote;
+  // erscheinen nur, wenn der aktuelle Runden-Modus passt. Spiegel läuft separat (Ja/Nein-Schalter
+  // statt "einsetzen", siehe unten), daher hier ausgeschlossen.
+  const available = SHOP_SABOTAGE.filter(item => item.id!=='mirror' && (sabotageLoadout[item.id]||0) > 0 && (owned[item.id]||0) > 0 && (!item.mode || item.mode === currentRound.mode));
+  if(!available.length && !mirrorInLoadout){
+    return '';
   }
   // Wer mit einer Joker-Sperre belegt wurde, darf diese Runde gar keine Vorteile/Sabotagen mehr
   // einsetzen — die Buttons bleiben sichtbar, aber sichtbar deaktiviert, statt einfach zu verschwinden.
   const isLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
   const dis = isLocked ? 'disabled style="opacity:.4;cursor:not-allowed;"' : '';
-  let html = mirrorNote + `<details class="hero-avatar-group" data-persist-open="use-benefits" style="margin-top:0;margin-bottom:14px;border-color:var(--lose);"${persistentDetailsOpen.has('use-benefits')?' open':''}><summary style="font-size:0.95rem;padding:10px 14px;">🎯 Vorteil einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:0 12px 12px;">`;
+  let html = `<details class="hero-avatar-group" data-persist-open="use-benefits" style="margin-top:0;margin-bottom:14px;border-color:var(--lose);"${persistentDetailsOpen.has('use-benefits')?' open':''}><summary style="font-size:0.95rem;padding:10px 14px;">🎯 Vorteil einsetzen (${loadoutTotal()} übrig)</summary><div style="padding:0 12px 12px;">`;
   if(isLocked){
     html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;color:var(--lose);">🙅 Ihr wurdet mit einer Joker-Sperre sabotiert — diese Runde könnt ihr keine Vorteile oder Sabotagen mehr einsetzen.</p>`;
   }
-  html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;">Karte antippen: Wirkung ansehen und danach Ziel bzw. Aufgabe wählen.</p><div class="filter-row">`;
-  available.forEach(item=>{ html += `<button class="filter-pill" ${dis} onclick="openBenefitUsePopup('${item.id}')">${item.icon} ${item.label}</button>`; });
-  html += `</div>`;
+  if(mirrorInLoadout){
+    html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;">🪞 Spiegel: Für diese Runde aktivieren? Ist er an, trifft eine Sabotage gegen euch stattdessen automatisch den Angreifer.</p><div class="filter-row" style="margin-bottom:14px;">
+      <button class="filter-pill${mirrorArmed?' active':''}" ${dis} onclick="setMirrorArmed(true)">✅ Ja, aktiv</button>
+      <button class="filter-pill${!mirrorArmed?' active':''}" ${dis} onclick="setMirrorArmed(false)">❌ Nein, aus</button>
+    </div>`;
+  }
+  if(available.length){
+    html += `<p class="setup-info" style="margin:6px 0 10px;text-align:left;">Karte antippen: Wirkung ansehen und danach Ziel bzw. Aufgabe wählen.</p><div class="filter-row">`;
+    available.forEach(item=>{ html += `<button class="filter-pill" ${dis} onclick="openBenefitUsePopup('${item.id}')">${item.icon} ${item.label}</button>`; });
+    html += `</div>`;
+  }
   html += `</div></details>`;
   return html;
+}
+async function setMirrorArmed(armed){
+  if(!currentRound || !currentUser || !sb) return;
+  const list = new Set(currentRound.mirror_holders || []);
+  if(armed) list.add(currentUser.id); else list.delete(currentUser.id);
+  currentRound.mirror_holders = Array.from(list); // optimistisch, damit der Klick sofort sichtbar reagiert
+  renderTeamPage();
+  try{
+    const { error } = await sb.from('game_rounds').update({ mirror_holders: Array.from(list) }).eq('id', currentRound.id);
+    if(error) console.error('Spiegel-Status konnte nicht gespeichert werden:', error);
+  }catch(e){ console.error(e); }
 }
 function openBenefitUsePopup(itemId){
   if(!currentRound || !currentUser) return;
@@ -3545,24 +3601,6 @@ function openBenefitUsePopup(itemId){
   else choices=others.length ? `<p class="setup-info" style="margin:4px 0 8px;">Ziel auswählen</p><div class="filter-row">${others.map(m=>`<button class="filter-pill" onclick="${close}${item.id==='spy_glass'?`openSpyExchangePicker('${m.user_id}')`:`useSabotageItem('${item.id}','${m.user_id}')`}">${renderAccountAvatarHTML(m.avatar,18)} <span>${m.username}</span></button>`).join('')}</div>` : '<div class="empty-hint">Kein mögliches Ziel in dieser Runde.</div>';
   modal.innerHTML=`<div class="member-modal-card" onclick="event.stopPropagation();" style="max-width:620px;"><button class="member-modal-close" onclick="${close}">✕</button><div class="setup-step-head" style="justify-content:center;"><span class="setup-step-icon">${item.icon}</span><div class="setup-step-title">${item.label}</div></div><p class="setup-info" style="margin:0 14px 18px;text-align:center;">${item.desc}</p><div style="padding:0 12px 8px;text-align:center;">${choices}</div></div>`;
   modal.classList.remove('hidden');
-}
-let teamMirrorSyncedFor = null; // Round-ID + Bring-Status, für den dieses Gerät seinen Spiegel-Stand schon gemeldet hat
-async function syncMirrorReadyState(){
-  if(!currentRound || !currentUser || !sb || currentRound.status !== 'active') return;
-  const s = statsStore[currentUser.username];
-  const owned = (s && s.shopOwned && s.shopOwned.sabotage && s.shopOwned.sabotage['mirror']) || 0;
-  const brought = (sabotageLoadout['mirror']||0) > 0 && owned > 0;
-  const syncKey = currentRound.id + ':' + brought;
-  if(teamMirrorSyncedFor === syncKey) return;
-  const already = (currentRound.mirror_holders||[]).includes(currentUser.id);
-  if(brought === already){ teamMirrorSyncedFor = syncKey; return; }
-  teamMirrorSyncedFor = syncKey;
-  const list = new Set(currentRound.mirror_holders || []);
-  if(brought) list.add(currentUser.id); else list.delete(currentUser.id);
-  try{
-    const { error } = await sb.from('game_rounds').update({ mirror_holders: Array.from(list) }).eq('id', currentRound.id);
-    if(!error) currentRound.mirror_holders = Array.from(list);
-  }catch(e){ console.error(e); }
 }
 async function openDeleteChallengePicker(){
   if(!currentRound || !currentUser) return;
@@ -4265,7 +4303,41 @@ function renderTeamRoundHeader(){
   <div class="scoreboard-head" style="margin-bottom:14px;">
     <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
     <div class="scoreboard-actions">${hasPikachuSound()?'<button class="header-menu-btn" onclick="sendPikachuGroupSound()" title="Pikachu-Sound für die Gruppe">⚡</button>':''}${renderTeamChatIconAction()}${hostMenu}${memberLeaveMenu}</div>
-  </div>`;
+  </div>
+  ${currentRound.scope==='blitz' && currentRound.blitz_deadline ? `<div class="blitz-timer-bar" id="blitz-timer-bar" data-deadline="${currentRound.blitz_deadline}"><span id="blitz-timer-text">⏱️ --:--</span>${isHost?'<button class="header-menu-btn" id="blitz-timer-reroll-btn" style="display:none;" onclick="rerollBlitzChallengesNow()">🔁 Timer neu starten</button>':''}</div>` : ''}`;
+}
+// Blitzrunde: läuft alle 1s, unabhängig davon welcher Screen gerade aktiv ist — findet die
+// Timer-Anzeige nur, wenn sie gerade im DOM ist (Rundenkopf), sonst passiert nichts.
+setInterval(()=>{
+  const bar = document.getElementById('blitz-timer-bar');
+  if(!bar) return;
+  const deadline = new Date(bar.dataset.deadline).getTime();
+  const remainMs = deadline - Date.now();
+  const textEl = document.getElementById('blitz-timer-text');
+  const rerollBtn = document.getElementById('blitz-timer-reroll-btn');
+  if(remainMs <= 0){
+    if(textEl) textEl.textContent = '⏰ Zeit abgelaufen!';
+    if(rerollBtn) rerollBtn.style.display = 'inline-flex';
+    return;
+  }
+  if(rerollBtn) rerollBtn.style.display = 'none';
+  const totalSec = Math.ceil(remainMs/1000);
+  const mm = String(Math.floor(totalSec/60)).padStart(2,'0');
+  const ss = String(totalSec%60).padStart(2,'0');
+  if(textEl) textEl.textContent = `⏱️ ${mm}:${ss}`;
+}, 1000);
+// Host-Aktion, wenn die Blitzrunden-Zeit abgelaufen ist: startet den Timer für die nächste
+// Zeitscheibe neu. Zieht bewusst noch KEINE neuen Challenges automatisch — das würde entweder das
+// Joker-Kontingent der Spieler unbemerkt verbrauchen (executePersonalChallengeJoker/
+// executeTeamChallengeJoker sind für spielerausgelöste Rerolls gedacht) oder eine eigene,
+// ungetestete Kopie der Reroll-Logik nötig machen. Bis das sauber gebaut ist, zieht jede:r bei
+// Bedarf manuell per Joker neu.
+async function rerollBlitzChallengesNow(){
+  if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
+  const nextDeadline = new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString();
+  await sb.from('game_rounds').update({ blitz_deadline: nextDeadline }).eq('id', currentRound.id);
+  currentRound.blitz_deadline = nextDeadline;
+  renderTeamPage();
 }
 function extendTeamCampaign(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
@@ -4465,7 +4537,6 @@ function renderTeamRoundSection(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
   if(!currentRound) return '';
   const header = renderTeamRoundHeader();
-  syncMirrorReadyState();
 
   const myHero = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
   // Server (hero_revealed) ist die alleinige Quelle der Wahrheit dafür, ob DIESES Gerät den
@@ -7667,7 +7738,7 @@ async function startOnlineBlitzRound(gameId){
   const gmPool = GAME_MODES[gameId];
   teamRoundGameMode = gmPool ? gmPool[randInt(0, gmPool.length-1)].key : null;
   teamRoundDifficulty = 'Mittel';
-  teamRoundScope = 'rounds'; teamRoundCount = 1; teamCampaignIndex = 0; teamRoundHeroAssignment = null;
+  teamRoundScope = 'blitz'; teamCampaignIndex = 0; teamRoundHeroAssignment = null;
   teamSettingsOpen = false;
   blitzOnlineIntent = false;
   showView('team');
@@ -8465,7 +8536,7 @@ SHOP_SABOTAGE = [
   {id:'team_spirit', icon:'🤝', label:'Team-Geist', desc:'[Nur Team] Eine leichte Bonus-Challenge bringt 3 Punkte.', cost:90, selfOnly:true, mode:'team'},
   {id:'spy_glass', icon:'🔍', label:'Spionage', desc:'[Nur Jeder gegen Jeden] Sieh Aufgaben und tausche je eine Challenge.', cost:150, mode:'versus'},
   {id:'point_thief', icon:'🦝', label:'Punkte-Dieb', desc:'[Nur Jeder gegen Jeden] Stiehlt dem Zielspieler zufällig 1–10 Punkte — aus dieser Runde oder, falls nötig, aus seinem bereits verbuchten Guthaben aus vorigen Runden — und schreibt sie dir gut.', cost:230, mode:'versus'},
-  {id:'mirror', icon:'🪞', label:'Spiegel', desc:'[Team & Jeder gegen Jeden] Passiv: Nehmt ihr diesen mit, trifft eine gegen euch eingesetzte Sabotage stattdessen automatisch den Angreifer — kein Knopf zum Einsetzen. Wird dabei verbraucht. Maximal 1 auf Lager.', cost:500, passive:true, maxOwned:1},
+  {id:'mirror', icon:'🪞', label:'Spiegel', desc:'[Team & Jeder gegen Jeden] Aktiv: Schalte den Spiegel für diese Runde ein oder aus. Ist er an, trifft eine gegen euch eingesetzte Sabotage stattdessen automatisch den Angreifer — wird dabei verbraucht. Maximal 1 auf Lager.', cost:500, maxOwned:1},
 ];
 shopSelectedPlayer = null;
 // Einheitliches Shop-Guthaben: EIN Feld (s.coins), das direkt bei jeder Aktion addiert/subtrahiert
