@@ -1927,7 +1927,7 @@ function handleRemovedFromTeam(){
   showHome();
   showAlert('Du wurdest aus der Gruppe entfernt.');
 }
-let currentRound = null, roundItems = [], roundVotes = {}, teamRoundGameChoice = null, teamRoundModeChoice = 'versus', teamRoundSessionModeChoice = 'challenge';
+let currentRound = null, roundItems = [], roundVotes = {}, teamRoundGameChoice = null, teamRoundModeChoice = 'team', teamRoundSessionModeChoice = 'challenge';
 let teamRoundClassicMode = false; // "WinChallenge Classic": Challenge-Punkte zählen nur, wenn das Match/die Runde am Ende auch als Sieg markiert wurde (nur Team-Modus)
 let teamRoundDifficulty = 'Mittel';
 let teamRoundSabotageLimit = 3; // Host-Einstellung: wie viele Vorteile/Sabotagen darf jeder pro Runde/Match mitnehmen
@@ -2738,6 +2738,19 @@ function openTeamSessionModeMenu(){
     label: it.label, active: it.key===teamRoundSessionModeChoice, onClick: ()=>{ teamRoundSessionModeChoice = it.key; renderTeamRoundPicker(); }
   })));
 }
+function openTeamPointGoalMenu(){
+  openValueMenuModal('🎯','Punkteziel', [
+    {key:100,label:'100'},{key:250,label:'250'},{key:500,label:'500'},{key:'custom',label:'Eigenes'}
+  ].map(it=>({
+    label: it.label, active: it.key===teamRoundPointGoalChoice, onClick: ()=>{ teamRoundPointGoalChoice = it.key; renderTeamRoundPicker(); }
+  })));
+}
+function openTeamClassicModeMenu(){
+  openValueMenuModal('🏆','WinChallenge Classic', [
+    {label:'Aus', active: !teamRoundClassicMode, onClick: ()=>{ teamRoundClassicMode=false; renderTeamRoundPicker(); }},
+    {label:'An', active: !!teamRoundClassicMode, onClick: ()=>{ teamRoundClassicMode=true; renderTeamRoundPicker(); }},
+  ]);
+}
 function openTeamGamesOrderMenu(){
   openValueMenuModal('🔀','Reihenfolge', [
     {label:'🔀 Zufällig', active: !!teamRoundRandomOrder, onClick: ()=>{ teamRoundRandomOrder=true; renderTeamRoundPicker(); }},
@@ -2973,17 +2986,8 @@ function renderTeamRoundPicker(){
   if(pgWrap){
     pgWrap.style.display = teamRoundScope==='points' ? 'block' : 'none';
     if(teamRoundScope==='points'){
-      const pgRow = document.getElementById('team-round-pointgoal-picker');
-      if(pgRow){
-        pgRow.innerHTML = '';
-        [{key:100,label:'100'},{key:250,label:'250'},{key:500,label:'500'},{key:'custom',label:'Eigenes'}].forEach(it=>{
-          const btn = document.createElement('button');
-          btn.className = 'filter-pill'+(it.key===teamRoundPointGoalChoice?' active':'');
-          btn.textContent = it.label;
-          btn.addEventListener('click', ()=>{ teamRoundPointGoalChoice = it.key; renderTeamRoundPicker(); });
-          pgRow.appendChild(btn);
-        });
-      }
+      const pgValue = document.getElementById('team-round-pointgoal-value');
+      if(pgValue) pgValue.innerHTML = `${teamRoundPointGoalChoice==='custom' ? 'Eigenes' : teamRoundPointGoalChoice} <span class="chev">›</span>`;
       const customWrap = document.getElementById('team-round-pointgoal-custom-wrap');
       if(customWrap) customWrap.style.display = teamRoundPointGoalChoice==='custom' ? 'flex' : 'none';
       const customInput = document.getElementById('team-round-pointgoal-custom');
@@ -2991,9 +2995,9 @@ function renderTeamRoundPicker(){
     }
   }
   const orderValue = document.getElementById('team-round-games-order-value');
-  if(orderValue) orderValue.innerHTML = teamRoundRandomOrder ? `Zufällig 🔀 <span class="chev">›</span>` : `Auswahl-Reihenfolge 📋 <span class="chev">›</span>`;
+  if(orderValue) orderValue.innerHTML = teamRoundRandomOrder ? `Zufällig <span class="chev">›</span>` : `Auswahl-Reihenfolge <span class="chev">›</span>`;
   const roundsPerValue = document.getElementById('team-round-games-roundsper-value');
-  if(roundsPerValue) roundsPerValue.innerHTML = teamRoundsPerGame==='random' ? `🎲 Zufällig (1-3) <span class="chev">›</span>` : `${teamRoundsPerGame} <span class="chev">›</span>`;
+  if(roundsPerValue) roundsPerValue.innerHTML = teamRoundsPerGame==='random' ? `Zufällig (1-3) <span class="chev">›</span>` : `${teamRoundsPerGame} <span class="chev">›</span>`;
   const gamesModesWrap = document.getElementById('team-round-games-modes-wrap');
   if(gamesModesWrap){
     gamesModesWrap.innerHTML = '';
@@ -3005,26 +3009,17 @@ function renderTeamRoundPicker(){
       const row = document.createElement('div');
       row.className = 'settings-value-row';
       row.style.marginTop = '8px';
-      row.innerHTML = `<span class="settings-value-left"><span>🕹️</span><span>Modus für ${gameIconHTML(id,16)} ${GAME_NAME[id]}</span></span><span class="settings-value-current">${gm?gm.label:''} <span class="chev">›</span></span>`;
+      row.innerHTML = `<span class="settings-value-left"><span>Modus für ${GAME_NAME[id]}</span></span><span class="settings-value-current">${gm?gm.label:''} <span class="chev">›</span></span>`;
       row.addEventListener('click', ()=>openTeamGameModeForGameMenu(id));
       gamesModesWrap.appendChild(row);
     });
   }
   const modeValue = document.getElementById('team-round-mode-value');
-  if(modeValue) modeValue.innerHTML = teamRoundModeChoice==='versus' ? `Jeder gegen Jeden ⚔️ <span class="chev">›</span>` : `Team 🤝 <span class="chev">›</span>`;
+  if(modeValue) modeValue.innerHTML = teamRoundModeChoice==='versus' ? `Jeder gegen Jeden <span class="chev">›</span>` : `Team <span class="chev">›</span>`;
   const classicStep = document.getElementById('team-round-classic-step');
   if(classicStep) classicStep.style.display = teamRoundModeChoice==='team' ? 'block' : 'none';
-  const classicRow = document.getElementById('team-round-classic-picker');
-  if(classicRow){
-    classicRow.innerHTML = '';
-    [{key:false,label:'Aus'},{key:true,label:'🏆 An'}].forEach(it=>{
-      const btn = document.createElement('button');
-      btn.className = 'filter-pill'+(it.key===teamRoundClassicMode?' active':'');
-      btn.textContent = it.label;
-      btn.addEventListener('click', ()=>{ teamRoundClassicMode = it.key; renderTeamRoundPicker(); });
-      classicRow.appendChild(btn);
-    });
-  }
+  const classicValue = document.getElementById('team-round-classic-value');
+  if(classicValue) classicValue.innerHTML = teamRoundClassicMode ? `An <span class="chev">›</span>` : `Aus <span class="chev">›</span>`;
   const smValue = document.getElementById('team-round-sessionmode-value');
   if(smValue) smValue.innerHTML = teamRoundSessionModeChoice==='chaos' ? `Chaos 🌀 <span class="chev">›</span>` : `Challenge 🎯 <span class="chev">›</span>`;
   const funToggle = document.getElementById('team-round-funchallenges-toggle');
@@ -5040,36 +5035,41 @@ function renderTeamSettingsScreen(){
     <div class="settings-card settings-list team-settings-stage" data-wizard-stage="3">
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-gamesmulti-step" style="display:none;">
       <div id="team-round-pointgoal-wrap" style="display:none;">
-        <div class="setup-info" style="margin-top:0;margin-bottom:4px;">🎯 Punkteziel</div>
-        <div class="filter-row" id="team-round-pointgoal-picker"></div>
+        <div class="settings-value-row" onclick="openTeamPointGoalMenu()">
+          <span class="settings-value-left"><span>Punkteziel</span></span>
+          <span class="settings-value-current" id="team-round-pointgoal-value"></span>
+        </div>
         <div class="setup-form-row" id="team-round-pointgoal-custom-wrap" style="display:none;margin-top:8px;">
           <input type="number" min="1" id="team-round-pointgoal-custom" style="width:100px;" oninput="teamRoundCustomGoalValue=parseInt(this.value)||300; renderTeamRoundPicker();">
           <span class="setup-info" style="margin:0;">Punkte</span>
         </div>
       </div>
-      <div class="settings-value-row" onclick="openTeamGamesOrderMenu()">
-        <span class="settings-value-left"><span>🔀</span><span>Reihenfolge</span></span>
+      <div class="settings-value-row" style="margin-top:8px;" onclick="openTeamGamesOrderMenu()">
+        <span class="settings-value-left"><span>Reihenfolge</span></span>
         <span class="settings-value-current" id="team-round-games-order-value"></span>
       </div>
       <div class="settings-value-row" style="margin-top:8px;" onclick="openTeamRoundsPerGameMenu()">
-        <span class="settings-value-left"><span>🔁</span><span>Runden pro Spiel</span></span>
+        <span class="settings-value-left"><span>Runden pro Spiel</span></span>
         <span class="settings-value-current" id="team-round-games-roundsper-value"></span>
       </div>
       <div id="team-round-games-modes-wrap"></div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-mode-card">
       <div class="settings-value-row" onclick="openTeamModeMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🤝</span><span>Spielmodus</span></span>
+        <span class="settings-value-left"><span>Spielmodus</span></span>
         <span class="settings-value-current" id="team-round-mode-value"></span>
       </div>
       <div id="team-round-classic-step" style="display:none;">
-        <div class="setup-info" style="margin-top:14px;margin-bottom:4px;">🏆 WinChallenge Classic — Challenge-Punkte zählen nur bei Sieg</div>
-        <div class="filter-row" id="team-round-classic-picker"></div>
+        <div class="settings-value-row" style="margin-top:14px;" onclick="openTeamClassicModeMenu()">
+          <span class="settings-value-left"><span>WinChallenge Classic</span></span>
+          <span class="settings-value-current" id="team-round-classic-value"></span>
+        </div>
+        <p class="setup-info" style="margin:8px 0 0;">Challenge-Punkte zählen nur bei Sieg.</p>
       </div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-count-step" style="display:none;">
       <div class="settings-value-row" onclick="openTeamCountMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🔁</span><span id="team-round-count-title">Anzahl Runden</span></span>
+        <span class="settings-value-left"><span id="team-round-count-title">Anzahl Runden</span></span>
         <span class="settings-value-current" id="team-round-count-value"></span>
       </div>
     </div>
@@ -5080,38 +5080,38 @@ function renderTeamSettingsScreen(){
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-gamemode-step">
       <div class="settings-value-row" onclick="openTeamGameModeMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🕹️</span><span>Ingame-Modus</span></span>
+        <span class="settings-value-left"><span>Ingame-Modus</span></span>
         <span class="settings-value-current" id="team-round-gamemode-value"></span>
       </div>
       <div class="setup-info" id="team-round-gamemode-desc" style="margin-top:8px;"></div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-difficulty-step">
       <div class="settings-value-row" onclick="openTeamDifficultyMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">📊</span><span>Schwierigkeit</span></span>
+        <span class="settings-value-left"><span>Schwierigkeit</span></span>
         <span class="settings-value-current" id="team-round-difficulty-value"></span>
       </div>
       <div class="filter-row" id="team-round-difficulty-picker" style="display:none;"></div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-sessionmode-card">
       <div class="settings-value-row" onclick="openTeamSessionModeMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🌀</span><span>Spielart</span></span>
+        <span class="settings-value-left"><span>Spielart</span></span>
         <span class="settings-value-current" id="team-round-sessionmode-value"></span>
       </div>
       <div class="settings-value-row" style="margin-top:14px;" onclick="openTeamFunChallengesMenu()">
-        <span class="settings-value-left"><span>🎭</span><span>Persönlichkeits-Challenges</span></span>
+        <span class="settings-value-left"><span>Persönlichkeits-Challenges</span></span>
         <span class="settings-value-current" id="team-round-funchallenges-toggle"></span>
       </div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-community-card">
       <div class="settings-value-row" onclick="openTeamCommunityChallengesMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">📖</span><span>Community Challenges</span></span>
+        <span class="settings-value-left"><span>Community Challenges</span></span>
         <span class="settings-value-current" id="team-round-communitychallenges-toggle"></span>
       </div>
       <p class="setup-info" style="margin:8px 0 0;">Freigegebene Vorschläge aus der Community für das gewählte Spiel beimischen.</p>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-sabotagelimit-step">
       <div class="settings-value-row" onclick="openTeamSabotageAllowedMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🎯</span><span>Vorteile / Sabotagen</span></span>
+        <span class="settings-value-left"><span>Vorteile / Sabotagen</span></span>
         <span class="settings-value-current" id="team-round-sabotageallowed-value"></span>
       </div>
       <div id="team-round-sabotagelimit-wrap">
@@ -5128,13 +5128,13 @@ function renderTeamSettingsScreen(){
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-herofavorites-step">
       <div class="settings-value-row" onclick="openTeamHeroFavoritesMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">⭐</span><span>Heldenfavoriten</span></span>
+        <span class="settings-value-left"><span>Heldenfavoriten</span></span>
         <span class="settings-value-current" id="team-round-herofavorites-value"></span>
       </div>
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-privacy-step">
       <div class="settings-value-row" onclick="openTeamPrivacyMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">🌐</span><span>Gruppe</span></span>
+        <span class="settings-value-left"><span>Gruppe</span></span>
         <span class="settings-value-current" id="team-round-privacy-value"></span>
       </div>
       <p class="setup-info" style="margin:8px 0 0;">Öffentlich = andere können eure Lobby ohne Code finden und beitreten (siehe Teams → 🌐 Öffentlich suchen).</p>
@@ -5142,7 +5142,7 @@ function renderTeamSettingsScreen(){
     </div>
     <div class="settings-list-row team-settings-stage" data-wizard-stage="3" id="team-round-maxplayers-step">
       <div class="settings-value-row" onclick="openTeamMaxPlayersMenu()">
-        <span class="settings-value-left"><span class="setup-step-icon">👥</span><span>Spieleranzahl (max.)</span></span>
+        <span class="settings-value-left"><span>Spieleranzahl (max.)</span></span>
         <span class="settings-value-current" id="team-round-maxplayers-value"></span>
       </div>
       <div class="filter-row" id="team-round-maxplayers-picker" style="display:none;"></div>
