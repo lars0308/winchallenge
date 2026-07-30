@@ -294,7 +294,7 @@ async function renderFriendsPage(options={}){
   const listEl = document.getElementById('friends-list');
   if(!quiet && !listEl.children.length) listEl.innerHTML = '<div class="empty-hint">Lädt…</div>';
   try{
-    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar, last_active, bio, favorite_game, preferred_role, preferred_mode, skill_level, stats, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame)').eq('user_id', currentUser.id);
+    const { data, error } = await sb.from('friendships').select('friend_id, profiles!friendships_friend_id_fkey(id, username, avatar, last_active, bio, favorite_game, preferred_role, preferred_mode, skill_level, stats, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, is_admin)').eq('user_id', currentUser.id);
     if(error) throw error;
     myFriendIds = new Set((data||[]).map(f=>f.friend_id));
     if(!data || !data.length){
@@ -322,7 +322,7 @@ async function renderFriendsPage(options={}){
         // bannerStyleFor() auch für Freunde außerhalb der eigenen Gruppe funktionieren — vorher
         // blieb das Banner auf der Freunde-Seite leer, weil der Cache nur beim Laden von
         // Team-Mitgliedern befüllt wurde.
-        remoteCosmeticsCache[p.username] = { badge: p.equipped_badge, hat: p.equipped_hat, banner: p.equipped_banner, glow: p.equipped_glow, frame: p.equipped_frame };
+        remoteCosmeticsCache[p.username] = { badge: p.equipped_badge, hat: p.equipped_hat, banner: p.equipped_banner, glow: p.equipped_glow, frame: p.equipped_frame, is_admin: !!p.is_admin };
         const friendBanner = cosmeticsFor(p.username).banner;
         const friendBadge = cosmeticsFor(p.username).badge;
         // Freunde, die schon in der aktuellen Gruppe sind, lassen sich nicht nochmal einladen —
@@ -339,7 +339,7 @@ async function renderFriendsPage(options={}){
           : `<span class="friend-activity">${onlineDotHTML(p.last_active,true)}</span>`;
         html += `<div class="chip readonly member-clickable friend-chip${bannerClassFor(friendBanner)}" style="width:100%;box-sizing:border-box;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;${friendBanner?bannerStyleFor(friendBanner):''}" onclick="showFriendProfile('${p.id}')" title="Profil von ${p.username} ansehen">
           ${bannerImgTagHTML(friendBanner)}
-          <span class="friend-primary" style="position:relative;z-index:2;">${renderAccountAvatarHTML(p.avatar,38)}<span class="friend-identity"><span class="friend-name-line">${badgeIconHTML(friendBadge)}${glowNameHTML(p.username,p.username)} ${onlineDotHTML(p.last_active,false)}</span>${activity}</span></span>
+          <span class="friend-primary" style="position:relative;z-index:2;">${renderAccountAvatarHTML(p.avatar,38)}<span class="friend-identity"><span class="friend-name-line">${isAdminByUsername(p.username)?'<span class="admin-inline-tag">🛡️ Admin</span> ':''}${badgeIconHTML(friendBadge)}${glowNameHTML(p.username,p.username)} ${onlineDotHTML(p.last_active,false)}</span>${activity}</span></span>
           <span class="friend-actions" style="position:relative;z-index:2;margin-left:auto;">
             ${canInvite?`<button class="sb-btn friend-invite-btn" onclick="event.stopPropagation(); inviteFriendToTeam('${p.id}','${p.username}')">Einladen</button>`:(alreadyIn?'<span style="color:var(--text-faint);font-size:.75rem;">in Lobby</span>':'')}
             <button class="friend-remove-btn" onclick="event.stopPropagation(); openDmFromFriends('${p.id}','${messageEscape(p.username)}')" title="Chat mit ${messageEscape(p.username)}">💬</button>
@@ -1234,6 +1234,12 @@ async function loadMyFriendIds(){
     if(!error && data) myFriendIds = new Set(data.map(r=>r.friend_id));
   }catch(e){ console.error('Freundesliste konnte nicht geladen werden:', e); }
 }
+// Admin-Status nach Benutzername — für sich selbst aus currentUser, für alle anderen aus dem
+// geteilten Kosmetik-Cache (remoteCosmeticsCache), der jetzt is_admin mitführt.
+function isAdminByUsername(name){
+  if(currentUser && currentUser.username === name) return !!currentUser.is_admin;
+  return !!(remoteCosmeticsCache[name] && remoteCosmeticsCache[name].is_admin);
+}
 function cosmeticsFor(name){
   // Für den eigenen Account gilt immer der lokale statsStore als Quelle der Wahrheit — der wird
   // beim Ausrüsten SOFORT aktualisiert, während remoteCosmeticsCache erst nach einem Server-
@@ -1343,7 +1349,7 @@ function playerCosmeticCardHTML(username, avatarBit, suffix){
   // beides zusammen ergab einen zusätzlichen, hässlichen Rand um die eh schon bunte Banner-Karte.
   // Die 4 kostenlosen Grundfarben sind schlicht genug, dass ein Rahmen weiterhin dazu passt.
   const frameStyle = (c.banner && !c.banner.basic) ? '' : frameStyleFor(c.frame);
-  return `<span class="player-cosmetic-card${bannerClass}${c.banner?' has-banner':''}" style="${bannerStyle}${frameStyle}">${bannerImgTagHTML(c.banner)}<span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;">${avatarBit} ${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}${suffix||''}</span></span>`;
+  return `<span class="player-cosmetic-card${bannerClass}${c.banner?' has-banner':''}" style="${bannerStyle}${frameStyle}">${bannerImgTagHTML(c.banner)}<span style="position:relative;z-index:2;display:inline-flex;align-items:center;gap:6px;">${avatarBit} ${isAdminByUsername(username)?'<span class="admin-inline-tag">🛡️</span> ':''}${badgeIconHTML(c.badge)}${glowNameHTML(username,username)}${suffix||''}</span></span>`;
 }
 function glowNameHTML(name, displayText){
   const glow = cosmeticsFor(name).glow;
@@ -1689,13 +1695,13 @@ async function loadTeamsOverviewData(teamIds){
   const result = { members:{}, lastRound:{} };
   if(!sb || !teamIds.length) return result;
   const { data: memberRows } = await sb.from('team_members')
-    .select('team_id, user_id, ready, profiles(username, avatar, last_active, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame)')
+    .select('team_id, user_id, ready, profiles(username, avatar, last_active, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, is_admin)')
     .in('team_id', teamIds);
   (memberRows||[]).forEach(r=>{
     if(!r.profiles) return;
     if(!result.members[r.team_id]) result.members[r.team_id] = [];
     result.members[r.team_id].push({ user_id:r.user_id, ready:r.ready, username:r.profiles.username, avatar:r.profiles.avatar, last_active:r.profiles.last_active });
-    remoteCosmeticsCache[r.profiles.username] = { badge:r.profiles.equipped_badge, hat:r.profiles.equipped_hat, banner:r.profiles.equipped_banner, glow:r.profiles.equipped_glow, frame:r.profiles.equipped_frame };
+    remoteCosmeticsCache[r.profiles.username] = { badge:r.profiles.equipped_badge, hat:r.profiles.equipped_hat, banner:r.profiles.equipped_banner, glow:r.profiles.equipped_glow, frame:r.profiles.equipped_frame, is_admin: !!r.profiles.is_admin };
   });
   const { data: roundRows } = await sb.from('game_rounds')
     .select('team_id, game_id, status, created_at')
@@ -1849,7 +1855,7 @@ function stopTeamsListPolling(){
 let lastTeamMembersSignature = null;
 async function refreshTeamMembers(){
   if(!myTeam || !sb) return;
-  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, hero_favorites, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active, stats)').eq('team_id', myTeam.id).order('joined_at');
+  const { data, error } = await sb.from('team_members').select('id, user_id, ready, round_role, profiles(username, avatar, bio, favorite_game, preferred_role, skill_level, preferred_mode, hero_favorites, equipped_badge, equipped_hat, equipped_banner, equipped_glow, equipped_frame, last_active, stats, is_admin)').eq('team_id', myTeam.id).order('joined_at');
   let changed = true;
   if(!error && data){
     // Wenn wir selbst (noch) ein Team gesetzt haben, aber nicht mehr in der frisch geladenen
@@ -1868,7 +1874,7 @@ async function refreshTeamMembers(){
     const signature = JSON.stringify(data.map(r=>[r.id, r.ready, r.round_role, r.profiles && [
       r.profiles.username, r.profiles.avatar, r.profiles.bio, r.profiles.favorite_game, r.profiles.preferred_role,
       r.profiles.skill_level, r.profiles.preferred_mode, r.profiles.hero_favorites, r.profiles.equipped_badge, r.profiles.equipped_hat,
-      r.profiles.equipped_banner, r.profiles.equipped_glow, r.profiles.equipped_frame,
+      r.profiles.equipped_banner, r.profiles.equipped_glow, r.profiles.equipped_frame, r.profiles.is_admin,
     ]]));
     changed = signature !== lastTeamMembersSignature;
     lastTeamMembersSignature = signature;
@@ -1881,6 +1887,7 @@ async function refreshTeamMembers(){
       hero_favorites: r.profiles ? (r.profiles.hero_favorites || {}) : {},
       last_active: r.profiles ? r.profiles.last_active : null,
       stats: r.profiles ? r.profiles.stats : null,
+      is_admin: r.profiles ? !!r.profiles.is_admin : false,
     }));
     // Kosmetik (Banner/Abzeichen/Mütze/Leuchtname) für alle Mitglieder in den geteilten Cache legen,
     // damit jeder auf seinem eigenen Gerät die echten Vorlieben der anderen sieht, nicht nur seine eigenen lokalen Daten.
@@ -1889,6 +1896,7 @@ async function refreshTeamMembers(){
       remoteCosmeticsCache[r.profiles.username] = {
         badge: r.profiles.equipped_badge, hat: r.profiles.equipped_hat,
         banner: r.profiles.equipped_banner, glow: r.profiles.equipped_glow, frame: r.profiles.equipped_frame,
+        is_admin: !!r.profiles.is_admin,
       };
     });
   }
@@ -1948,6 +1956,8 @@ async function markHeroRevealedAtomically(roundId, userId){
 }
 let teamRoundRenderLocked = false; // true während das Roulette gerade dreht — verhindert, dass Polling/Realtime die Animation mitten drin abbricht
 let teamIdleReelCacheFor = null, teamIdleReelCacheHTML = ''; // Cache der Warte-Reel-Inhalte pro Runde, damit Polling sie nicht ständig neu mischelt
+let teamChaosSpinAngleFor = null, teamChaosSpinAngle = 0; // "Durcheinander": gewürfelter Dreh-Winkel, pro Runde stabil
+let teamChaosMidRerollScheduledFor = null; // Round-ID, für die der Mid-Round-Reroll schon eingeplant wurde
 let teamRoundLockTimer = null;
 function lockTeamRoundRender(ms){
   teamRoundRenderLocked = true;
@@ -1988,6 +1998,10 @@ let teamRoundFunChallenges = true;  // Persönlichkeits-Challenges-Kategorie zum
 let teamRoundCommunityChallenges = true; // Freigegebene Community-Challenges zumischen ja/nein
 let teamRoundSabotageAllowed = true; // Vorteile/Sabotagen für die Runde generell erlaubt ja/nein
 let teamRoundBlitzSeconds = 45; // Blitzrunde: nach wie vielen Sekunden werden offene Challenges automatisch ersetzt
+// "Durcheinander"-Chaos-Effekte (nur beim volatile-Preset standardmäßig an, sonst frei kombinierbar
+// falls später mal einzeln zugänglich gemacht): Bildschirm zufällig drehen, Fragen rückwärts
+// anzeigen, mittendrin einmal alle offenen Challenges neu würfeln.
+let teamRoundChaosSpin = false, teamRoundChaosReverse = false, teamRoundChaosMidReroll = false;
 let teamRoundPointGoalChoice = 250; // Nur scope 'points': 100/250/500/'custom'
 let teamRoundCustomGoalValue = 300; // Nur scope 'points' + Choice 'custom'
 let teamCampaignIndex = 0;          // aktuelle Position (0-basiert) in der laufenden Kampagne
@@ -2248,6 +2262,7 @@ function showMemberProfile(userId){
   const alreadyFriends = myFriendIds.has(m.user_id);
   modal.innerHTML = `<div class="member-modal-card${bannerClassFor(memberBanner)}" style="${memberBanner ? bannerStyleFor(memberBanner) : ''}" onclick="event.stopPropagation();">
     ${bannerImgTagHTML(memberBanner)}
+    ${m.is_admin ? '<span class="admin-banner-badge">🛡️ Admin</span>' : ''}
     ${bannerBadgeStampHTML(memberBanner, memberBadge)}
     <button class="member-modal-close" onclick="event.preventDefault();event.stopPropagation();closeMemberProfileModal()" aria-label="Schließen">✕</button>
     ${profileQuickEditButton(isSelf)}
@@ -2597,7 +2612,7 @@ function teamRoundOptionsFor(gameId, gameMode){
 }
 const TEAM_MODE_PRESETS = [
   {id:'classic', icon:'🏆', title:'WIN CHALLENGES CLASSIC', desc:'Der klassische Modus. Nach Spielen, Challenges zählen nur bei Sieg.'},
-  {id:'volatile', icon:'🌀', title:'HIER HABE ICH NOCH KEINEN NAMEN', desc:'Alles schwerer und zufällig. Es können sich Sachen im Match ändern, die nicht berechenbar sind.'},
+  {id:'volatile', icon:'🌀', title:'DURCHEINANDER', desc:'Alles schwerer und zufällig: Bildschirm dreht sich zufällig, Fragen stehen manchmal verkehrt rum, Challenges werden mittendrin neu gewürfelt.'},
   {id:'chaos', icon:'🎲', title:'CHAOSMODE', desc:'Spiel auswählen, Rest ist zufällig.'},
   {id:'blitz', icon:'⚡', title:'BLITZRUNDE', desc:'Schnelle Runden nach Zeit. Neue Challenges, alte verschwinden. Nicht abgehakte bringt Minus.'},
   {id:'points', icon:'🎯', title:'PUNKTEZIEL', desc:'Spielt bis zum Punkteziel. Abgehakte Challenges werden ersetzt (erst wenn 3 fertig sind). Ein oder mehrere Spiele wählbar.'},
@@ -2638,6 +2653,7 @@ function applyTeamGroupDefaults(isPublic, maxPlayers){
 }
 function selectTeamModePreset(id){
   teamModePreset = id;
+  if(id !== 'volatile'){ teamRoundChaosSpin=false; teamRoundChaosReverse=false; teamRoundChaosMidReroll=false; }
   if(id==='classic'){
     // "Classic": dieselben Standard-Einstellungen wie unten, nur mit "Punkte zählen bei Sieg" an.
     teamRoundScope='games'; teamRoundModeChoice='team'; teamRoundRandomOrder=false; teamRoundSessionModeChoice='challenge';
@@ -2646,10 +2662,11 @@ function selectTeamModePreset(id){
     applyTeamGroupDefaults(true, 6);
   }
   else if(id==='volatile'){
-    // "Hier habe ich noch keinen Namen" (Durcheinander-artiger Modus).
+    // "Durcheinander".
     teamRoundScope='rounds'; teamRoundModeChoice='versus'; teamRoundCount=2; teamRoundSessionModeChoice='chaos';
     teamRoundClassicMode=false; teamRoundFunChallenges=true; teamRoundCommunityChallenges=true;
     teamRoundSabotageAllowed=true; teamRoundSabotageLimit=5; teamRoundDifficulty='Schwer';
+    teamRoundChaosSpin=true; teamRoundChaosReverse=true; teamRoundChaosMidReroll=true;
     applyTeamGroupDefaults(false, 10);
   }
   else if(id==='chaos'){ teamRoundScope='rounds'; teamRoundSessionModeChoice='chaos'; teamRoundClassicMode=false; teamRoundDifficulty='Mittel'; }
@@ -3333,7 +3350,7 @@ async function startTeamRound(skipReadyCheck){
   // gelten dann von Anfang an als "haben ihren Helden schon gesehen", und es geht direkt und
   // nahtlos mit den neuen Challenges weiter.
   const heroRevealedAtStart = canReuseLockedHeroes ? memberIds : null;
-  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById, hero_revealed: heroRevealedAtStart, left_players: waitingMemberIds, classic_mode: mode==='team' ? teamRoundClassicMode : false, blitz_deadline: teamRoundScope==='blitz' ? new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString() : null }).select().single();
+  const { data: round, error } = await sb.from('game_rounds').insert({ team_id: myTeam.id, game_id: gameId, mode, session_mode: sessionMode, game_mode: teamRoundGameMode, difficulty: teamRoundDifficulty, scope: teamRoundScope, is_match_style: isMatchStyle, campaign_total: campaignTotal(), status:'active', hero_assignment: heroAssignmentById, hero_revealed: heroRevealedAtStart, left_players: waitingMemberIds, classic_mode: mode==='team' ? teamRoundClassicMode : false, blitz_deadline: teamRoundScope==='blitz' ? new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString() : null, chaos_effects: (teamRoundChaosSpin||teamRoundChaosReverse||teamRoundChaosMidReroll) ? { spin:teamRoundChaosSpin, reverse:teamRoundChaosReverse, midReroll:teamRoundChaosMidReroll } : null }).select().single();
   if(error){ showAlert('Fehler beim Runde starten: ' + error.message); teamRoundTransitioning = false; renderTeamPage(); return; }
 
   let items = [];
@@ -4304,20 +4321,28 @@ function renderTeamRoundHeader(){
     <div class="scoreboard-info"><div class="scoreboard-title">${myTeam.name || 'Team'}${isHost ? ' 👑' : ''}</div><div class="scoreboard-meta">${gameIconHTML(currentRound.game_id,16)} ${GAME_NAME[currentRound.game_id]||''}${roundCounter}</div></div>
     <div class="scoreboard-actions">${hasPikachuSound()?'<button class="header-menu-btn" onclick="sendPikachuGroupSound()" title="Pikachu-Sound für die Gruppe">⚡</button>':''}${renderTeamChatIconAction()}${hostMenu}${memberLeaveMenu}</div>
   </div>
-  ${currentRound.scope==='blitz' && currentRound.blitz_deadline ? `<div class="blitz-timer-bar" id="blitz-timer-bar" data-deadline="${currentRound.blitz_deadline}"><span id="blitz-timer-text">⏱️ --:--</span>${isHost?'<button class="header-menu-btn" id="blitz-timer-reroll-btn" style="display:none;" onclick="rerollBlitzChallengesNow()">🔁 Timer neu starten</button>':''}</div>` : ''}`;
+  ${currentRound.scope==='blitz' && currentRound.blitz_deadline ? `<div class="blitz-timer-bar" id="blitz-timer-bar" data-deadline="${currentRound.blitz_deadline}"><span id="blitz-timer-text">⏱️ --:--</span>${isHost?'<button class="header-menu-btn" id="blitz-timer-reroll-btn" style="display:none;" onclick="rerollBlitzChallengesNow()">🔁 Jetzt neu ziehen</button>':''}</div>` : ''}`;
 }
 // Blitzrunde: läuft alle 1s, unabhängig davon welcher Screen gerade aktiv ist — findet die
 // Timer-Anzeige nur, wenn sie gerade im DOM ist (Rundenkopf), sonst passiert nichts.
+let teamBlitzAutoRerollHandledFor = null; // Round-ID+Deadline, für die bereits automatisch neu gezogen wurde
 setInterval(()=>{
   const bar = document.getElementById('blitz-timer-bar');
   if(!bar) return;
-  const deadline = new Date(bar.dataset.deadline).getTime();
+  const deadlineIso = bar.dataset.deadline;
+  const deadline = new Date(deadlineIso).getTime();
   const remainMs = deadline - Date.now();
   const textEl = document.getElementById('blitz-timer-text');
   const rerollBtn = document.getElementById('blitz-timer-reroll-btn');
   if(remainMs <= 0){
-    if(textEl) textEl.textContent = '⏰ Zeit abgelaufen!';
+    if(textEl) textEl.textContent = '⏰ Zeit abgelaufen — neue Challenges …';
     if(rerollBtn) rerollBtn.style.display = 'inline-flex';
+    const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
+    const handleKey = (currentRound ? currentRound.id : '') + ':' + deadlineIso;
+    if(isHost && teamBlitzAutoRerollHandledFor !== handleKey){
+      teamBlitzAutoRerollHandledFor = handleKey;
+      autoRerollOpenChallenges(true);
+    }
     return;
   }
   if(rerollBtn) rerollBtn.style.display = 'none';
@@ -4326,18 +4351,51 @@ setInterval(()=>{
   const ss = String(totalSec%60).padStart(2,'0');
   if(textEl) textEl.textContent = `⏱️ ${mm}:${ss}`;
 }, 1000);
-// Host-Aktion, wenn die Blitzrunden-Zeit abgelaufen ist: startet den Timer für die nächste
-// Zeitscheibe neu. Zieht bewusst noch KEINE neuen Challenges automatisch — das würde entweder das
-// Joker-Kontingent der Spieler unbemerkt verbrauchen (executePersonalChallengeJoker/
-// executeTeamChallengeJoker sind für spielerausgelöste Rerolls gedacht) oder eine eigene,
-// ungetestete Kopie der Reroll-Logik nötig machen. Bis das sauber gebaut ist, zieht jede:r bei
-// Bedarf manuell per Joker neu.
+// Automatisches Neuziehen offener Challenges — ersetzt NUR die noch offenen (nicht erledigten)
+// Challenges, bereits erledigte bleiben mit ihrem Ergebnis stehen. Bewusst als eigene, schlanke
+// Kopie statt Wiederverwendung der Joker-Reroll-Funktionen, damit dabei kein Joker-Kontingent der
+// Spieler verbraucht wird. resetDeadline=true setzt zusätzlich einen neuen Blitzrunden-Timer.
+async function autoRerollOpenChallenges(resetDeadline){
+  if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
+  const difficulty = currentRound.difficulty || 'Mittel';
+  try{
+    if(currentRound.mode==='team'){
+      const openShared = roundItems.filter(it=>it.scope==='shared' && !it.result);
+      if(openShared.length){
+        const rulesPool = rulesPoolFor(currentRound.game_id, currentRound.game_mode);
+        const isMatchStyleRound = !!currentRound.is_match_style;
+        const comp = currentRound.session_mode==='chaos' ? CHAOS_COMPOSITION : (isMatchStyleRound ? MATCH_STYLE_COMPOSITION[difficulty] : DIFF_COMPOSITION[difficulty]);
+        const chosen = pickByComposition(rulesPool, comp);
+        const names = teamMembers.map(m=>m.username);
+        const replacements = chosen.map(c=>({ text:substitutePlayerName(c.text, names), diff:c.diff, points:TEAM_ROUND_DIFF_POINTS[c.diff] }));
+        await Promise.all(openShared.map((item,index)=> replacements[index] ? sb.from('round_items').update({ ...replacements[index], result:null, struck:false }).eq('id', item.id) : Promise.resolve()));
+      }
+    } else {
+      const activeIds = teamMembers.filter(m=>!(currentRound.left_players||[]).includes(m.user_id)).map(m=>m.user_id);
+      for(const uid of activeIds){
+        const openPersonal = roundItems.filter(it=>it.scope==='personal' && it.user_id===uid && !it.result);
+        if(!openPersonal.length) continue;
+        const forcedComp = currentRound.is_match_style ? MATCH_STYLE_COMPOSITION[difficulty] : null;
+        const singleSet = buildPersonalChallengeSet(currentRound.game_id, difficulty, currentRound.session_mode, [uid], currentRound.hero_assignment, forcedComp, personalPoolFor(currentRound.game_id, currentRound.game_mode));
+        const newSet = (singleSet[uid]||[]);
+        await Promise.all(openPersonal.map((item,index)=> newSet[index] ? sb.from('round_items').update({ text:newSet[index].text, diff:newSet[index].diff, points:TEAM_ROUND_PERSONAL_DIFF_POINTS[newSet[index].diff], result:null, struck:false }).eq('id', item.id) : Promise.resolve()));
+      }
+    }
+  }catch(e){ console.error('Auto-Reroll fehlgeschlagen:', e); }
+  if(resetDeadline){
+    const nextDeadline = new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString();
+    await sb.from('game_rounds').update({ blitz_deadline: nextDeadline }).eq('id', currentRound.id);
+    currentRound.blitz_deadline = nextDeadline;
+  }
+  await loadRoundItems();
+  renderTeamPage();
+}
+// Manueller Button ("🔁 Jetzt neu ziehen") ruft dieselbe Logik sofort auf, ohne auf den
+// Timer-Ablauf zu warten.
 async function rerollBlitzChallengesNow(){
   if(!currentRound || !myTeam || !currentUser || myTeam.host_id !== currentUser.id || !sb) return;
-  const nextDeadline = new Date(Date.now()+teamRoundBlitzSeconds*1000).toISOString();
-  await sb.from('game_rounds').update({ blitz_deadline: nextDeadline }).eq('id', currentRound.id);
-  currentRound.blitz_deadline = nextDeadline;
-  renderTeamPage();
+  teamBlitzAutoRerollHandledFor = currentRound.id + ':' + currentRound.blitz_deadline;
+  await autoRerollOpenChallenges(true);
 }
 function extendTeamCampaign(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
@@ -4510,6 +4568,13 @@ function renderTeamHeroBlock(){
 // auch in der finalen Bewertungsphase (status 'voting' — dort dann für alle sichtbar/änderbar)
 // verwendet, damit während des Matches gesetzte Haken beim Abschluss einfach übernommen werden
 // statt am Ende alles neu rekonstruieren zu müssen. Stimmen bleiben bis finalizeTeamRound() jederzeit änderbar.
+function chaosDisplayText(text){
+  // "Durcheinander": Fragen rückwärts anzeigen, wenn der Effekt für die aktuelle Runde aktiv ist.
+  if(currentRound && currentRound.chaos_effects && currentRound.chaos_effects.reverse){
+    return text.split('').reverse().join('');
+  }
+  return text;
+}
 function renderVotableChallengeItems(items){
   let html = '';
   sortByDifficulty(items).forEach(it=>{
@@ -4519,7 +4584,7 @@ function renderVotableChallengeItems(items){
     const myVote = votesForItem[currentUser.id];
     html += `<div class="sb-challenge-item ${it.result==='success'?'won':it.result==='fail'?'lost':''}${it.struck?' struck':''}">
       <div class="sb-diff-badge" style="background:${DIFF_COLOR[it.diff]}">${DIFF_LABEL[it.diff]}</div>
-      <div class="sb-challenge-text">${it.text}</div>
+      <div class="sb-challenge-text">${chaosDisplayText(it.text)}</div>
       <div class="sb-points">${it.struck?'🗑️ gestrichen · '+it.points:it.result==='success'?'+'+it.points:it.result==='fail'?'−'+failPenaltyFor(it.diff):it.points} Pkt</div>`;
     if(!it.result){
       html += `<div class="sb-actions">
@@ -4537,6 +4602,15 @@ function renderTeamRoundSection(){
   const isHost = myTeam && currentUser && myTeam.host_id === currentUser.id;
   if(!currentRound) return '';
   const header = renderTeamRoundHeader();
+  // "Durcheinander": mittendrin einmal alle offenen Challenges neu würfeln — der Host plant das
+  // einmalig pro Runde zu einem zufälligen Zeitpunkt (15-40s nach dem ersten Rendern der Runde).
+  if(isHost && currentRound.status==='active' && currentRound.chaos_effects && currentRound.chaos_effects.midReroll && teamChaosMidRerollScheduledFor !== currentRound.id){
+    teamChaosMidRerollScheduledFor = currentRound.id;
+    const roundIdAtSchedule = currentRound.id;
+    setTimeout(()=>{
+      if(currentRound && currentRound.id===roundIdAtSchedule && currentRound.status==='active') autoRerollOpenChallenges(false);
+    }, randInt(15000, 40000));
+  }
 
   const myHero = currentRound.hero_assignment ? currentRound.hero_assignment[currentUser.id] : null;
   // Server (hero_revealed) ist die alleinige Quelle der Wahrheit dafür, ob DIESES Gerät den
@@ -4614,7 +4688,14 @@ function renderTeamRoundSection(){
     // deaktiviert und durchgestrichen.
     const jokerLocked = (currentRound.sabotaged_no_joker||[]).includes(currentUser.id);
     const jokerLockAttrs = 'disabled style="opacity:.45;text-decoration:line-through;cursor:not-allowed;" title="Joker-Sperre aktiv — diese Runde kein Reroll mehr"';
-    let html = header + `<div class="panel-block round-active-panel${isNewRoundView?' round-fade-in':''}" style="margin-top:20px;">
+    // "Durcheinander": Bildschirm zufällig drehen — Winkel wird einmal pro Runde gewürfelt und
+    // bleibt dann stabil (kein Neu-Würfeln bei jedem Re-Render, das wäre nur verwirrend).
+    if(currentRound.chaos_effects && currentRound.chaos_effects.spin && teamChaosSpinAngleFor !== currentRound.id){
+      teamChaosSpinAngleFor = currentRound.id;
+      teamChaosSpinAngle = [90,180,270,-90][randInt(0,3)];
+    }
+    const chaosSpinStyle = (currentRound.chaos_effects && currentRound.chaos_effects.spin) ? `transform:rotate(${teamChaosSpinAngle}deg);transition:transform .6s ease;` : '';
+    let html = header + `<div class="panel-block round-active-panel${isNewRoundView?' round-fade-in':''}" style="margin-top:20px;${chaosSpinStyle}">
       <div class="setup-step-head"><span class="setup-step-icon">${currentRound.mode==='team'?'🤝':'⚔️'}</span><div class="setup-step-title">${gameIconHTML(currentRound.game_id,20)} ${GAME_NAME[currentRound.game_id]}</div></div>
       <p class="setup-info" style="margin:-8px 0 12px;">${currentRound.mode==='team'?'🤝 Team':'⚔️ Jeder gegen Jeden'} · ${currentRound.difficulty||'Mittel'}</p>`;
     html += renderJokerVoteBanner();
