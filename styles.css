@@ -1432,3 +1432,172 @@ button:focus-visible, a:focus-visible{ outline:2px solid var(--neon); outline-of
 }
 .glow-name-text.active, .glow-name-rainbow.active{ box-shadow:0 0 0 2px currentColor, 0 0 14px -2px currentColor !important; }
 .glow-name-rainbow.active{ box-shadow:0 0 0 2px var(--neon), 0 0 14px -2px var(--neon) !important; }
+
+/* ============================================================
+   ⬡ HIGH-END GAMING GLASS — Premium-Redesign v4
+   Sci-Fi-Tile-Sprache (abgeschrägte Ecken via clip-path), echte
+   Lichtbrechung (mehrschichtiger Verlaufs-Rahmen + innerer Glanz),
+   schwebende 3D-Tiefe (Drop-Shadow + farbiges Umgebungsleuchten,
+   klar getrennt vom Clip, da box-shadow an clip-path-Kanten
+   hart abgeschnitten würde), Shine-Sweep-Mikrointeraktion bei
+   Hover, sowie ein animierter Neuronen-Hintergrund aus reinem CSS
+   (Radial-Gradient-Knoten + langsame Linien-Drift). Ausschließlich
+   Form/Optik — keine IDs, Klassen-Logik, Event-Listener oder
+   JS-Abläufe verändert. Baut auf der bestehenden Electric-Blue/
+   Neon-Palette auf (v3) und ersetzt deren einfache Kartenoptik.
+   ============================================================ */
+:root{
+  --notch: 20px;
+  --notch-sm: 12px;
+}
+
+/* ---- Animierter Neuronen-Hintergrund (reines CSS, hinter dem Content) ---- */
+body::before, body::after{
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+}
+body::before{
+  background-image:
+    radial-gradient(2px 2px at 8% 18%, rgba(51,230,255,.6), transparent 60%),
+    radial-gradient(2px 2px at 82% 12%, rgba(47,111,255,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 32% 62%, rgba(51,230,255,.45), transparent 60%),
+    radial-gradient(2px 2px at 70% 76%, rgba(47,111,255,.5), transparent 60%),
+    radial-gradient(1.4px 1.4px at 50% 38%, rgba(255,255,255,.32), transparent 60%),
+    radial-gradient(1.8px 1.8px at 92% 58%, rgba(51,230,255,.4), transparent 60%),
+    radial-gradient(1.6px 1.6px at 14% 86%, rgba(47,111,255,.45), transparent 60%),
+    radial-gradient(2.2px 2.2px at 58% 8%, rgba(51,230,255,.55), transparent 60%),
+    radial-gradient(1.6px 1.6px at 40% 92%, rgba(47,111,255,.4), transparent 60%),
+    radial-gradient(1.4px 1.4px at 88% 88%, rgba(51,230,255,.4), transparent 60%);
+  animation:neuron-drift-kf 46s ease-in-out infinite alternate;
+  opacity:.85;
+}
+body::after{
+  background-image:
+    repeating-linear-gradient(115deg, rgba(51,230,255,.05) 0 1px, transparent 1px 150px),
+    repeating-linear-gradient(25deg, rgba(47,111,255,.045) 0 1px, transparent 1px 170px);
+  background-size:220% 220%;
+  animation:neuron-lines-kf 70s linear infinite;
+  opacity:.55;
+}
+@keyframes neuron-drift-kf{
+  0%{ background-position:0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%,0% 0%; }
+  100%{ background-position:5% 6%,-4% 5%,6% -4%,-5% -6%,4% 4%,-6% -3%,5% 5%,-4% -5%,6% -4%,-3% 5%; }
+}
+@keyframes neuron-lines-kf{ from{ background-position:0% 0%,0% 0%; } to{ background-position:100% 65%,-85% 100%; } }
+@media (prefers-reduced-motion: reduce), (max-width:520px){
+  body::before, body::after{ animation:none; }
+}
+
+/* ---- Signatur-Form: abgeschrägte Ecken (oben-links / unten-rechts) ---- */
+.settings-card, .panel-block, .stat-card, .player-manager, .custom-alert-box,
+.member-modal-card, .round-prompt, .game-intro-card, .team-overview-card,
+.home-quick-tile, .friends-code-card, .friends-list-card, .friends-code-add-card{
+  --n: var(--notch);
+  clip-path: polygon(var(--n) 0,100% 0,100% calc(100% - var(--n)),calc(100% - var(--n)) 100%,0 100%,0 var(--n));
+  border-radius:0 !important;
+  position:relative;
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.08), rgba(255,255,255,.016) 42%, transparent 72%) padding-box,
+    rgba(20,23,34,.5) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.4), rgba(51,230,255,.32) 45%, rgba(255,255,255,.04) 100%) border-box;
+  border:1px solid transparent;
+  backdrop-filter:blur(22px) saturate(1.3);
+  -webkit-backdrop-filter:blur(22px) saturate(1.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.15), inset 0 0 26px rgba(51,230,255,.05);
+  filter:drop-shadow(0 22px 42px rgba(0,0,0,.5)) drop-shadow(0 0 22px rgba(47,111,255,.18));
+  transition:filter .3s var(--ease-glass,ease), transform .28s var(--ease-glass,ease);
+  overflow:hidden;
+}
+.settings-card::before, .panel-block::before, .stat-card::before, .player-manager::before,
+.round-prompt::before, .game-intro-card::before, .team-overview-card::before{
+  content:none !important; /* die neue Rahmen-Lichtbrechung ersetzt die alte Ein-Linien-Kante */
+}
+/* Shine-Sweep: diagonaler Lichtstreif, der bei Hover einmal über die Kachel läuft */
+.settings-card::after, .panel-block::after, .stat-card::after, .player-manager::after,
+.team-overview-card::after, .home-quick-tile::after, .friends-code-card::after,
+.friends-list-card::after, .friends-code-add-card::after{
+  content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
+  background:linear-gradient(115deg, transparent 34%, rgba(255,255,255,.14) 48%, rgba(51,230,255,.22) 52%, transparent 66%);
+  background-size:280% 280%; background-position:-40% -40%;
+  opacity:0; transition:opacity .35s ease, background-position 1s cubic-bezier(.2,.7,.2,1);
+}
+@media (hover:hover) and (pointer:fine){
+  .settings-card:hover, .panel-block:hover, .stat-card:hover, .player-manager:hover,
+  .team-overview-card:hover, .home-quick-tile:hover, .friends-code-card:hover,
+  .friends-list-card:hover, .friends-code-add-card:hover{
+    filter:drop-shadow(0 26px 50px rgba(0,0,0,.55)) drop-shadow(0 0 30px rgba(51,230,255,.32));
+    transform:translateY(-3px);
+  }
+  .settings-card:hover::after, .panel-block:hover::after, .stat-card:hover::after,
+  .player-manager:hover::after, .team-overview-card:hover::after, .home-quick-tile:hover::after,
+  .friends-code-card:hover::after, .friends-list-card:hover::after, .friends-code-add-card:hover::after{
+    opacity:1; background-position:60% 60%;
+  }
+}
+.team-overview-card.is-favorite{
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.08), rgba(255,255,255,.016) 42%, transparent 72%) padding-box,
+    rgba(24,22,30,.5) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.4), rgba(255,215,106,.4) 45%, rgba(255,255,255,.04) 100%) border-box !important;
+}
+
+/* ---- Buttons & Tile-Icons: kleinere Abschrägung, gleiche Lichtbrechung ---- */
+.landing-btn, .roll-btn, .sb-btn, .settings-row-btn, .avatar-grid-item, .friend-chip{
+  --n: var(--notch-sm);
+  clip-path: polygon(var(--n) 0,100% 0,100% calc(100% - var(--n)),calc(100% - var(--n)) 100%,0 100%,0 var(--n));
+  border-radius:0 !important;
+  position:relative; overflow:hidden;
+  transition:filter .25s var(--ease-glass,ease), transform .2s var(--ease-glass,ease), background .22s ease, border-color .22s ease;
+}
+.landing-btn:not(.primary), .sb-btn, .settings-row-btn, .avatar-grid-item, .friend-chip{
+  background:
+    linear-gradient(165deg, rgba(255,255,255,.07), rgba(255,255,255,.015) 42%, transparent 72%) padding-box,
+    var(--glass-panel,rgba(24,27,38,.5)) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.32), rgba(51,230,255,.24) 45%, rgba(255,255,255,.03) 100%) border-box;
+  border:1px solid transparent;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.1);
+}
+.landing-btn.primary, .roll-btn{
+  border:1px solid rgba(255,255,255,.22);
+}
+.landing-btn::after, .roll-btn::after, .sb-btn::after, .settings-row-btn::after,
+.avatar-grid-item::after, .friend-chip::after{
+  content:''; position:absolute; inset:0; z-index:3; pointer-events:none;
+  background:linear-gradient(115deg, transparent 34%, rgba(255,255,255,.18) 48%, rgba(51,230,255,.26) 52%, transparent 66%);
+  background-size:280% 280%; background-position:-40% -40%;
+  opacity:0; transition:opacity .3s ease, background-position .8s cubic-bezier(.2,.7,.2,1);
+}
+@media (hover:hover) and (pointer:fine){
+  .landing-btn:hover::after, .roll-btn:hover::after, .sb-btn:hover::after,
+  .settings-row-btn:hover::after, .avatar-grid-item:hover::after, .friend-chip:hover::after{
+    opacity:1; background-position:60% 60%;
+  }
+  .landing-btn:not(.disabled):hover, .roll-btn:hover, .sb-btn:hover:not([disabled]),
+  .settings-row-btn:hover, .avatar-grid-item:hover, .friend-chip:hover{
+    transform:translateY(-2px);
+  }
+}
+.header-menu-panel{
+  clip-path: polygon(var(--notch-sm) 0,100% 0,100% calc(100% - var(--notch-sm)),calc(100% - var(--notch-sm)) 100%,0 100%,0 var(--notch-sm));
+  border-radius:0 !important;
+}
+
+/* ---- Begrüßungs-/User-Badge: gleiche Sprache, edler eingefasst ---- */
+#view-home .home-greeting-card{
+  --n: var(--notch);
+  clip-path: polygon(var(--n) 0,100% 0,100% calc(100% - var(--n)),calc(100% - var(--n)) 100%,0 100%,0 var(--n)) !important;
+  border-radius:0 !important;
+  border:1px solid transparent !important;
+  background:
+    linear-gradient(115deg,rgba(7,10,18,.12),rgba(7,10,18,.02)) padding-box,
+    linear-gradient(115deg,rgba(83,58,151,.24),rgba(12,43,59,.28)) padding-box,
+    linear-gradient(135deg, rgba(255,255,255,.42), rgba(51,230,255,.4) 45%, rgba(255,255,255,.05) 100%) border-box !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 0 1px rgba(51,230,255,.05) !important;
+  filter:drop-shadow(0 18px 36px rgba(0,0,0,.45)) drop-shadow(0 0 24px rgba(47,111,255,.22));
+}
+#view-home .home-greeting-avatar{
+  box-shadow:0 0 0 2px rgba(51,230,255,.32), 0 0 20px rgba(47,111,255,.3) !important;
+}
+
+@media (max-width:520px){
+  :root{ --notch: 14px; --notch-sm: 9px; }
+}
