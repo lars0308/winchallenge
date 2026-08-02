@@ -1358,3 +1358,91 @@ body.has-app-bottom-nav .view.active{padding-bottom:96px}
   backdrop-filter:blur(10px);
   -webkit-backdrop-filter:blur(10px);
 }
+
+/* ============================================================
+   ✨ CLEAN DARK GLASSMORPHISM — v2, deutlich sichtbarer
+   Der erste Block (oben) griff auf Touch-Geräten kaum, weil er
+   stark auf :hover setzte und die Glas-Flächen zu dunkel/zu nah
+   am Hintergrund waren. Dieser Block macht die Wirkung auch im
+   Ruhezustand (ohne Hover, ohne Maus) klar erkennbar: hellere,
+   sichtbar transparente Glas-Flächen, ein farbiger Ambient-Glow
+   im Hintergrund (damit der Blur überhaupt etwas zu verwischen
+   hat) und kräftigere, dauerhaft sichtbare Neon-Kanten auf den
+   Kern-Aktionen. Weiterhin rein visuell — keine IDs/Funktionen
+   verändert.
+   ============================================================ */
+:root{
+  --glass-panel: rgba(30,32,48,.46);
+  --glass-panel-strong: rgba(26,28,44,.5);
+  --glass-hairline: rgba(255,255,255,.18);
+}
+
+body{
+  background:
+    radial-gradient(40% 30% at 10% 6%, rgba(176,131,255,.20), transparent 62%),
+    radial-gradient(36% 28% at 92% 16%, rgba(94,234,255,.15), transparent 62%),
+    radial-gradient(50% 38% at 50% 105%, rgba(139,92,246,.14), transparent 62%),
+    radial-gradient(ellipse 120% 80% at 50% -10%, #1a1330 0%, var(--bg) 55%);
+}
+
+/* ---- Glas-Kanten überall sichtbar machen, nicht erst bei Hover ---- */
+.settings-card, .panel-block, .stat-card, .player-manager, .custom-alert-box,
+.member-modal-card, .round-prompt, .game-intro-card, .goal-bar-wrap, .dice-face,
+.team-overview-card, .header-menu-panel, .home-quick-tile{
+  border-color:var(--glass-hairline) !important;
+  box-shadow:0 20px 46px -22px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.09),
+             0 0 0 1px rgba(94,234,255,.06) !important;
+}
+.settings-card::before, .panel-block::before, .stat-card::before, .player-manager::before,
+.round-prompt::before, .game-intro-card::before, .team-overview-card::before{
+  height:2px !important; opacity:.75 !important;
+  box-shadow:0 0 12px 1px rgba(94,234,255,.55);
+}
+
+/* ---- Primäre Aktionen: dauerhaftes Neon-Glühen statt nur bei Hover ---- */
+.landing-btn.primary, .roll-btn{
+  position:relative;
+  box-shadow:0 14px 38px -8px rgba(155,92,246,.65), 0 0 0 1px rgba(255,255,255,.12) inset,
+             0 0 30px -4px rgba(94,234,255,.35);
+  animation:cta-glow-pulse-kf 3.2s ease-in-out infinite;
+}
+@keyframes cta-glow-pulse-kf{
+  0%,100%{ filter:saturate(1) brightness(1); }
+  50%{ filter:saturate(1.12) brightness(1.05); }
+}
+#app-bottom-nav button.active{
+  box-shadow:0 8px 22px -4px rgba(94,234,255,.5), 0 0 0 1px rgba(255,255,255,.14) inset;
+}
+
+/* ---- Untere Navigation & obere Leisten: sichtbar als eigene Glas-Ebene ---- */
+#app-bottom-nav{
+  background:rgba(22,24,36,.58) !important;
+  backdrop-filter:blur(24px) saturate(1.5) !important;
+  -webkit-backdrop-filter:blur(24px) saturate(1.5) !important;
+  border-color:rgba(255,255,255,.14) !important;
+  box-shadow:0 -10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+.home-topbar, #view-home .home-topbar, .topbar{
+  background:rgba(14,15,23,.55) !important;
+  backdrop-filter:blur(22px) saturate(1.4) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(1.4) !important;
+  border-bottom:1px solid rgba(255,255,255,.09);
+}
+
+/* ---- Karten & Kacheln: heller, spürbar transparenter ---- */
+.settings-card, .panel-block, .stat-card, .player-manager, .custom-alert-box,
+.member-modal-card, .round-prompt, .game-intro-card{
+  background:linear-gradient(165deg, rgba(255,255,255,.075), rgba(255,255,255,.018) 45%, transparent 100%),
+             var(--glass-panel) !important;
+}
+#view-home .landing-btn:not(.primary), #view-home .home-quick-tile, .team-overview-card,
+#view-shop .shop-catalog .settings-card{
+  background:linear-gradient(165deg, rgba(255,255,255,.075), rgba(255,255,255,.018) 45%, transparent 100%),
+             var(--glass-panel-strong) !important;
+}
+.filter-pill:not(.active):not([disabled]){
+  background:rgba(34,37,54,.55); border-color:rgba(255,255,255,.14);
+}
+
+/* ---- Icons in den Schnellzugriffs-Kacheln: leichtes farbiges Glühen ---- */
+.home-quick-tile > span{ filter:drop-shadow(0 0 10px rgba(148,120,255,.55)); }
